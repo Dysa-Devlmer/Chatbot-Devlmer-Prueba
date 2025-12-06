@@ -293,11 +293,29 @@ function InboxContent() {
   const getCategoryEmoji = (category: string): string => {
     const emojis: Record<string, string> = {
       general: '💬',
+      greeting: '💬',
       info: 'ℹ️',
       ventas: '💰',
       soporte: '🔧',
+      farewell: '👋',
+      error: '❌',
+      media_received: '📎',
     };
     return emojis[category] || '📝';
+  };
+
+  const getCategoryLabel = (category: string): string => {
+    const labels: Record<string, string> = {
+      general: 'General',
+      greeting: 'Saludos',
+      farewell: 'Despedidas',
+      info: 'Información',
+      ventas: 'Ventas',
+      soporte: 'Soporte',
+      error: 'Errores',
+      media_received: 'Medios',
+    };
+    return labels[category] || category;
   };
 
   if (loading) {
@@ -458,7 +476,7 @@ function InboxContent() {
                         color: selectedCategory === cat ? 'white' : '#666',
                       }}
                     >
-                      {getCategoryEmoji(cat)} {cat}
+                      {getCategoryEmoji(cat)} {getCategoryLabel(cat)}
                     </button>
                   ))}
                 </div>

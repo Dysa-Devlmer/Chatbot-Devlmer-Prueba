@@ -266,12 +266,34 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// DELETE - Eliminar respuesta rápida
+// DELETE - Eliminar respuesta rápida o resetear todas
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const reset = searchParams.get('reset');
 
+    // Si es reset, eliminar todas y recrear templates por defecto
+    if (reset === 'true') {
+      await prisma.messageTemplate.deleteMany({});
+
+      // Recrear templates por defecto
+      await prisma.messageTemplate.createMany({
+        data: DEFAULT_QUICK_REPLIES.map((reply) => ({
+          name: reply.title,
+          category: reply.category,
+          content: reply.content,
+          language: 'es',
+          isActive: true,
+          usageCount: 0,
+          variables: { shortcut: reply.shortcut, emoji: reply.emoji },
+        })),
+      });
+
+      return NextResponse.json({ success: true, message: 'Templates reseteados correctamente' });
+    }
+
+    // Eliminar template individual
     if (!id) {
       return NextResponse.json(
         { error: 'id es requerido' },
