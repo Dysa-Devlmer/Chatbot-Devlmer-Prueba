@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Agrupar por hora
-    const messagesByHour = recentMessages.reduce((acc: any, msg) => {
+    const messagesByHour = recentMessages.reduce((acc: any, msg: any) => {
       const hour = new Date(msg.timestamp).getHours();
       acc[hour] = (acc[hour] || 0) + 1;
       return acc;

@@ -320,7 +320,7 @@ SENTIMENT: [sentiment]`;
       // Convertir a formato de chat
       const recentMessages = messages
         .reverse()
-        .map((msg) => ({
+        .map((msg: any) => ({
           role: msg.direction === 'inbound' ? ('user' as const) : ('assistant' as const),
           content: msg.content,
         }));
