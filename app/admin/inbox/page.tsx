@@ -302,8 +302,8 @@ function InboxContent() {
 
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={{ fontSize: '20px', color: '#666' }}>⏳ Cargando conversaciones...</div>
+      <div style={styles.loadingContainer} suppressHydrationWarning>
+        <div style={{ fontSize: '20px', color: '#666' }} suppressHydrationWarning>⏳ Cargando conversaciones...</div>
       </div>
     );
   }
@@ -548,8 +548,8 @@ export default function InboxPage() {
   return (
     <Suspense
       fallback={
-        <div style={styles.loadingContainer}>
-          <div style={{ fontSize: '20px', color: '#666' }}>⏳ Cargando...</div>
+        <div style={styles.loadingContainer} suppressHydrationWarning>
+          <div style={{ fontSize: '20px', color: '#666' }} suppressHydrationWarning>⏳ Cargando...</div>
         </div>
       }
     >
