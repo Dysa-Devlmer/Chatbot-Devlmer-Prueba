@@ -139,6 +139,32 @@ export default function AdminDashboard() {
           gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
           gap: '20px',
         }}>
+          <Link href="/admin/analytics" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '12px',
+              padding: '30px',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 8px 12px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>📊</div>
+              <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>Analytics Dashboard</h3>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)' }}>
+                Estadísticas avanzadas y gráficos en tiempo real
+              </p>
+            </div>
+          </Link>
+
           <Link href="/admin/inbox" style={{ textDecoration: 'none' }}>
             <div style={{
               background: 'white',
