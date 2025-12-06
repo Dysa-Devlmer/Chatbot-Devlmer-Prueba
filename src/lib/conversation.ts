@@ -276,6 +276,24 @@ export class ConversationService {
       throw error;
     }
   }
+
+  /**
+   * Obtiene el último mensaje saliente de una conversación
+   */
+  static async getLastOutboundMessage(conversationId: string) {
+    try {
+      return await prisma.message.findFirst({
+        where: {
+          conversationId,
+          direction: 'outbound',
+        },
+        orderBy: { timestamp: 'desc' },
+      });
+    } catch (error) {
+      console.error('Error obteniendo último mensaje:', error);
+      return null;
+    }
+  }
 }
 
 export default ConversationService;

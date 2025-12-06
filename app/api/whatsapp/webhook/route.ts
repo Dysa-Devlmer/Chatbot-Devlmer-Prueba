@@ -115,19 +115,34 @@ export async function POST(request: NextRequest) {
         // VERIFICAR HORARIOS DE ATENCIÓN
         const estadoHorario = HorariosService.estaAbierto();
         if (!estadoHorario.abierto && estadoHorario.mensaje) {
-          console.log('⏰ Fuera de horario - Enviando mensaje automático');
+          // Verificar si ya enviamos el mensaje de fuera de horario recientemente
+          const lastOutbound = await ConversationService.getLastOutboundMessage(conversation.id);
 
-          // Enviar mensaje de fuera de horario
-          await sendWhatsAppMessage(phoneNumber, estadoHorario.mensaje);
+          // Solo enviar si:
+          // 1. No hay mensaje previo, O
+          // 2. El último mensaje NO es de "fuera de horario", O
+          // 3. Han pasado más de 4 horas desde el último mensaje
+          const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+          const isOutOfHoursMessage = lastOutbound?.content?.includes('Estamos cerrados');
+          const isRecent = lastOutbound?.timestamp && new Date(lastOutbound.timestamp) > fourHoursAgo;
 
-          // Guardar respuesta automática
-          await ConversationService.saveMessage({
-            conversationId: conversation.id,
-            userId: user.id,
-            type: 'text',
-            content: estadoHorario.mensaje,
-            direction: 'outbound',
-          });
+          if (!lastOutbound || !isOutOfHoursMessage || !isRecent) {
+            console.log('⏰ Fuera de horario - Enviando mensaje automático');
+
+            // Enviar mensaje de fuera de horario
+            await sendWhatsAppMessage(phoneNumber, estadoHorario.mensaje);
+
+            // Guardar respuesta automática
+            await ConversationService.saveMessage({
+              conversationId: conversation.id,
+              userId: user.id,
+              type: 'text',
+              content: estadoHorario.mensaje,
+              direction: 'outbound',
+            });
+          } else {
+            console.log('⏰ Fuera de horario - Mensaje ya enviado, no se repite');
+          }
 
           // Actualizar webhook log como procesado
           if (webhookLogId) {
