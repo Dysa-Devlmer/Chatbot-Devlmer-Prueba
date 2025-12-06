@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
     // 1. Limpiar el número de teléfono (quitar + y espacios)
     const cleanPhoneNumber = phoneNumber.replace(/[+\s-]/g, '');
 
-    // 2. Agregar firma a mensaje manual
-    const messageWithSignature = `${content}\n\n👤 Atención personalizada`;
+    // 2. Agregar firma como título del mensaje manual
+    const messageWithSignature = `👤 *Atención personalizada*\n\n${content}`;
 
     // 3. Enviar mensaje por WhatsApp API
     const whatsappResponse = await fetch(
