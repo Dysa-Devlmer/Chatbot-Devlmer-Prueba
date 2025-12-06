@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -32,7 +32,7 @@ interface Conversation {
   messages: Message[];
 }
 
-export default function InboxPage() {
+function InboxPageContent() {
   const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -471,5 +471,23 @@ export default function InboxPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function InboxPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f0f2f5',
+      }}>
+        <div style={{ fontSize: '20px', color: '#666' }}>⏳ Cargando...</div>
+      </div>
+    }>
+      <InboxPageContent />
+    </Suspense>
   );
 }
