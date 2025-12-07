@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
       label: `${i.toString().padStart(2, '0')}:00`,
     }));
 
-    periodMessages.forEach((msg) => {
+    periodMessages.forEach((msg: { timestamp: Date; direction: string; sentBy: string | null; intent: string | null }) => {
       const hour = new Date(msg.timestamp).getHours();
       messagesByHour[hour].count++;
     });
@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
 
-      const count = periodMessages.filter((msg) => {
+      const count = periodMessages.filter((msg: { timestamp: Date }) => {
         const msgDate = new Date(msg.timestamp);
         return msgDate >= dayStart && msgDate <= dayEnd;
       }).length;
@@ -253,8 +253,9 @@ export async function GET(request: NextRequest) {
       .map((h) => ({ hour: h.hour, avgMessages: h.count }));
 
     // Calcular porcentaje de intenciones
-    const totalIntents = intentsData.reduce((sum, i) => sum + i._count.intent, 0);
-    const topIntents = intentsData.map((i) => ({
+    type IntentData = { intent: string | null; _count: { intent: number } };
+    const totalIntents = intentsData.reduce((sum: number, i: IntentData) => sum + i._count.intent, 0);
+    const topIntents = intentsData.map((i: IntentData) => ({
       intent: i.intent || 'otros',
       count: i._count.intent,
       percentage: totalIntents > 0 ? Math.round((i._count.intent / totalIntents) * 100) : 0,
@@ -288,7 +289,7 @@ export async function GET(request: NextRequest) {
       messagesByHour,
       messagesByDay,
       sentimentDistribution,
-      topUsers: topUsersData.map((u) => ({
+      topUsers: topUsersData.map((u: { id: string; name: string | null; phoneNumber: string; totalMessages: number; lastContact: Date }) => ({
         id: u.id,
         name: u.name || 'Sin nombre',
         phoneNumber: u.phoneNumber,

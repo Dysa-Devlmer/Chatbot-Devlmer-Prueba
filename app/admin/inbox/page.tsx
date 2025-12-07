@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface User {
   id: string;
@@ -55,8 +56,22 @@ function InboxContent() {
   const [filteredReplies, setFilteredReplies] = useState<QuickReply[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevConversationsRef = useRef<Conversation[]>([]);
+  const prevMessagesRef = useRef<Message[]>([]);
+
+  // Hook de notificaciones
+  const {
+    isSupported: notificationsSupported,
+    permission: notificationPermission,
+    soundEnabled,
+    requestPermission,
+    setSoundEnabled,
+    notifyNewMessage,
+    setUnreadCount,
+  } = useNotifications();
 
   // Fetch quick replies on mount
   useEffect(() => {
@@ -83,6 +98,48 @@ function InboxContent() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Detectar nuevos mensajes y notificar
+  useEffect(() => {
+    if (messages.length > 0 && prevMessagesRef.current.length > 0) {
+      const prevIds = new Set(prevMessagesRef.current.map((m) => m.id));
+      const newMessages = messages.filter(
+        (m) => !prevIds.has(m.id) && m.direction === 'inbound'
+      );
+
+      newMessages.forEach((msg) => {
+        notifyNewMessage(msg);
+      });
+    }
+    prevMessagesRef.current = messages;
+  }, [messages, notifyNewMessage]);
+
+  // Detectar nuevas conversaciones no leídas
+  useEffect(() => {
+    if (conversations.length > 0) {
+      const prevUnreadIds = new Set(
+        prevConversationsRef.current.filter((c) => c.isUnread).map((c) => c.id)
+      );
+      const newUnread = conversations.filter(
+        (c) => c.isUnread && !prevUnreadIds.has(c.id)
+      );
+
+      // Notificar nuevas conversaciones no leídas
+      newUnread.forEach((conv) => {
+        if (conv.messages[0] && conv.messages[0].direction === 'inbound') {
+          notifyNewMessage({
+            ...conv.messages[0],
+            user: conv.user,
+          });
+        }
+      });
+
+      // Actualizar contador de no leídos
+      const totalUnread = conversations.filter((c) => c.isUnread).length;
+      setUnreadCount(totalUnread);
+    }
+    prevConversationsRef.current = conversations;
+  }, [conversations, notifyNewMessage, setUnreadCount]);
 
   // Filter quick replies based on input
   useEffect(() => {
@@ -327,6 +384,72 @@ function InboxContent() {
           <span style={{ fontSize: '14px', opacity: 0.9 }}>
             {conversations.length} conversaciones
           </span>
+
+          {/* Controles de Notificación */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowNotificationSettings(!showNotificationSettings)}
+              style={styles.notificationBtn}
+              title="Configurar notificaciones"
+            >
+              🔔
+              {conversations.filter((c) => c.isUnread).length > 0 && (
+                <span style={styles.notificationBadge}>
+                  {conversations.filter((c) => c.isUnread).length}
+                </span>
+              )}
+            </button>
+
+            {/* Panel de configuración de notificaciones */}
+            {showNotificationSettings && (
+              <div style={styles.notificationPanel}>
+                <h4 style={{ margin: '0 0 15px 0', fontSize: '14px' }}>🔔 Notificaciones</h4>
+
+                {/* Estado del permiso */}
+                <div style={styles.notificationRow}>
+                  <span>Estado:</span>
+                  <span style={{
+                    color: notificationPermission === 'granted' ? '#25D366' : '#FF6B6B'
+                  }}>
+                    {notificationPermission === 'granted' ? '✅ Activadas' :
+                     notificationPermission === 'denied' ? '❌ Bloqueadas' : '⚠️ Sin permiso'}
+                  </span>
+                </div>
+
+                {/* Botón para solicitar permiso */}
+                {notificationsSupported && notificationPermission !== 'granted' && (
+                  <button
+                    onClick={requestPermission}
+                    style={styles.enableNotificationsBtn}
+                  >
+                    Activar notificaciones
+                  </button>
+                )}
+
+                {/* Toggle de sonido */}
+                <div style={styles.notificationRow}>
+                  <span>🔊 Sonido:</span>
+                  <button
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    style={{
+                      ...styles.toggleBtn,
+                      background: soundEnabled ? '#25D366' : '#ccc',
+                    }}
+                  >
+                    <span style={{
+                      ...styles.toggleKnob,
+                      transform: soundEnabled ? 'translateX(20px)' : 'translateX(0)',
+                    }} />
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '11px', color: '#888', margin: '10px 0 0 0' }}>
+                  Las notificaciones te alertan cuando llegan nuevos mensajes.
+                </p>
+              </div>
+            )}
+          </div>
+
           <Link href="/admin/quick-replies" style={styles.manageRepliesBtn}>
             ⚙️ Gestionar Respuestas
           </Link>
@@ -803,5 +926,88 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     fontSize: '12px',
     fontFamily: 'monospace',
+  },
+  // Notification Styles
+  notificationBtn: {
+    position: 'relative',
+    background: 'rgba(255,255,255,0.2)',
+    border: 'none',
+    borderRadius: '50%',
+    width: '40px',
+    height: '40px',
+    fontSize: '18px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background 0.2s',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: '-5px',
+    right: '-5px',
+    background: '#FF6B6B',
+    color: 'white',
+    fontSize: '11px',
+    fontWeight: 'bold',
+    padding: '2px 6px',
+    borderRadius: '10px',
+    minWidth: '18px',
+    textAlign: 'center',
+  },
+  notificationPanel: {
+    position: 'absolute',
+    top: '50px',
+    right: '0',
+    background: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    padding: '15px',
+    width: '280px',
+    zIndex: 1000,
+    color: '#333',
+  },
+  notificationRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 0',
+    borderBottom: '1px solid #f0f0f0',
+    fontSize: '13px',
+  },
+  enableNotificationsBtn: {
+    width: '100%',
+    padding: '10px 15px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+    marginTop: '10px',
+    marginBottom: '10px',
+    transition: 'opacity 0.2s',
+  },
+  toggleBtn: {
+    position: 'relative',
+    width: '44px',
+    height: '24px',
+    borderRadius: '12px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background 0.2s',
+    padding: '0',
+  },
+  toggleKnob: {
+    position: 'absolute',
+    top: '2px',
+    left: '2px',
+    width: '20px',
+    height: '20px',
+    background: 'white',
+    borderRadius: '50%',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+    transition: 'transform 0.2s',
   },
 };
