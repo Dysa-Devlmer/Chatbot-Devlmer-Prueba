@@ -69,6 +69,8 @@ function InboxContent() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [conversationTags, setConversationTags] = useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [showAiPanel, setShowAiPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevConversationsRef = useRef<Conversation[]>([]);
@@ -219,6 +221,17 @@ function InboxContent() {
     }
   };
 
+  const fetchAiSuggestions = async (conversationId: string) => {
+    try {
+      const response = await fetch(`/api/admin/ai?action=suggestions&conversationId=${conversationId}`);
+      const data = await response.json();
+      setAiSuggestions(data.suggestions || []);
+    } catch (error) {
+      console.error('Error fetching AI suggestions:', error);
+      setAiSuggestions([]);
+    }
+  };
+
   const fetchConversations = async () => {
     try {
       const mode = searchParams?.get('mode');
@@ -252,6 +265,9 @@ function InboxContent() {
     setSelectedConversation(conversation);
     inputRef.current?.focus();
 
+    // Fetch AI suggestions for this conversation
+    fetchAiSuggestions(conversation.id);
+
     if (conversation.isUnread) {
       await fetch('/api/admin/conversations', {
         method: 'PATCH',
@@ -266,6 +282,11 @@ function InboxContent() {
         prev.map((c) => (c.id === conversation.id ? { ...c, isUnread: false } : c))
       );
     }
+  };
+
+  const useAiSuggestion = (suggestion: string) => {
+    setMessageInput(suggestion);
+    inputRef.current?.focus();
   };
 
   const toggleBotMode = async (conversationId: string, currentMode: string) => {
@@ -749,6 +770,33 @@ function InboxContent() {
                   </button>
                 ))}
               </div>
+
+              {/* AI Suggestions */}
+              {aiSuggestions.length > 0 && (
+                <div style={styles.aiSuggestionsSection}>
+                  <div style={styles.aiSuggestionsHeader}>
+                    <span>🤖 Sugerencias de IA</span>
+                    <button
+                      onClick={() => fetchAiSuggestions(selectedConversation.id)}
+                      style={styles.refreshBtn}
+                      title="Actualizar sugerencias"
+                    >
+                      🔄
+                    </button>
+                  </div>
+                  <div style={styles.aiSuggestionsList}>
+                    {aiSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => useAiSuggestion(suggestion)}
+                        style={styles.aiSuggestionBtn}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Command suggestions popup */}
@@ -1237,5 +1285,46 @@ const styles: Record<string, React.CSSProperties> = {
     width: '12px',
     height: '12px',
     borderRadius: '50%',
+  },
+  // AI Suggestions Styles
+  aiSuggestionsSection: {
+    marginTop: '15px',
+    paddingTop: '15px',
+    borderTop: '1px solid #e0e0e0',
+  },
+  aiSuggestionsHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '10px',
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#4ECDC4',
+  },
+  refreshBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '14px',
+    padding: '5px',
+    borderRadius: '50%',
+    transition: 'background 0.2s',
+  },
+  aiSuggestionsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  aiSuggestionBtn: {
+    background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+    border: '1px solid #4ECDC4',
+    borderRadius: '8px',
+    padding: '10px 15px',
+    textAlign: 'left',
+    cursor: 'pointer',
+    fontSize: '13px',
+    color: '#333',
+    transition: 'all 0.2s',
+    lineHeight: '1.4',
   },
 };
