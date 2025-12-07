@@ -21,13 +21,13 @@ Write-Host "   ⏳ Esperando a que Ollama se inicie..." -ForegroundColor Gray
 Start-Sleep -Seconds 5
 
 Write-Host "2️⃣  Iniciando servidor Next.js..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host '⚡ Next.js Server' -ForegroundColor Green; npm run dev" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host '⚡ Next.js Server - Puerto 7847' -ForegroundColor Green; npm run dev" -WindowStyle Normal
 
 Write-Host "   ⏳ Esperando a que el servidor se inicie..." -ForegroundColor Gray
 Start-Sleep -Seconds 10
 
 Write-Host "3️⃣  Iniciando túnel ngrok..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host '🌐 Ngrok Tunnel' -ForegroundColor Green; .\ngrok.exe http 7847" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host '🌐 Ngrok Tunnel - Puerto 7847' -ForegroundColor Green; .\ngrok.exe http 7847" -WindowStyle Normal
 
 Write-Host "   ⏳ Esperando a que ngrok se conecte..." -ForegroundColor Gray
 Start-Sleep -Seconds 5
@@ -38,8 +38,16 @@ Write-Host ""
 
 # Obtener y mostrar la URL de ngrok
 try {
-    $response = Invoke-RestMethod -Uri "http://localhost:4847/api/tunnels"
-    $publicUrl = $response.tunnels[0].public_url
+    # Intentar puerto 4040 primero, luego 4847
+    try {
+        $response = Invoke-RestMethod -Uri "http://localhost:4040/api/tunnels" -ErrorAction Stop
+    } catch {
+        $response = Invoke-RestMethod -Uri "http://localhost:4847/api/tunnels"
+    }
+    $publicUrl = $response.tunnels | Where-Object { $_.proto -eq 'https' } | Select-Object -ExpandProperty public_url -First 1
+    if (-not $publicUrl) {
+        $publicUrl = $response.tunnels[0].public_url
+    }
 
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
     Write-Host "  🌐 URL DEL WEBHOOK" -ForegroundColor Green

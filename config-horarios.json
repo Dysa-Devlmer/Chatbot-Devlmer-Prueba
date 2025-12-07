@@ -3,17 +3,17 @@
     "habilitado": true,
     "zona_horaria": "America/Santiago",
     "dias_semana": {
-      "lunes": { "abierto": true, "apertura": "09:00", "cierre": "23:00" },
-      "martes": { "abierto": true, "apertura": "09:00", "cierre": "23:00" },
-      "miercoles": { "abierto": true, "apertura": "09:00", "cierre": "23:00" },
-      "jueves": { "abierto": true, "apertura": "09:00", "cierre": "23:00" },
-      "viernes": { "abierto": true, "apertura": "09:00", "cierre": "23:00" },
+      "lunes": { "abierto": true, "apertura": "09:00", "cierre": "00:00" },
+      "martes": { "abierto": true, "apertura": "09:00", "cierre": "00:00" },
+      "miercoles": { "abierto": true, "apertura": "09:00", "cierre": "00:00" },
+      "jueves": { "abierto": true, "apertura": "09:00", "cierre": "00:00" },
+      "viernes": { "abierto": true, "apertura": "09:00", "cierre": "00:00" },
       "sabado": { "abierto": true, "apertura": "10:00", "cierre": "14:00" },
       "domingo": { "abierto": false, "apertura": null, "cierre": null }
     }
   },
   "mensajes": {
-    "fuera_de_horario": "🕐 **Estamos cerrados en este momento**\n\nGracias por contactarnos. Nuestro horario de atención es:\n\n📅 **Lunes a Viernes:** 9:00 AM - 6:00 PM\n📅 **Sábados:** 10:00 AM - 2:00 PM\n📅 **Domingos:** Cerrado\n\nTe responderemos cuando abramos. ¡Que tengas un excelente día! 😊",
+    "fuera_de_horario": "🕐 **Estamos cerrados en este momento**\n\nGracias por contactarnos. Nuestro horario de atención es:\n\n📅 **Lunes a Viernes:** 9:00 AM - 12:00 AM (medianoche)\n📅 **Sábados:** 10:00 AM - 2:00 PM\n📅 **Domingos:** Cerrado\n\nTe responderemos cuando abramos. ¡Que tengas un excelente día! 😊",
     "proximo_a_cerrar": "⚠️ **Aviso:** Cerraremos en {minutos} minutos.\n\nSi necesitas atención urgente, por favor háznoslo saber ahora.",
     "recien_abierto": "✅ ¡Buenos días! Ya estamos disponibles para atenderte.\n\n¿En qué puedo ayudarte hoy?"
   },
