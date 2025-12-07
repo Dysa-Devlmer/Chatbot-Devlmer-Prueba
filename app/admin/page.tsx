@@ -239,6 +239,31 @@ export default function AdminDashboard() {
               </p>
             </div>
           </Link>
+
+          <Link href="/admin/tags" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '30px',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 8px 12px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>🏷️</div>
+              <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>Etiquetas</h3>
+              <p style={{ margin: 0, color: '#666' }}>
+                Organiza conversaciones con tags personalizados
+              </p>
+            </div>
+          </Link>
         </div>
 
         {/* System Info */}

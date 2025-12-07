@@ -52,6 +52,7 @@ model Conversation {
   botMode     String   @default("auto") // auto, manual, hybrid
   assignedTo  String?  // ID del agente humano asignado
   isUnread    Boolean  @default(false) // Para notificaciones en el panel
+  tags        String?  // JSON array de tag IDs
 
   startedAt   DateTime @default(now())
   endedAt     DateTime?
@@ -178,6 +179,28 @@ model SystemConfig {
   updatedAt   DateTime @updatedAt
 
   @@index([key])
+}
+
+// Etiquetas/Tags para organizar usuarios y conversaciones
+model Tag {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  color       String   @default("#667eea") // Hex color
+  icon        String   @default("🏷️")
+  description String?
+
+  // Categoría del tag
+  category    String   @default("general") // general, priority, status, custom
+
+  // Control
+  isActive    Boolean  @default(true)
+  usageCount  Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([category])
 }
 
 // Webhooks y eventos

@@ -31,6 +31,15 @@ interface Conversation {
   startedAt: string;
   user: User;
   messages: Message[];
+  tags?: string; // JSON array of tag IDs
+}
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  category: string;
 }
 
 interface QuickReply {
@@ -57,6 +66,9 @@ function InboxContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
   const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [showTagSelector, setShowTagSelector] = useState(false);
+  const [conversationTags, setConversationTags] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevConversationsRef = useRef<Conversation[]>([]);
@@ -73,9 +85,10 @@ function InboxContent() {
     setUnreadCount,
   } = useNotifications();
 
-  // Fetch quick replies on mount
+  // Fetch quick replies and tags on mount
   useEffect(() => {
     fetchQuickReplies();
+    fetchTags();
   }, []);
 
   // Fetch conversations
@@ -196,6 +209,16 @@ function InboxContent() {
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const response = await fetch('/api/admin/tags');
+      const data = await response.json();
+      setTags(data.tags || []);
+    } catch (error) {
+      console.error('Error fetching tags:', error);
+    }
+  };
+
   const fetchConversations = async () => {
     try {
       const mode = searchParams?.get('mode');
@@ -268,6 +291,54 @@ function InboxContent() {
     } catch (error) {
       console.error('Error toggling bot mode:', error);
     }
+  };
+
+  // Cargar tags de la conversacion seleccionada
+  useEffect(() => {
+    if (selectedConversation?.tags) {
+      try {
+        const parsedTags = JSON.parse(selectedConversation.tags);
+        setConversationTags(Array.isArray(parsedTags) ? parsedTags : []);
+      } catch {
+        setConversationTags([]);
+      }
+    } else {
+      setConversationTags([]);
+    }
+  }, [selectedConversation]);
+
+  const toggleTag = async (tagId: string) => {
+    if (!selectedConversation) return;
+
+    const newTags = conversationTags.includes(tagId)
+      ? conversationTags.filter((t) => t !== tagId)
+      : [...conversationTags, tagId];
+
+    setConversationTags(newTags);
+
+    try {
+      await fetch('/api/admin/tags', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: selectedConversation.id,
+          tagIds: newTags,
+        }),
+      });
+
+      // Actualizar la conversacion localmente
+      const updatedTags = JSON.stringify(newTags);
+      setSelectedConversation({ ...selectedConversation, tags: updatedTags });
+      setConversations((prev) =>
+        prev.map((c) => (c.id === selectedConversation.id ? { ...c, tags: updatedTags } : c))
+      );
+    } catch (error) {
+      console.error('Error updating tags:', error);
+    }
+  };
+
+  const getTagById = (tagId: string): Tag | undefined => {
+    return tags.find((t) => t.id === tagId);
   };
 
   const useQuickReply = async (reply: QuickReply) => {
@@ -514,15 +585,89 @@ function InboxContent() {
                   {selectedConversation.user.phoneNumber}
                 </div>
               </div>
-              <button
-                onClick={() => toggleBotMode(selectedConversation.id, selectedConversation.botMode)}
-                style={{
-                  ...styles.modeButton,
-                  background: selectedConversation.botMode === 'auto' ? '#4ECDC4' : '#FF6B6B',
-                }}
-              >
-                {selectedConversation.botMode === 'auto' ? '🤖 Modo Automático' : '👤 Modo Manual'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Tag Selector */}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowTagSelector(!showTagSelector)}
+                    style={styles.tagSelectorBtn}
+                    title="Gestionar etiquetas"
+                  >
+                    🏷️ Tags
+                    {conversationTags.length > 0 && (
+                      <span style={styles.tagCount}>{conversationTags.length}</span>
+                    )}
+                  </button>
+
+                  {showTagSelector && (
+                    <div style={styles.tagSelectorPanel}>
+                      <div style={styles.tagSelectorHeader}>
+                        <span style={{ fontWeight: '600' }}>🏷️ Etiquetas</span>
+                        <button
+                          onClick={() => setShowTagSelector(false)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Current Tags */}
+                      {conversationTags.length > 0 && (
+                        <div style={styles.currentTags}>
+                          {conversationTags.map((tagId) => {
+                            const tag = getTagById(tagId);
+                            if (!tag) return null;
+                            return (
+                              <span
+                                key={tagId}
+                                style={{
+                                  ...styles.tagChip,
+                                  background: tag.color,
+                                }}
+                                onClick={() => toggleTag(tagId)}
+                                title="Click para remover"
+                              >
+                                {tag.icon} {tag.name} ✕
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Available Tags */}
+                      <div style={styles.availableTags}>
+                        {tags
+                          .filter((t) => !conversationTags.includes(t.id))
+                          .map((tag) => (
+                            <div
+                              key={tag.id}
+                              onClick={() => toggleTag(tag.id)}
+                              style={styles.tagOption}
+                            >
+                              <span
+                                style={{
+                                  ...styles.tagDot,
+                                  background: tag.color,
+                                }}
+                              />
+                              <span>{tag.icon} {tag.name}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => toggleBotMode(selectedConversation.id, selectedConversation.botMode)}
+                  style={{
+                    ...styles.modeButton,
+                    background: selectedConversation.botMode === 'auto' ? '#4ECDC4' : '#FF6B6B',
+                  }}
+                >
+                  {selectedConversation.botMode === 'auto' ? '🤖 Modo Automático' : '👤 Modo Manual'}
+                </button>
+              </div>
             </div>
 
             {/* Messages */}
@@ -1009,5 +1154,88 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '50%',
     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
     transition: 'transform 0.2s',
+  },
+  // Tag Selector Styles
+  tagSelectorBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 16px',
+    background: '#f0f2f5',
+    border: 'none',
+    borderRadius: '20px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#333',
+    transition: 'background 0.2s',
+  },
+  tagCount: {
+    background: '#667eea',
+    color: 'white',
+    padding: '2px 8px',
+    borderRadius: '10px',
+    fontSize: '11px',
+    fontWeight: 'bold',
+  },
+  tagSelectorPanel: {
+    position: 'absolute',
+    top: '45px',
+    right: '0',
+    background: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    padding: '15px',
+    width: '280px',
+    zIndex: 1000,
+    maxHeight: '350px',
+    overflowY: 'auto',
+  },
+  tagSelectorHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '12px',
+    paddingBottom: '10px',
+    borderBottom: '1px solid #f0f0f0',
+  },
+  currentTags: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '12px',
+    paddingBottom: '12px',
+    borderBottom: '1px solid #f0f0f0',
+  },
+  tagChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '4px 10px',
+    borderRadius: '12px',
+    color: 'white',
+    fontSize: '12px',
+    cursor: 'pointer',
+    transition: 'opacity 0.2s',
+  },
+  availableTags: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  tagOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 10px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    transition: 'background 0.2s',
+  },
+  tagDot: {
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
   },
 };
