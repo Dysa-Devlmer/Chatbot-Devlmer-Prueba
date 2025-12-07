@@ -451,8 +451,10 @@ function InboxContent() {
 
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={{ fontSize: '20px', color: '#666' }}>⏳ Cargando conversaciones...</div>
+      <div style={styles.loadingContainer} suppressHydrationWarning>
+        <div style={{ fontSize: '20px', color: '#666' }} suppressHydrationWarning>
+          ⏳ Cargando conversaciones...
+        </div>
       </div>
     );
   }
@@ -886,7 +888,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#f0f2f5',
+    backgroundColor: '#f0f2f5',
   },
   header: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
