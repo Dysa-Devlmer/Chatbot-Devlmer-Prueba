@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from faster_whisper import WhisperModel
 
-def transcribe_audio(audio_path, model_size="base", language="es"):
+def transcribe_audio(audio_path, model_size="small", language="es"):
     """
     Transcribe un archivo de audio usando faster-whisper
 
@@ -97,7 +97,7 @@ def main():
         sys.exit(1)
 
     audio_file = sys.argv[1]
-    model_size = sys.argv[2] if len(sys.argv) > 2 else "base"
+    model_size = sys.argv[2] if len(sys.argv) > 2 else "small"
     language = sys.argv[3] if len(sys.argv) > 3 else "es"
 
     # Transcribir

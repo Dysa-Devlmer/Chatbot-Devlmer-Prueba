@@ -487,7 +487,7 @@ SENTIMENT: [sentiment]`;
 
       return {
         backend: (configMap.get('whisper_backend') as 'local' | 'faster-whisper-server' | 'openai') || 'local',
-        model: configMap.get('whisper_model') || 'base',
+        model: configMap.get('whisper_model') || 'small',
         language: configMap.get('whisper_language') || 'es',
         serverUrl: configMap.get('whisper_server_url') || 'http://localhost:8080',
       };
@@ -495,7 +495,7 @@ SENTIMENT: [sentiment]`;
       console.error('Error obteniendo config de Whisper:', error);
       return {
         backend: 'local',
-        model: 'base',
+        model: 'small',
         language: 'es',
       };
     }
