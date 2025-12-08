@@ -823,7 +823,7 @@ SENTIMENT: [sentiment]`;
       // Escapar comillas en el texto
       const escapedText = text.replace(/"/g, '\\"').replace(/\n/g, ' ');
 
-      const command = `edge-tts --voice "${config.voice}" --rate="${config.rate}" --text "${escapedText}" --write-media "${outputPath}"`;
+      const command = `python -m edge_tts --voice "${config.voice}" --rate="${config.rate}" --text "${escapedText}" --write-media "${outputPath}"`;
 
       console.log(`🔄 Ejecutando edge-tts...`);
 
