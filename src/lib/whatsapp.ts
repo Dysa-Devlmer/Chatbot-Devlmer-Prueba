@@ -111,3 +111,92 @@ export async function sendWhatsAppMessage(phoneNumber: string, messageText: stri
     throw error;
   }
 }
+
+/**
+ * Sube un archivo de audio a WhatsApp y lo envía como mensaje de voz
+ * @param phoneNumber - Número de teléfono del destinatario
+ * @param audioFilePath - Ruta al archivo de audio local
+ * @returns Respuesta de la API de WhatsApp
+ */
+export async function sendWhatsAppAudio(phoneNumber: string, audioFilePath: string): Promise<{
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}> {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  try {
+    console.log(`🔊 Enviando audio a WhatsApp: ${audioFilePath}`);
+
+    // Paso 1: Subir el archivo de audio a WhatsApp
+    const uploadUrl = `https://graph.facebook.com/v18.0/${phoneNumberId}/media`;
+
+    // Leer el archivo
+    const audioBuffer = fs.readFileSync(audioFilePath);
+    const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+
+    // Crear FormData para subir
+    const formData = new FormData();
+    formData.append('file', audioBlob, path.basename(audioFilePath));
+    formData.append('type', 'audio/mpeg');
+    formData.append('messaging_product', 'whatsapp');
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      throw new Error(`Error subiendo audio: ${uploadResponse.statusText} - ${errorText}`);
+    }
+
+    const uploadResult = await uploadResponse.json();
+    const mediaId = uploadResult.id;
+
+    console.log(`✅ Audio subido a WhatsApp, media_id: ${mediaId}`);
+
+    // Paso 2: Enviar mensaje con el audio
+    const messageUrl = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
+    const messageResponse = await fetch(messageUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: phoneNumber.replace(/\D/g, ''),
+        type: 'audio',
+        audio: {
+          id: mediaId,
+        },
+      }),
+    });
+
+    if (!messageResponse.ok) {
+      const errorText = await messageResponse.text();
+      throw new Error(`Error enviando audio: ${messageResponse.statusText} - ${errorText}`);
+    }
+
+    const messageResult = await messageResponse.json();
+
+    console.log(`✅ Audio enviado exitosamente a ${phoneNumber}`);
+
+    return {
+      success: true,
+      messageId: messageResult.messages?.[0]?.id,
+    };
+  } catch (error) {
+    console.error('❌ Error enviando audio por WhatsApp:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido enviando audio',
+    };
+  }
+}

@@ -688,6 +688,264 @@ SENTIMENT: [sentiment]`;
       };
     }
   }
+
+  /**
+   * Convierte texto a audio usando Text-to-Speech
+   * Soporta: edge-tts (Microsoft), gTTS (Google), o pyttsx3 (offline)
+   */
+  static async textToSpeech(text: string): Promise<{
+    audioPath: string;
+    success: boolean;
+    error?: string;
+    cleanup: () => void;
+  }> {
+    try {
+      console.log(`🔊 Generando audio TTS para: "${text.substring(0, 50)}..."`);
+
+      // Obtener configuración de TTS
+      const ttsConfig = await this.getTTSConfig();
+
+      let audioPath: string;
+
+      switch (ttsConfig.backend) {
+        case 'edge-tts':
+          audioPath = await this.generateWithEdgeTTS(text, ttsConfig);
+          break;
+        case 'gtts':
+          audioPath = await this.generateWithGTTS(text, ttsConfig);
+          break;
+        case 'pyttsx3':
+        default:
+          audioPath = await this.generateWithPyttsx3(text, ttsConfig);
+          break;
+      }
+
+      console.log(`✅ Audio TTS generado: ${audioPath}`);
+
+      return {
+        audioPath,
+        success: true,
+        cleanup: () => {
+          try {
+            if (fs.existsSync(audioPath)) {
+              fs.unlinkSync(audioPath);
+              console.log(`🗑️ Audio TTS eliminado: ${audioPath}`);
+            }
+          } catch (e) {
+            console.error('Error eliminando audio TTS:', e);
+          }
+        },
+      };
+    } catch (error) {
+      console.error('❌ Error en TTS:', error);
+      return {
+        audioPath: '',
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido en TTS',
+        cleanup: () => {},
+      };
+    }
+  }
+
+  /**
+   * Obtiene la configuración de TTS desde la base de datos
+   */
+  private static async getTTSConfig(): Promise<{
+    backend: 'edge-tts' | 'gtts' | 'pyttsx3';
+    voice: string;
+    language: string;
+    rate: string;
+  }> {
+    try {
+      const config = await prisma.systemConfig.findMany({
+        where: {
+          key: {
+            in: ['tts_backend', 'tts_voice', 'tts_language', 'tts_rate'],
+          },
+        },
+      });
+
+      const configMap = new Map<string, string>(config.map((c: { key: string; value: string }) => [c.key, c.value]));
+
+      return {
+        backend: (configMap.get('tts_backend') as 'edge-tts' | 'gtts' | 'pyttsx3') || 'edge-tts',
+        voice: configMap.get('tts_voice') || 'es-CL-CatalinaNeural', // Voz chilena por defecto
+        language: configMap.get('tts_language') || 'es',
+        rate: configMap.get('tts_rate') || '+0%',
+      };
+    } catch (error) {
+      console.error('Error obteniendo config de TTS:', error);
+      return {
+        backend: 'edge-tts',
+        voice: 'es-CL-CatalinaNeural',
+        language: 'es',
+        rate: '+0%',
+      };
+    }
+  }
+
+  /**
+   * Genera audio usando edge-tts (Microsoft Edge TTS - gratuito y alta calidad)
+   */
+  private static async generateWithEdgeTTS(
+    text: string,
+    config: { voice: string; rate: string }
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const tempDir = require('os').tmpdir();
+      const outputPath = path.join(tempDir, `tts_${Date.now()}.mp3`);
+
+      // Escapar comillas en el texto
+      const escapedText = text.replace(/"/g, '\\"').replace(/\n/g, ' ');
+
+      const command = `edge-tts --voice "${config.voice}" --rate="${config.rate}" --text "${escapedText}" --write-media "${outputPath}"`;
+
+      console.log(`🔄 Ejecutando edge-tts...`);
+
+      exec(command, { timeout: 60000 }, (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(`Error en edge-tts: ${error.message}`));
+          return;
+        }
+
+        if (!fs.existsSync(outputPath)) {
+          reject(new Error('edge-tts no generó el archivo de audio'));
+          return;
+        }
+
+        resolve(outputPath);
+      });
+    });
+  }
+
+  /**
+   * Genera audio usando gTTS (Google Text-to-Speech)
+   */
+  private static async generateWithGTTS(
+    text: string,
+    config: { language: string }
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const tempDir = require('os').tmpdir();
+      const outputPath = path.join(tempDir, `tts_${Date.now()}.mp3`);
+
+      // Crear script Python temporal para gTTS
+      const escapedText = text.replace(/"/g, '\\"').replace(/\n/g, ' ');
+      const command = `python -c "from gtts import gTTS; tts = gTTS('${escapedText}', lang='${config.language}'); tts.save('${outputPath}')"`;
+
+      console.log(`🔄 Ejecutando gTTS...`);
+
+      exec(command, { timeout: 60000 }, (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(`Error en gTTS: ${error.message}`));
+          return;
+        }
+
+        if (!fs.existsSync(outputPath)) {
+          reject(new Error('gTTS no generó el archivo de audio'));
+          return;
+        }
+
+        resolve(outputPath);
+      });
+    });
+  }
+
+  /**
+   * Genera audio usando pyttsx3 (offline)
+   */
+  private static async generateWithPyttsx3(
+    text: string,
+    config: { rate: string }
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const tempDir = require('os').tmpdir();
+      const outputPath = path.join(tempDir, `tts_${Date.now()}.mp3`);
+
+      const escapedText = text.replace(/"/g, '\\"').replace(/\n/g, ' ');
+      const pythonScript = `
+import pyttsx3
+engine = pyttsx3.init()
+engine.save_to_file("${escapedText}", "${outputPath}")
+engine.runAndWait()
+`;
+
+      const command = `python -c "${pythonScript.replace(/\n/g, ';')}"`;
+
+      console.log(`🔄 Ejecutando pyttsx3...`);
+
+      exec(command, { timeout: 60000 }, (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(`Error en pyttsx3: ${error.message}`));
+          return;
+        }
+
+        if (!fs.existsSync(outputPath)) {
+          reject(new Error('pyttsx3 no generó el archivo de audio'));
+          return;
+        }
+
+        resolve(outputPath);
+      });
+    });
+  }
+
+  /**
+   * Verifica si TTS está disponible
+   */
+  static async checkTTSStatus(): Promise<{
+    available: boolean;
+    backend: string;
+    voices?: string[];
+    error?: string;
+  }> {
+    try {
+      const config = await this.getTTSConfig();
+
+      // Verificar edge-tts
+      return new Promise((resolve) => {
+        exec('edge-tts --list-voices', { timeout: 10000 }, (error, stdout) => {
+          if (!error && stdout) {
+            // Extraer voces en español
+            const spanishVoices = stdout
+              .split('\n')
+              .filter((line: string) => line.includes('es-'))
+              .map((line: string) => line.split(':')[0]?.trim())
+              .filter(Boolean)
+              .slice(0, 10);
+
+            resolve({
+              available: true,
+              backend: 'edge-tts',
+              voices: spanishVoices,
+            });
+          } else {
+            // Intentar con gTTS
+            exec('python -c "from gtts import gTTS"', (gttsError) => {
+              if (!gttsError) {
+                resolve({
+                  available: true,
+                  backend: 'gtts',
+                });
+              } else {
+                resolve({
+                  available: false,
+                  backend: 'none',
+                  error: 'TTS no disponible. Instala con: pip install edge-tts',
+                });
+              }
+            });
+          }
+        });
+      });
+    } catch (error) {
+      return {
+        available: false,
+        backend: 'unknown',
+        error: error instanceof Error ? error.message : 'Error verificando TTS',
+      };
+    }
+  }
 }
 
 export default AIService;

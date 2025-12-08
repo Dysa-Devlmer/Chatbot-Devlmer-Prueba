@@ -1,4 +1,4 @@
-import { sendWhatsAppMessage, downloadWhatsAppMedia } from '@/lib/whatsapp';
+import { sendWhatsAppMessage, downloadWhatsAppMedia, sendWhatsAppAudio } from '@/lib/whatsapp';
 import { NextRequest, NextResponse } from 'next/server';
 import { ConversationService } from '@/lib/conversation';
 import { AIService } from '@/lib/ai';
@@ -292,14 +292,46 @@ export async function POST(request: NextRequest) {
           console.log(`🤖 IA procesó mensaje - Intent: ${aiResult.intent}, Sentiment: ${aiResult.sentiment}`);
           console.log(`💬 Respuesta IA: ${aiResult.response}`);
 
-          // Enviar respuesta
+          // Enviar respuesta de texto siempre
           await sendWhatsAppMessage(phoneNumber, aiResult.response);
+
+          // Si el mensaje original fue audio, también enviar respuesta en audio
+          let audioSent = false;
+          if (messageType === 'audio') {
+            console.log(`🔊 Generando respuesta de audio...`);
+
+            // Limpiar el texto para TTS (quitar emojis y firma del bot)
+            const textForTTS = aiResult.response
+              .replace(/🤖 Asistente automático PITHY/g, '')
+              .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Quitar emojis
+              .trim();
+
+            const ttsResult = await AIService.textToSpeech(textForTTS);
+
+            if (ttsResult.success) {
+              try {
+                const audioResult = await sendWhatsAppAudio(phoneNumber, ttsResult.audioPath);
+                audioSent = audioResult.success;
+
+                if (audioSent) {
+                  console.log(`✅ Respuesta de audio enviada exitosamente`);
+                } else {
+                  console.log(`⚠️ No se pudo enviar audio: ${audioResult.error}`);
+                }
+              } finally {
+                // Limpiar archivo de audio temporal
+                ttsResult.cleanup();
+              }
+            } else {
+              console.log(`⚠️ No se pudo generar audio TTS: ${ttsResult.error}`);
+            }
+          }
 
           // Guardar mensaje saliente con análisis de IA
           await ConversationService.saveMessage({
             conversationId: conversation.id,
             userId: user.id,
-            type: 'text',
+            type: audioSent ? 'audio' : 'text',
             content: aiResult.response,
             direction: 'outbound',
             sentBy: 'bot',
@@ -322,7 +354,8 @@ export async function POST(request: NextRequest) {
 
           return NextResponse.json({
             success: true,
-            type: messageType === 'audio' ? 'audio_ai_response' : 'ai_response'
+            type: messageType === 'audio' ? 'audio_ai_response' : 'ai_response',
+            audioSent,
           });
         } else {
           // Para otros tipos de mensaje (imagen, video, documento), enviar confirmación
