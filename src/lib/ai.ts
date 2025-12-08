@@ -509,45 +509,70 @@ SENTIMENT: [sentiment]`;
     config: { model: string; language: string }
   ): Promise<{ text: string; language?: string; duration?: number }> {
     return new Promise((resolve, reject) => {
-      // Intentar primero con faster-whisper, luego con whisper estándar
-      const commands = [
-        `faster-whisper "${audioFilePath}" --model ${config.model} --language ${config.language} --output_format txt`,
-        `whisper "${audioFilePath}" --model ${config.model} --language ${config.language} --output_format txt`,
-      ];
+      // Usar script mejorado si existe, sino el original
+      let scriptPath = path.join(process.cwd(), 'whisper-transcribe-enhanced.py');
+      if (!fs.existsSync(scriptPath)) {
+        scriptPath = path.join(process.cwd(), 'whisper-transcribe.py');
+      }
 
-      const tryCommand = (index: number) => {
-        if (index >= commands.length) {
-          reject(new Error('No se encontró Whisper instalado. Instala con: pip install faster-whisper'));
+      const command = `python "${scriptPath}" "${audioFilePath}" ${config.model} ${config.language}`;
+
+      console.log(`🔄 Ejecutando transcripción con faster-whisper...`);
+      console.log(`📁 Archivo a transcribir: ${audioFilePath}`);
+
+      // Verificar tamaño del archivo
+      const fileSize = fs.statSync(audioFilePath).size;
+      console.log(`📊 Tamaño del archivo: ${fileSize} bytes`);
+
+      exec(command, { timeout: 120000 }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`❌ Error ejecutando Whisper:`, error.message);
+          if (stderr) {
+            console.error(`Stderr:`, stderr);
+          }
+
+          // Si el script no existe o Python no está instalado, dar instrucciones
+          if (error.message.includes('python') || error.message.includes('No such file')) {
+            reject(new Error('Python o faster-whisper no están instalados. Instala con: pip install faster-whisper'));
+          } else {
+            reject(new Error(`Error en transcripción: ${error.message}`));
+          }
           return;
         }
 
-        const command = commands[index];
-        console.log(`🔄 Ejecutando: ${command}`);
+        try {
+          // Parsear el resultado JSON
+          const result = JSON.parse(stdout);
 
-        exec(command, { timeout: 120000 }, (error, stdout, stderr) => {
-          if (error) {
-            console.log(`⚠️ Comando falló, intentando siguiente opción...`);
-            tryCommand(index + 1);
+          if (result.success === false) {
+            console.error(`❌ Transcripción falló: ${result.error}`);
+            reject(new Error(result.error || 'Error desconocido en transcripción'));
             return;
           }
 
-          // El output de whisper va a un archivo .txt
-          const outputFile = audioFilePath.replace(/\.[^.]+$/, '.txt');
-          let text = stdout.trim();
-
-          if (fs.existsSync(outputFile)) {
-            text = fs.readFileSync(outputFile, 'utf-8').trim();
-            fs.unlinkSync(outputFile); // Limpiar archivo temporal
-          }
+          console.log(`✅ Transcripción exitosa: "${result.text?.substring(0, 100)}..."`);
 
           resolve({
-            text: text || 'No se pudo transcribir el audio',
-            language: config.language,
+            text: result.text || 'No se pudo transcribir el audio',
+            language: result.language || config.language,
+            duration: result.duration,
           });
-        });
-      };
+        } catch (parseError) {
+          console.error(`❌ Error parseando resultado:`, parseError);
+          console.error(`stdout:`, stdout);
 
-      tryCommand(0);
+          // Si no es JSON válido, intentar usar el texto directamente
+          const text = stdout.trim();
+          if (text) {
+            resolve({
+              text: text,
+              language: config.language,
+            });
+          } else {
+            reject(new Error('No se pudo obtener transcripción del audio'));
+          }
+        }
+      });
     });
   }
 
