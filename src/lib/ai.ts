@@ -3,6 +3,7 @@ import { prisma } from './prisma';
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
+import { TranscriptionCache, TTSCache } from './audio-cache';
 
 // Inicializar cliente de Ollama (local y gratuito!)
 const ollama = new Ollama({
@@ -422,6 +423,7 @@ SENTIMENT: [sentiment]`;
     duration?: number;
     success: boolean;
     error?: string;
+    cached?: boolean;
   }> {
     try {
       console.log(`🎤 Iniciando transcripción de audio: ${audioFilePath}`);
@@ -429,6 +431,16 @@ SENTIMENT: [sentiment]`;
       // Verificar que el archivo existe
       if (!fs.existsSync(audioFilePath)) {
         throw new Error(`Archivo de audio no encontrado: ${audioFilePath}`);
+      }
+
+      // Verificar cache primero
+      const cachedText = TranscriptionCache.get(audioFilePath);
+      if (cachedText) {
+        return {
+          text: cachedText,
+          success: true,
+          cached: true,
+        };
       }
 
       // Obtener configuración de Whisper
@@ -451,9 +463,15 @@ SENTIMENT: [sentiment]`;
 
       console.log(`✅ Transcripción completada: "${result.text.substring(0, 100)}..."`);
 
+      // Guardar en cache
+      if (result.text) {
+        TranscriptionCache.set(audioFilePath, result.text);
+      }
+
       return {
         ...result,
         success: true,
+        cached: false,
       };
     } catch (error) {
       console.error('❌ Error en transcripción de audio:', error);
@@ -717,11 +735,13 @@ SENTIMENT: [sentiment]`;
   /**
    * Convierte texto a audio usando Text-to-Speech
    * Soporta: edge-tts (Microsoft), gTTS (Google), o pyttsx3 (offline)
+   * Incluye cache para evitar regenerar el mismo texto
    */
   static async textToSpeech(text: string): Promise<{
     audioPath: string;
     success: boolean;
     error?: string;
+    cached?: boolean;
     cleanup: () => void;
   }> {
     try {
@@ -729,6 +749,19 @@ SENTIMENT: [sentiment]`;
 
       // Obtener configuración de TTS
       const ttsConfig = await this.getTTSConfig();
+
+      // Verificar cache primero
+      const cachedPath = TTSCache.get(text, ttsConfig.voice);
+      if (cachedPath) {
+        return {
+          audioPath: cachedPath,
+          success: true,
+          cached: true,
+          cleanup: () => {
+            // No eliminar archivos en cache
+          },
+        };
+      }
 
       let audioPath: string;
 
@@ -747,14 +780,19 @@ SENTIMENT: [sentiment]`;
 
       console.log(`✅ Audio TTS generado: ${audioPath}`);
 
+      // Guardar en cache y obtener la ruta del cache
+      const cachedAudioPath = TTSCache.set(text, ttsConfig.voice, audioPath);
+
       return {
-        audioPath,
+        audioPath: cachedAudioPath,
         success: true,
+        cached: false,
         cleanup: () => {
+          // Eliminar archivo original (no el cache)
           try {
-            if (fs.existsSync(audioPath)) {
+            if (fs.existsSync(audioPath) && audioPath !== cachedAudioPath) {
               fs.unlinkSync(audioPath);
-              console.log(`🗑️ Audio TTS eliminado: ${audioPath}`);
+              console.log(`🗑️ Audio TTS original eliminado: ${audioPath}`);
             }
           } catch (e) {
             console.error('Error eliminando audio TTS:', e);
