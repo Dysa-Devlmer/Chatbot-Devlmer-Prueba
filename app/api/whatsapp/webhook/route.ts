@@ -292,12 +292,11 @@ export async function POST(request: NextRequest) {
           console.log(`🤖 IA procesó mensaje - Intent: ${aiResult.intent}, Sentiment: ${aiResult.sentiment}`);
           console.log(`💬 Respuesta IA: ${aiResult.response}`);
 
-          // Enviar respuesta de texto siempre
-          await sendWhatsAppMessage(phoneNumber, aiResult.response);
-
-          // Si el mensaje original fue audio, también enviar respuesta en audio
+          // Determinar cómo responder según el tipo de mensaje recibido
           let audioSent = false;
+
           if (messageType === 'audio') {
+            // Si el usuario envió audio, responder SOLO con audio (sin texto para evitar spam)
             console.log(`🔊 Generando respuesta de audio...`);
 
             // Limpiar el texto para TTS (quitar emojis y firma del bot)
@@ -316,15 +315,22 @@ export async function POST(request: NextRequest) {
                 if (audioSent) {
                   console.log(`✅ Respuesta de audio enviada exitosamente`);
                 } else {
-                  console.log(`⚠️ No se pudo enviar audio: ${audioResult.error}`);
+                  console.log(`⚠️ No se pudo enviar audio, enviando texto como fallback: ${audioResult.error}`);
+                  // Fallback: si falla el audio, enviar texto
+                  await sendWhatsAppMessage(phoneNumber, aiResult.response);
                 }
               } finally {
                 // Limpiar archivo de audio temporal
                 ttsResult.cleanup();
               }
             } else {
-              console.log(`⚠️ No se pudo generar audio TTS: ${ttsResult.error}`);
+              console.log(`⚠️ No se pudo generar audio TTS, enviando texto como fallback: ${ttsResult.error}`);
+              // Fallback: si falla TTS, enviar texto
+              await sendWhatsAppMessage(phoneNumber, aiResult.response);
             }
+          } else {
+            // Si el usuario envió texto, responder con texto
+            await sendWhatsAppMessage(phoneNumber, aiResult.response);
           }
 
           // Guardar mensaje saliente con análisis de IA
