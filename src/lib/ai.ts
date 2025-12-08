@@ -542,7 +542,15 @@ SENTIMENT: [sentiment]`;
       const fileSize = fs.statSync(audioFilePath).size;
       console.log(`📊 Tamaño del archivo: ${fileSize} bytes`);
 
-      exec(command, { timeout: 120000 }, (error, stdout, stderr) => {
+      exec(command, {
+        timeout: 120000,
+        env: {
+          ...process.env,
+          PYTHONIOENCODING: 'utf-8',
+          PYTHONUTF8: '1',
+        },
+        encoding: 'utf8',
+      }, (error, stdout, stderr) => {
         if (error) {
           console.error(`❌ Error ejecutando Whisper:`, error.message);
           if (stderr) {
