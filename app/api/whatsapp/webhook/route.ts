@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         console.log(`📩 Mensaje recibido de ${phoneNumber} (${user.name || 'Sin nombre'}): ${messageContent}`);
 
         // Guardar mensaje entrante
-        await ConversationService.saveMessage({
+        const savedMessage = await ConversationService.saveMessage({
           conversationId: conversation.id,
           userId: user.id,
           type: messageType,
@@ -106,6 +106,17 @@ export async function POST(request: NextRequest) {
           mediaUrl,
           mediaMimeType,
         });
+
+        // Si el mensaje ya existía (webhook duplicado), detener el procesamiento
+        if (!savedMessage) {
+          console.log(`⚠️ Webhook duplicado ignorado - mensaje ya procesado: ${whatsappId}`);
+
+          if (webhookLogId) {
+            await ConversationService.updateWebhookLog(webhookLogId, 'processed', 'Webhook duplicado - mensaje ya existe');
+          }
+
+          return NextResponse.json({ success: true, type: 'duplicate_webhook_ignored' });
+        }
 
         // Marcar conversación como no leída para el panel admin
         await ConversationService.updateConversation(conversation.id, {
