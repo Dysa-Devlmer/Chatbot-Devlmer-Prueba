@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Script de transcripción de audio usando faster-whisper
 Uso: python whisper-transcribe.py <archivo_audio> [modelo] [idioma]
@@ -6,8 +7,14 @@ Uso: python whisper-transcribe.py <archivo_audio> [modelo] [idioma]
 import sys
 import json
 import os
+import io
 from pathlib import Path
 from faster_whisper import WhisperModel
+
+# Forzar UTF-8 en stdout para Windows
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 def transcribe_audio(audio_path, model_size="small", language="es"):
     """

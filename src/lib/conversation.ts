@@ -75,6 +75,7 @@ export class ConversationService {
 
   /**
    * Guarda un mensaje en la base de datos
+   * Maneja webhooks duplicados de WhatsApp (ignora si ya existe)
    */
   static async saveMessage(data: {
     conversationId: string;
@@ -93,6 +94,18 @@ export class ConversationService {
     entities?: any;
   }) {
     try {
+      // Si tiene whatsappId, verificar si ya existe (webhook duplicado)
+      if (data.whatsappId) {
+        const existingMessage = await prisma.message.findFirst({
+          where: { whatsappId: data.whatsappId },
+        });
+
+        if (existingMessage) {
+          console.log(`⚠️ Mensaje duplicado ignorado: ${data.whatsappId}`);
+          return existingMessage;
+        }
+      }
+
       const message = await prisma.message.create({
         data: {
           ...data,
@@ -105,11 +118,22 @@ export class ConversationService {
         where: { id: data.userId },
         data: {
           totalMessages: { increment: 1 },
+          lastContact: new Date(),
         },
       });
 
       return message;
-    } catch (error) {
+    } catch (error: any) {
+      // Ignorar error de duplicado (P2002) - webhook duplicado de WhatsApp
+      if (error?.code === 'P2002') {
+        console.log(`⚠️ Webhook duplicado ignorado (whatsappId ya existe)`);
+        return null;
+      }
+      // Ignorar error de foreign key (P2003) - conversación cerrada
+      if (error?.code === 'P2003') {
+        console.log(`⚠️ Foreign key ignorado (conversación puede estar cerrada)`);
+        return null;
+      }
       console.error('Error guardando mensaje:', error);
       throw error;
     }
