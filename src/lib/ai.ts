@@ -774,6 +774,15 @@ SENTIMENT: [sentiment]`;
       let audioPath: string;
 
       switch (ttsConfig.backend) {
+        case 'xtts':
+          // Verificar que hay audio de referencia configurado
+          if (!ttsConfig.referenceAudio) {
+            console.log('⚠️ XTTS requiere audio de referencia, usando edge-tts como fallback');
+            audioPath = await this.generateWithEdgeTTS(text, ttsConfig);
+          } else {
+            audioPath = await this.generateWithXTTS(text, ttsConfig);
+          }
+          break;
         case 'edge-tts':
           audioPath = await this.generateWithEdgeTTS(text, ttsConfig);
           break;
@@ -822,16 +831,17 @@ SENTIMENT: [sentiment]`;
    * Obtiene la configuración de TTS desde la base de datos
    */
   private static async getTTSConfig(): Promise<{
-    backend: 'edge-tts' | 'gtts' | 'pyttsx3';
+    backend: 'edge-tts' | 'gtts' | 'pyttsx3' | 'xtts';
     voice: string;
     language: string;
     rate: string;
+    referenceAudio?: string;
   }> {
     try {
       const config = await prisma.systemConfig.findMany({
         where: {
           key: {
-            in: ['tts_backend', 'tts_voice', 'tts_language', 'tts_rate'],
+            in: ['tts_backend', 'tts_voice', 'tts_language', 'tts_rate', 'tts_reference_audio'],
           },
         },
       });
@@ -839,10 +849,11 @@ SENTIMENT: [sentiment]`;
       const configMap = new Map<string, string>(config.map((c: { key: string; value: string }) => [c.key, c.value]));
 
       return {
-        backend: (configMap.get('tts_backend') as 'edge-tts' | 'gtts' | 'pyttsx3') || 'edge-tts',
+        backend: (configMap.get('tts_backend') as 'edge-tts' | 'gtts' | 'pyttsx3' | 'xtts') || 'edge-tts',
         voice: configMap.get('tts_voice') || 'es-CL-CatalinaNeural', // Voz chilena por defecto
         language: configMap.get('tts_language') || 'es',
         rate: configMap.get('tts_rate') || '+0%',
+        referenceAudio: configMap.get('tts_reference_audio') || '',
       };
     } catch (error) {
       console.error('Error obteniendo config de TTS:', error);
@@ -885,6 +896,78 @@ SENTIMENT: [sentiment]`;
         }
 
         resolve(outputPath);
+      });
+    });
+  }
+
+  /**
+   * Genera audio usando XTTS v2 (Clonación de voz)
+   * Requiere: venv_xtts con TTS instalado y audio de referencia
+   */
+  private static async generateWithXTTS(
+    text: string,
+    config: { language: string; referenceAudio?: string }
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const tempDir = require('os').tmpdir();
+      const outputPath = path.join(tempDir, `xtts_${Date.now()}.wav`);
+
+      // Escapar comillas en el texto
+      const escapedText = text.replace(/"/g, '\\"').replace(/\n/g, ' ');
+
+      // Usar el entorno virtual de XTTS
+      const venvPython = process.platform === 'win32'
+        ? path.join(process.cwd(), 'venv_xtts', 'Scripts', 'python.exe')
+        : path.join(process.cwd(), 'venv_xtts', 'bin', 'python');
+
+      const xttsScript = path.join(process.cwd(), 'xtts-tts.py');
+      const referenceAudio = config.referenceAudio || path.join(process.cwd(), 'voice_samples', 'default.wav');
+
+      const command = `"${venvPython}" "${xttsScript}" "${escapedText}" "${referenceAudio}" "${outputPath}" ${config.language}`;
+
+      console.log(`🔄 Ejecutando XTTS v2 (clonación de voz)...`);
+      console.log(`📁 Audio de referencia: ${referenceAudio}`);
+
+      exec(command, {
+        timeout: 120000,  // 2 minutos para XTTS (es más lento)
+        env: {
+          ...process.env,
+          PYTHONIOENCODING: 'utf-8',
+          PYTHONUTF8: '1',
+        },
+        encoding: 'utf8',
+      }, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`❌ Error en XTTS:`, error.message);
+          if (stderr) {
+            console.error(`Stderr:`, stderr);
+          }
+          reject(new Error(`Error en XTTS: ${error.message}`));
+          return;
+        }
+
+        try {
+          const result = JSON.parse(stdout);
+          if (result.success === false) {
+            reject(new Error(result.error || 'Error desconocido en XTTS'));
+            return;
+          }
+
+          if (!fs.existsSync(outputPath)) {
+            reject(new Error('XTTS no generó el archivo de audio'));
+            return;
+          }
+
+          console.log(`✅ Audio XTTS generado: ${outputPath}`);
+          resolve(outputPath);
+        } catch (parseError) {
+          // Si no es JSON, verificar si el archivo existe
+          if (fs.existsSync(outputPath)) {
+            resolve(outputPath);
+          } else {
+            reject(new Error('XTTS no generó el archivo de audio'));
+          }
+        }
       });
     });
   }
