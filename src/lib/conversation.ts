@@ -294,6 +294,30 @@ export class ConversationService {
       return null;
     }
   }
+
+  /**
+   * Actualiza el contenido de un mensaje (útil para transcripciones de audio)
+   */
+  static async updateMessageContent(
+    conversationId: string,
+    whatsappId: string,
+    newContent: string
+  ) {
+    try {
+      return await prisma.message.updateMany({
+        where: {
+          conversationId,
+          whatsappId,
+        },
+        data: {
+          content: newContent,
+        },
+      });
+    } catch (error) {
+      console.error('Error actualizando contenido del mensaje:', error);
+      return null;
+    }
+  }
 }
 
 export default ConversationService;

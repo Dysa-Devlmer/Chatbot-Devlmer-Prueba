@@ -1,4 +1,4 @@
-import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { sendWhatsAppMessage, downloadWhatsAppMedia } from '@/lib/whatsapp';
 import { NextRequest, NextResponse } from 'next/server';
 import { ConversationService } from '@/lib/conversation';
 import { AIService } from '@/lib/ai';
@@ -198,8 +198,87 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Procesar solo mensajes de texto con IA
-        if (messageType === 'text') {
+        // Procesar mensajes de texto o audio con IA
+        if (messageType === 'text' || messageType === 'audio') {
+          let textToProcess = messageContent;
+
+          // Si es audio, transcribir primero con Whisper
+          if (messageType === 'audio' && mediaUrl) {
+            console.log(`🎤 Procesando mensaje de audio...`);
+
+            try {
+              // Descargar el audio de WhatsApp
+              const audioData = await downloadWhatsAppMedia(mediaUrl);
+
+              try {
+                // Transcribir con Whisper
+                const transcription = await AIService.transcribeAudio(audioData.filePath);
+
+                if (transcription.success && transcription.text) {
+                  textToProcess = transcription.text;
+                  console.log(`✅ Audio transcrito: "${textToProcess.substring(0, 100)}..."`);
+
+                  // Actualizar el mensaje guardado con la transcripción
+                  await ConversationService.updateMessageContent(
+                    conversation.id,
+                    whatsappId,
+                    `🎤 [Audio transcrito]: ${textToProcess}`
+                  );
+                } else {
+                  console.log(`⚠️ No se pudo transcribir el audio: ${transcription.error}`);
+
+                  // Enviar mensaje de error amigable
+                  const errorMessage = `He recibido tu mensaje de voz, pero no pude transcribirlo correctamente. ¿Podrías escribirme tu consulta por texto?
+
+🤖 Asistente automático PITHY`;
+
+                  await sendWhatsAppMessage(phoneNumber, errorMessage);
+
+                  await ConversationService.saveMessage({
+                    conversationId: conversation.id,
+                    userId: user.id,
+                    type: 'text',
+                    content: errorMessage,
+                    direction: 'outbound',
+                    sentBy: 'bot',
+                  });
+
+                  if (webhookLogId) {
+                    await ConversationService.updateWebhookLog(webhookLogId, 'processed');
+                  }
+
+                  return NextResponse.json({ success: true, type: 'audio_transcription_failed' });
+                }
+              } finally {
+                // Limpiar archivo temporal
+                audioData.cleanup();
+              }
+            } catch (downloadError) {
+              console.error('❌ Error descargando audio:', downloadError);
+
+              const errorMessage = `He recibido tu mensaje de voz, pero tuve un problema al procesarlo. ¿Podrías intentar de nuevo o escribirme tu consulta?
+
+🤖 Asistente automático PITHY`;
+
+              await sendWhatsAppMessage(phoneNumber, errorMessage);
+
+              await ConversationService.saveMessage({
+                conversationId: conversation.id,
+                userId: user.id,
+                type: 'text',
+                content: errorMessage,
+                direction: 'outbound',
+                sentBy: 'bot',
+              });
+
+              if (webhookLogId) {
+                await ConversationService.updateWebhookLog(webhookLogId, 'processed');
+              }
+
+              return NextResponse.json({ success: true, type: 'audio_download_failed' });
+            }
+          }
+
           // Obtener contexto de conversación
           const context = await AIService.getConversationContext(
             user.id,
@@ -208,7 +287,7 @@ export async function POST(request: NextRequest) {
           );
 
           // Procesar con IA
-          const aiResult = await AIService.processMessage(messageContent, context);
+          const aiResult = await AIService.processMessage(textToProcess, context);
 
           console.log(`🤖 IA procesó mensaje - Intent: ${aiResult.intent}, Sentiment: ${aiResult.sentiment}`);
           console.log(`💬 Respuesta IA: ${aiResult.response}`);
@@ -241,9 +320,12 @@ export async function POST(request: NextRequest) {
             await ConversationService.updateWebhookLog(webhookLogId, 'processed');
           }
 
-          return NextResponse.json({ success: true, type: 'ai_response' });
+          return NextResponse.json({
+            success: true,
+            type: messageType === 'audio' ? 'audio_ai_response' : 'ai_response'
+          });
         } else {
-          // Para otros tipos de mensaje, enviar confirmación
+          // Para otros tipos de mensaje (imagen, video, documento), enviar confirmación
           const confirmationMessage = await AIService.getTemplate('media_received', user.language) ||
             `He recibido tu ${messageType}. ${caption ? `Mensaje: "${caption}"` : '¿En qué puedo ayudarte?'}`;
 

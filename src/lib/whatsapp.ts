@@ -1,3 +1,85 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+/**
+ * Descarga un archivo multimedia de WhatsApp usando el media ID
+ * @param mediaId - ID del medio proporcionado por WhatsApp
+ * @returns Ruta al archivo temporal descargado
+ */
+export async function downloadWhatsAppMedia(mediaId: string): Promise<{
+  filePath: string;
+  mimeType: string;
+  cleanup: () => void;
+}> {
+  const token = process.env.WHATSAPP_TOKEN;
+
+  try {
+    // Paso 1: Obtener la URL del medio
+    const mediaInfoUrl = `https://graph.facebook.com/v18.0/${mediaId}`;
+    const mediaInfoResponse = await fetch(mediaInfoUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!mediaInfoResponse.ok) {
+      throw new Error(`Error obteniendo info del medio: ${mediaInfoResponse.statusText}`);
+    }
+
+    const mediaInfo = await mediaInfoResponse.json();
+    const mediaUrl = mediaInfo.url;
+    const mimeType = mediaInfo.mime_type || 'audio/ogg';
+
+    console.log(`📥 Descargando medio: ${mediaId} (${mimeType})`);
+
+    // Paso 2: Descargar el archivo
+    const mediaResponse = await fetch(mediaUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!mediaResponse.ok) {
+      throw new Error(`Error descargando medio: ${mediaResponse.statusText}`);
+    }
+
+    const arrayBuffer = await mediaResponse.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Paso 3: Guardar en archivo temporal
+    const extension = mimeType.includes('ogg') ? '.ogg' :
+                      mimeType.includes('mp3') ? '.mp3' :
+                      mimeType.includes('mp4') ? '.mp4' :
+                      mimeType.includes('wav') ? '.wav' : '.audio';
+
+    const tempDir = os.tmpdir();
+    const tempFilePath = path.join(tempDir, `whatsapp_audio_${mediaId}${extension}`);
+
+    fs.writeFileSync(tempFilePath, buffer);
+
+    console.log(`✅ Medio descargado: ${tempFilePath} (${buffer.length} bytes)`);
+
+    return {
+      filePath: tempFilePath,
+      mimeType,
+      cleanup: () => {
+        try {
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+            console.log(`🗑️ Archivo temporal eliminado: ${tempFilePath}`);
+          }
+        } catch (e) {
+          console.error('Error eliminando archivo temporal:', e);
+        }
+      },
+    };
+  } catch (error) {
+    console.error('❌ Error descargando medio de WhatsApp:', error);
+    throw error;
+  }
+}
+
 export async function sendWhatsAppMessage(phoneNumber: string, messageText: string) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;

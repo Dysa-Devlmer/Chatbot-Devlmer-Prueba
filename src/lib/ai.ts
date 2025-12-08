@@ -1,5 +1,8 @@
 import { Ollama } from 'ollama';
 import { prisma } from './prisma';
+import * as fs from 'fs';
+import * as path from 'path';
+import { exec } from 'child_process';
 
 // Inicializar cliente de Ollama (local y gratuito!)
 const ollama = new Ollama({
@@ -406,6 +409,283 @@ SENTIMENT: [sentiment]`;
     } catch (error) {
       console.error('Error obteniendo template:', error);
       return null;
+    }
+  }
+
+  /**
+   * Transcribe audio usando Whisper
+   * Soporta múltiples backends: local whisper, faster-whisper-server, o OpenAI
+   */
+  static async transcribeAudio(audioFilePath: string): Promise<{
+    text: string;
+    language?: string;
+    duration?: number;
+    success: boolean;
+    error?: string;
+  }> {
+    try {
+      console.log(`🎤 Iniciando transcripción de audio: ${audioFilePath}`);
+
+      // Verificar que el archivo existe
+      if (!fs.existsSync(audioFilePath)) {
+        throw new Error(`Archivo de audio no encontrado: ${audioFilePath}`);
+      }
+
+      // Obtener configuración de Whisper
+      const whisperConfig = await this.getWhisperConfig();
+
+      let result: { text: string; language?: string; duration?: number };
+
+      switch (whisperConfig.backend) {
+        case 'faster-whisper-server':
+          result = await this.transcribeWithFasterWhisperServer(audioFilePath, whisperConfig);
+          break;
+        case 'openai':
+          result = await this.transcribeWithOpenAI(audioFilePath);
+          break;
+        case 'local':
+        default:
+          result = await this.transcribeWithLocalWhisper(audioFilePath, whisperConfig);
+          break;
+      }
+
+      console.log(`✅ Transcripción completada: "${result.text.substring(0, 100)}..."`);
+
+      return {
+        ...result,
+        success: true,
+      };
+    } catch (error) {
+      console.error('❌ Error en transcripción de audio:', error);
+      return {
+        text: '',
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido en transcripción',
+      };
+    }
+  }
+
+  /**
+   * Obtiene la configuración de Whisper desde la base de datos o usa valores por defecto
+   */
+  private static async getWhisperConfig(): Promise<{
+    backend: 'local' | 'faster-whisper-server' | 'openai';
+    model: string;
+    language: string;
+    serverUrl?: string;
+  }> {
+    try {
+      const config = await prisma.systemConfig.findMany({
+        where: {
+          key: {
+            in: ['whisper_backend', 'whisper_model', 'whisper_language', 'whisper_server_url'],
+          },
+        },
+      });
+
+      const configMap = new Map<string, string>(config.map((c: { key: string; value: string }) => [c.key, c.value]));
+
+      return {
+        backend: (configMap.get('whisper_backend') as 'local' | 'faster-whisper-server' | 'openai') || 'local',
+        model: configMap.get('whisper_model') || 'base',
+        language: configMap.get('whisper_language') || 'es',
+        serverUrl: configMap.get('whisper_server_url') || 'http://localhost:8080',
+      };
+    } catch (error) {
+      console.error('Error obteniendo config de Whisper:', error);
+      return {
+        backend: 'local',
+        model: 'base',
+        language: 'es',
+      };
+    }
+  }
+
+  /**
+   * Transcribe usando whisper CLI local (whisper o faster-whisper)
+   */
+  private static async transcribeWithLocalWhisper(
+    audioFilePath: string,
+    config: { model: string; language: string }
+  ): Promise<{ text: string; language?: string; duration?: number }> {
+    return new Promise((resolve, reject) => {
+      // Intentar primero con faster-whisper, luego con whisper estándar
+      const commands = [
+        `faster-whisper "${audioFilePath}" --model ${config.model} --language ${config.language} --output_format txt`,
+        `whisper "${audioFilePath}" --model ${config.model} --language ${config.language} --output_format txt`,
+      ];
+
+      const tryCommand = (index: number) => {
+        if (index >= commands.length) {
+          reject(new Error('No se encontró Whisper instalado. Instala con: pip install faster-whisper'));
+          return;
+        }
+
+        const command = commands[index];
+        console.log(`🔄 Ejecutando: ${command}`);
+
+        exec(command, { timeout: 120000 }, (error, stdout, stderr) => {
+          if (error) {
+            console.log(`⚠️ Comando falló, intentando siguiente opción...`);
+            tryCommand(index + 1);
+            return;
+          }
+
+          // El output de whisper va a un archivo .txt
+          const outputFile = audioFilePath.replace(/\.[^.]+$/, '.txt');
+          let text = stdout.trim();
+
+          if (fs.existsSync(outputFile)) {
+            text = fs.readFileSync(outputFile, 'utf-8').trim();
+            fs.unlinkSync(outputFile); // Limpiar archivo temporal
+          }
+
+          resolve({
+            text: text || 'No se pudo transcribir el audio',
+            language: config.language,
+          });
+        });
+      };
+
+      tryCommand(0);
+    });
+  }
+
+  /**
+   * Transcribe usando faster-whisper-server (API HTTP)
+   */
+  private static async transcribeWithFasterWhisperServer(
+    audioFilePath: string,
+    config: { serverUrl?: string; model: string; language: string }
+  ): Promise<{ text: string; language?: string; duration?: number }> {
+    const serverUrl = config.serverUrl || 'http://localhost:8080';
+
+    // Leer el archivo de audio
+    const audioBuffer = fs.readFileSync(audioFilePath);
+    const audioBlob = new Blob([audioBuffer]);
+
+    // Crear FormData para enviar el archivo
+    const formData = new FormData();
+    formData.append('file', audioBlob, path.basename(audioFilePath));
+    formData.append('model', config.model);
+    formData.append('language', config.language);
+    formData.append('response_format', 'json');
+
+    console.log(`🌐 Enviando audio a faster-whisper-server: ${serverUrl}`);
+
+    const response = await fetch(`${serverUrl}/v1/audio/transcriptions`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error del servidor Whisper: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    return {
+      text: result.text || '',
+      language: result.language || config.language,
+      duration: result.duration,
+    };
+  }
+
+  /**
+   * Transcribe usando OpenAI Whisper API
+   */
+  private static async transcribeWithOpenAI(
+    audioFilePath: string
+  ): Promise<{ text: string; language?: string; duration?: number }> {
+    const openaiKey = process.env.OPENAI_API_KEY;
+
+    if (!openaiKey) {
+      throw new Error('OPENAI_API_KEY no configurada para usar Whisper de OpenAI');
+    }
+
+    const audioBuffer = fs.readFileSync(audioFilePath);
+    const audioBlob = new Blob([audioBuffer]);
+
+    const formData = new FormData();
+    formData.append('file', audioBlob, path.basename(audioFilePath));
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'es');
+    formData.append('response_format', 'json');
+
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error de OpenAI Whisper: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    return {
+      text: result.text || '',
+      language: 'es',
+      duration: result.duration,
+    };
+  }
+
+  /**
+   * Verifica si Whisper está disponible en el sistema
+   */
+  static async checkWhisperStatus(): Promise<{
+    available: boolean;
+    backend: string;
+    error?: string;
+  }> {
+    try {
+      const config = await this.getWhisperConfig();
+
+      if (config.backend === 'faster-whisper-server') {
+        // Verificar servidor
+        const serverUrl = config.serverUrl || 'http://localhost:8080';
+        try {
+          const response = await fetch(`${serverUrl}/health`, { method: 'GET' });
+          return {
+            available: response.ok,
+            backend: 'faster-whisper-server',
+          };
+        } catch {
+          return {
+            available: false,
+            backend: 'faster-whisper-server',
+            error: `No se puede conectar a ${serverUrl}`,
+          };
+        }
+      }
+
+      if (config.backend === 'openai') {
+        return {
+          available: !!process.env.OPENAI_API_KEY,
+          backend: 'openai',
+          error: process.env.OPENAI_API_KEY ? undefined : 'OPENAI_API_KEY no configurada',
+        };
+      }
+
+      // Verificar CLI local
+      return new Promise((resolve) => {
+        exec('which faster-whisper || which whisper', (error) => {
+          resolve({
+            available: !error,
+            backend: 'local',
+            error: error ? 'Whisper no encontrado. Instala con: pip install faster-whisper' : undefined,
+          });
+        });
+      });
+    } catch (error) {
+      return {
+        available: false,
+        backend: 'unknown',
+        error: error instanceof Error ? error.message : 'Error verificando Whisper',
+      };
     }
   }
 }
