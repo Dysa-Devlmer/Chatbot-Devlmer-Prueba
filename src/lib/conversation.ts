@@ -102,7 +102,7 @@ export class ConversationService {
 
         if (existingMessage) {
           console.log(`⚠️ Mensaje duplicado ignorado: ${data.whatsappId}`);
-          return existingMessage;
+          return null;
         }
       }
 
