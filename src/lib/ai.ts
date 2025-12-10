@@ -2,6 +2,7 @@ import { Ollama } from 'ollama';
 import { prisma } from './prisma';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { exec } from 'child_process';
 import { TranscriptionCache, TTSCache } from './audio-cache';
 
@@ -880,7 +881,7 @@ SENTIMENT: [sentiment]`;
     config: { voice: string; rate: string }
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const tempDir = require('os').tmpdir();
+      const tempDir = os.tmpdir();
       const outputPath = path.join(tempDir, `tts_${Date.now()}.mp3`);
 
       // Escapar comillas en el texto
@@ -915,7 +916,7 @@ SENTIMENT: [sentiment]`;
     config: { language: string; referenceAudio?: string }
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const tempDir = require('os').tmpdir();
+      const tempDir = os.tmpdir();
       const outputPath = path.join(tempDir, `xtts_${Date.now()}.wav`);
 
       // Escapar comillas en el texto
@@ -986,7 +987,7 @@ SENTIMENT: [sentiment]`;
     config: { language: string }
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const tempDir = require('os').tmpdir();
+      const tempDir = os.tmpdir();
       const outputPath = path.join(tempDir, `tts_${Date.now()}.mp3`);
 
       // Crear script Python temporal para gTTS
@@ -1019,7 +1020,7 @@ SENTIMENT: [sentiment]`;
     config: { rate: string }
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const tempDir = require('os').tmpdir();
+      const tempDir = os.tmpdir();
       const outputPath = path.join(tempDir, `tts_${Date.now()}.mp3`);
 
       const escapedText = text.replace(/"/g, '\\"').replace(/\n/g, ' ');

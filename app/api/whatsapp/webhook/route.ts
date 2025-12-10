@@ -35,7 +35,6 @@ export async function POST(request: NextRequest) {
     if (body.object === 'whatsapp_business_account') {
       const entries = body.entry?.[0]?.changes?.[0]?.value;
       const message = entries?.messages?.[0];
-      const metadata = entries?.metadata;
 
       if (message) {
         const phoneNumber = message.from;
@@ -150,6 +149,7 @@ export async function POST(request: NextRequest) {
               type: 'text',
               content: estadoHorario.mensaje,
               direction: 'outbound',
+              sentBy: 'bot',
             });
           } else {
             console.log('⏰ Fuera de horario - Mensaje ya enviado, no se repite');
@@ -388,6 +388,7 @@ export async function POST(request: NextRequest) {
             type: 'text',
             content: confirmationMessage,
             direction: 'outbound',
+            sentBy: 'bot',
           });
 
           // Actualizar webhook log como procesado

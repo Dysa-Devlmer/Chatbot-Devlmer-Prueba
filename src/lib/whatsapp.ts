@@ -15,6 +15,11 @@ export async function downloadWhatsAppMedia(mediaId: string): Promise<{
 }> {
   const token = process.env.WHATSAPP_TOKEN;
 
+  // Validar token antes de usar
+  if (!token) {
+    throw new Error('WHATSAPP_TOKEN no configurada en variables de entorno');
+  }
+
   try {
     // Paso 1: Obtener la URL del medio
     const mediaInfoUrl = `https://graph.facebook.com/v18.0/${mediaId}`;
@@ -85,6 +90,14 @@ export async function sendWhatsAppMessage(phoneNumber: string, messageText: stri
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
+  // Validar variables de entorno
+  if (!token) {
+    throw new Error('WHATSAPP_TOKEN no configurada en variables de entorno');
+  }
+  if (!phoneNumberId) {
+    throw new Error('WHATSAPP_PHONE_NUMBER_ID no configurada en variables de entorno');
+  }
+
   try {
     const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
     const response = await fetch(url, {
@@ -126,6 +139,21 @@ export async function sendWhatsAppAudio(phoneNumber: string, audioFilePath: stri
 }> {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  // Validar variables de entorno
+  if (!token) {
+    return {
+      success: false,
+      error: 'WHATSAPP_TOKEN no configurada en variables de entorno',
+    };
+  }
+  if (!phoneNumberId) {
+    return {
+      success: false,
+      error: 'WHATSAPP_PHONE_NUMBER_ID no configurada en variables de entorno',
+    };
+  }
+
   let convertedFilePath: string | null = null;
 
   try {
