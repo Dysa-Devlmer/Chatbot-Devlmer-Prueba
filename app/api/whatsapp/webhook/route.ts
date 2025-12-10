@@ -358,10 +358,11 @@ export async function POST(request: NextRequest) {
             entities: aiResult.entities,
           });
 
-          // Actualizar sentiment de la conversación
+          // Actualizar sentiment de la conversación (sin cerrarla)
           if (aiResult.sentiment) {
-            await ConversationService.closeConversation(conversation.id, aiResult.sentiment);
-            await ConversationService.getOrCreateConversation(user.id); // Crear nueva conversación
+            await ConversationService.updateConversation(conversation.id, {
+              sentiment: aiResult.sentiment,
+            });
           }
 
           // Actualizar webhook log como procesado
