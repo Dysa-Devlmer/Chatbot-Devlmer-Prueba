@@ -268,7 +268,7 @@ function convertToOggOpus(inputPath: string): Promise<string> {
 
     console.log(`🔄 Convirtiendo a OGG/OPUS para nota de voz...`);
 
-    exec(command, { timeout: 30000 }, (error, stdout, stderr) => {
+    exec(command, { timeout: 30000, windowsHide: true }, (error, stdout, stderr) => {
       if (error) {
         reject(new Error(`Error convirtiendo audio: ${error.message}`));
         return;

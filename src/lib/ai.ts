@@ -551,6 +551,7 @@ SENTIMENT: [sentiment]`;
 
       exec(command, {
         timeout: 120000,
+        windowsHide: true,
         env: {
           ...process.env,
           PYTHONIOENCODING: 'utf-8',
@@ -891,7 +892,7 @@ SENTIMENT: [sentiment]`;
 
       console.log(`🔄 Ejecutando edge-tts...`);
 
-      exec(command, { timeout: 60000 }, (error, stdout, stderr) => {
+      exec(command, { timeout: 60000, windowsHide: true }, (error, stdout, stderr) => {
         if (error) {
           reject(new Error(`Error en edge-tts: ${error.message}`));
           return;
@@ -937,6 +938,7 @@ SENTIMENT: [sentiment]`;
 
       exec(command, {
         timeout: 120000,  // 2 minutos para XTTS (es más lento)
+        windowsHide: true,
         env: {
           ...process.env,
           PYTHONIOENCODING: 'utf-8',
@@ -996,7 +998,7 @@ SENTIMENT: [sentiment]`;
 
       console.log(`🔄 Ejecutando gTTS...`);
 
-      exec(command, { timeout: 60000 }, (error, stdout, stderr) => {
+      exec(command, { timeout: 60000, windowsHide: true }, (error, stdout, stderr) => {
         if (error) {
           reject(new Error(`Error en gTTS: ${error.message}`));
           return;
@@ -1035,7 +1037,7 @@ engine.runAndWait()
 
       console.log(`🔄 Ejecutando pyttsx3...`);
 
-      exec(command, { timeout: 60000 }, (error, stdout, stderr) => {
+      exec(command, { timeout: 60000, windowsHide: true }, (error, stdout, stderr) => {
         if (error) {
           reject(new Error(`Error en pyttsx3: ${error.message}`));
           return;
