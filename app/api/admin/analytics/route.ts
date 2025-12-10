@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
         where: { timestamp: { gte: previousStartDate, lt: startDate } }
       }),
       prisma.user.count({
-        where: { createdAt: { gte: previousStartDate, lt: startDate } }
+        where: { firstContact: { gte: previousStartDate, lt: startDate } }
       }),
 
       prisma.message.findMany({
@@ -238,7 +238,7 @@ export async function GET(request: NextRequest) {
     });
     const currentPeriodMessages = periodMessages.length;
     const currentPeriodUsers = await prisma.user.count({
-      where: { createdAt: { gte: startDate } }
+      where: { firstContact: { gte: startDate } }
     });
 
     const calculateChange = (current: number, previous: number): number => {

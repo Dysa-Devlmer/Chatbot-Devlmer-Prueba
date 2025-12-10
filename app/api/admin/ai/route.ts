@@ -184,7 +184,6 @@ async function getConversationInsights(conversationId: string): Promise<Conversa
     select: {
       content: true,
       direction: true,
-      sentiment: true,
       intent: true,
       timestamp: true,
     },
@@ -200,7 +199,7 @@ async function getConversationInsights(conversationId: string): Promise<Conversa
   });
 
   // Analizar mensajes para generar insights
-  type MessageInfo = { content: string; direction: string; sentiment: string | null; intent: string | null; timestamp: Date };
+  type MessageInfo = { content: string; direction: string; intent: string | null; timestamp: Date };
   const userMessages = messages.filter((m: MessageInfo) => m.direction === 'inbound');
   const keywords = extractKeywords(userMessages.map((m: MessageInfo) => m.content).join(' '));
 
