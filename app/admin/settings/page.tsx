@@ -55,15 +55,52 @@ function SettingsContent() {
     }
   }, [searchParams]);
 
+  // Load profile from database on mount
   useEffect(() => {
-    if (session?.user) {
-      setProfile((prev) => ({
-        ...prev,
-        name: session.user?.name || '',
-        email: session.user?.email || '',
-      }));
-    }
-  }, [session]);
+    const loadProfile = async () => {
+      try {
+        const response = await fetch('/api/admin/profile');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.profile) {
+            setProfile({
+              name: data.profile.name || '',
+              email: data.profile.email || '',
+              phone: data.profile.phone || '',
+              company: data.profile.company || 'PITHY',
+              role: data.profile.role || 'Administrador',
+              timezone: data.profile.timezone || 'America/Santiago',
+              language: data.profile.language || 'es',
+            });
+            setAppearance((prev) => ({
+              ...prev,
+              theme: data.profile.theme || 'dark',
+              accentColor: data.profile.accentColor || '#667eea',
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    };
+
+    const loadNotifications = async () => {
+      try {
+        const response = await fetch('/api/admin/profile/notifications');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.preferences) {
+            setNotifications(data.preferences);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+      }
+    };
+
+    loadProfile();
+    loadNotifications();
+  }, []);
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });

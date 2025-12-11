@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions, verifyAdminPassword, updateAdminPassword } from '@/lib/auth';
+import { authOptions } from '@/lib/auth';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 // PUT - Change password
 export async function PUT(request: NextRequest) {
@@ -17,8 +20,18 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { currentPassword, newPassword } = body;
 
+    // Get admin profile
+    const profile = await prisma.adminProfile.findFirst();
+
+    if (!profile) {
+      return NextResponse.json(
+        { error: 'Perfil no encontrado' },
+        { status: 404 }
+      );
+    }
+
     // Verify current password
-    if (!verifyAdminPassword(currentPassword)) {
+    if (currentPassword !== profile.password) {
       return NextResponse.json(
         { error: 'La contraseña actual es incorrecta' },
         { status: 400 }
@@ -33,13 +46,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update password
-    updateAdminPassword(newPassword);
-
-    // In production, you would:
-    // 1. Hash the new password with bcrypt
-    // 2. Update it in the database
-    // 3. Invalidate other sessions if needed
+    // Update password in database
+    await prisma.adminProfile.update({
+      where: { id: profile.id },
+      data: { password: newPassword },
+    });
 
     console.log('Password changed successfully for user:', session.user?.name);
 

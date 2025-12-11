@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { PrismaClient } from '@prisma/client';
 
-// Simulated user data storage (in production, this would be in database)
-let userProfile = {
-  name: 'Admin',
-  email: 'admin@pithy.cl',
-  phone: '',
-  company: 'PITHY',
-  role: 'Administrador',
-  timezone: 'America/Santiago',
-  language: 'es',
-  avatar: null as string | null,
-};
+const prisma = new PrismaClient();
+
+// Helper to get or create admin profile
+async function getOrCreateAdminProfile() {
+  let profile = await prisma.adminProfile.findFirst();
+
+  if (!profile) {
+    profile = await prisma.adminProfile.create({
+      data: {
+        username: 'admin',
+        password: 'pithy2024',
+        name: 'Administrador',
+        email: 'admin@pithy.cl',
+        company: 'PITHY',
+      },
+    });
+  }
+
+  return profile;
+}
 
 // GET - Get user profile
 export async function GET(request: NextRequest) {
@@ -26,13 +36,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      profile: {
-        ...userProfile,
-        name: session.user?.name || userProfile.name,
-        email: session.user?.email || userProfile.email,
-      },
-    });
+    const profile = await getOrCreateAdminProfile();
+
+    // Don't send password to client
+    const { password, ...safeProfile } = profile;
+
+    return NextResponse.json({ profile: safeProfile });
   } catch (error) {
     console.error('Error fetching profile:', error);
     return NextResponse.json(
@@ -55,22 +64,33 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, phone, company, timezone, language } = body;
+    const { name, email, phone, company, timezone, language, avatar, theme, accentColor } = body;
+
+    // Get existing profile
+    const existingProfile = await getOrCreateAdminProfile();
 
     // Update profile
-    userProfile = {
-      ...userProfile,
-      ...(name && { name }),
-      ...(email && { email }),
-      ...(phone !== undefined && { phone }),
-      ...(company && { company }),
-      ...(timezone && { timezone }),
-      ...(language && { language }),
-    };
+    const profile = await prisma.adminProfile.update({
+      where: { id: existingProfile.id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(email !== undefined && { email }),
+        ...(phone !== undefined && { phone }),
+        ...(company !== undefined && { company }),
+        ...(timezone !== undefined && { timezone }),
+        ...(language !== undefined && { language }),
+        ...(avatar !== undefined && { avatar }),
+        ...(theme !== undefined && { theme }),
+        ...(accentColor !== undefined && { accentColor }),
+      },
+    });
+
+    // Don't send password to client
+    const { password, ...safeProfile } = profile;
 
     return NextResponse.json({
       success: true,
-      profile: userProfile,
+      profile: safeProfile,
       message: 'Perfil actualizado correctamente',
     });
   } catch (error) {

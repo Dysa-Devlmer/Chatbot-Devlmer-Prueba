@@ -239,3 +239,35 @@ model Campaign {
   @@index([status])
   @@index([scheduledFor])
 }
+
+// Configuración del administrador
+model AdminProfile {
+  id              String   @id @default(uuid())
+  username        String   @unique @default("admin")
+  password        String   @default("pithy2024")
+
+  // Información personal
+  name            String   @default("Administrador")
+  email           String   @default("admin@pithy.cl")
+  phone           String?
+  company         String   @default("PITHY")
+  role            String   @default("Administrador")
+  avatar          String?  // URL o base64 de la imagen
+
+  // Preferencias
+  timezone        String   @default("America/Santiago")
+  language        String   @default("es")
+  theme           String   @default("dark") // light, dark, system
+  accentColor     String   @default("#667eea")
+
+  // Notificaciones
+  emailNewMessage      Boolean @default(true)
+  emailDailyReport     Boolean @default(false)
+  pushNewMessage       Boolean @default(true)
+  pushMentions         Boolean @default(true)
+  soundEnabled         Boolean @default(true)
+  desktopNotifications Boolean @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
