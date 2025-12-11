@@ -235,8 +235,8 @@ INSTRUCCIONES FINALES:
 
       console.log(`✅ Respuesta generada (${responseText.length} caracteres)`);
 
-      // Agregar firma automática del bot (sin emoji para evitar problemas de encoding)
-      const responseWithSignature = `${responseText}\n\n-- Asistente automático PITHY`;
+      // Agregar firma automática del bot
+      const responseWithSignature = `${responseText}\n\n🤖 Asistente automático PITHY`;
 
       return {
         response: responseWithSignature,

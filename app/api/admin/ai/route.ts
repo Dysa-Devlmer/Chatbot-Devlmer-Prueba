@@ -263,7 +263,7 @@ async function getConversationInsights(conversationId: string): Promise<Conversa
     suggestedResponses.push('Nuestro horario es de Lunes a Viernes, 9:00 - 18:00.');
   }
   if (mainTopics.includes('Contacto')) {
-    suggestedResponses.push('Puedes contactarnos al +56 9 1234 5678 o por email a contacto@devlmer.cl');
+    suggestedResponses.push('Puedes contactarnos al +56 9 6541 9765 o por email a contacto@devlmer.cl');
   }
 
   return {
