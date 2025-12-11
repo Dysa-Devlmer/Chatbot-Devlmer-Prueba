@@ -23,16 +23,31 @@ interface Notification {
   isUnread: boolean;
 }
 
+interface SearchResult {
+  id: string;
+  type: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+  link: string;
+  time: string;
+}
+
 export function AdminHeader() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Load profile from database
   useEffect(() => {
@@ -76,6 +91,49 @@ export function AdminHeader() {
     // Refresh notifications every 30 seconds
     const interval = setInterval(loadNotifications, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Search effect
+  useEffect(() => {
+    const searchTimeout = setTimeout(async () => {
+      if (searchQuery.length >= 2) {
+        setSearching(true);
+        try {
+          const response = await fetch(`/api/admin/search?q=${encodeURIComponent(searchQuery)}`);
+          if (response.ok) {
+            const data = await response.json();
+            setSearchResults(data.results || []);
+          }
+        } catch (error) {
+          console.error('Error searching:', error);
+        } finally {
+          setSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(searchTimeout);
+  }, [searchQuery]);
+
+  // Keyboard shortcut for search (Ctrl/Cmd + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(true);
+        setTimeout(() => searchInputRef.current?.focus(), 100);
+      }
+      if (e.key === 'Escape') {
+        setShowSearch(false);
+        setSearchQuery('');
+        setSearchResults([]);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Close menus when clicking outside
@@ -163,7 +221,14 @@ export function AdminHeader() {
         <div style={styles.rightSection}>
           {/* Quick Actions */}
           <div style={styles.quickActions}>
-            <button style={styles.iconButton} title="Buscar">
+            <button
+              style={styles.iconButton}
+              title="Buscar (Ctrl+K)"
+              onClick={() => {
+                setShowSearch(true);
+                setTimeout(() => searchInputRef.current?.focus(), 100);
+              }}
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8" />
                 <path d="M21 21l-4.35-4.35" />
@@ -329,6 +394,71 @@ export function AdminHeader() {
           </div>
         </div>
       </div>
+
+      {/* Search Modal */}
+      {showSearch && (
+        <div style={styles.searchOverlay} onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }}>
+          <div style={styles.searchModal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.searchHeader}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar conversaciones, usuarios, mensajes..."
+                style={styles.searchInput}
+                autoFocus
+              />
+              <span style={styles.searchShortcut}>ESC</span>
+            </div>
+
+            <div style={styles.searchResults}>
+              {searching ? (
+                <div style={styles.searchLoading}>
+                  <span>Buscando...</span>
+                </div>
+              ) : searchResults.length > 0 ? (
+                searchResults.map((result) => (
+                  <Link
+                    key={result.id}
+                    href={result.link}
+                    style={styles.searchResultItem}
+                    onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }}
+                  >
+                    <span style={styles.searchResultIcon}>{result.icon}</span>
+                    <div style={styles.searchResultContent}>
+                      <span style={styles.searchResultTitle}>{result.title}</span>
+                      <span style={styles.searchResultSubtitle}>{result.subtitle}</span>
+                    </div>
+                    <span style={styles.searchResultType}>
+                      {result.type === 'user' ? 'Usuario' : 'Mensaje'}
+                    </span>
+                  </Link>
+                ))
+              ) : searchQuery.length >= 2 ? (
+                <div style={styles.searchEmpty}>
+                  <span style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</span>
+                  <span>No se encontraron resultados para "{searchQuery}"</span>
+                </div>
+              ) : (
+                <div style={styles.searchEmpty}>
+                  <span style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</span>
+                  <span>Escribe para buscar...</span>
+                </div>
+              )}
+            </div>
+
+            <div style={styles.searchFooter}>
+              <span>Usa <kbd style={styles.kbd}>↑</kbd><kbd style={styles.kbd}>↓</kbd> para navegar</span>
+              <span>Presiona <kbd style={styles.kbd}>Enter</kbd> para seleccionar</span>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
@@ -548,6 +678,132 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '50%',
     background: '#667eea',
     flexShrink: 0,
+  },
+  searchOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.7)',
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingTop: '100px',
+    zIndex: 2000,
+  },
+  searchModal: {
+    width: '600px',
+    maxWidth: '90vw',
+    background: '#1e293b',
+    borderRadius: '16px',
+    border: '1px solid rgba(148, 163, 184, 0.2)',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+    overflow: 'hidden',
+  },
+  searchHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '16px 20px',
+    borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
+  },
+  searchInput: {
+    flex: 1,
+    background: 'transparent',
+    border: 'none',
+    color: '#f1f5f9',
+    fontSize: '16px',
+    outline: 'none',
+  },
+  searchShortcut: {
+    padding: '4px 8px',
+    borderRadius: '6px',
+    background: 'rgba(148, 163, 184, 0.1)',
+    color: '#64748b',
+    fontSize: '11px',
+    fontWeight: '500',
+  },
+  searchResults: {
+    maxHeight: '400px',
+    overflowY: 'auto',
+  },
+  searchLoading: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '32px',
+    color: '#64748b',
+    fontSize: '14px',
+  },
+  searchEmpty: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '32px',
+    color: '#64748b',
+    fontSize: '14px',
+  },
+  searchResultItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px 20px',
+    textDecoration: 'none',
+    borderBottom: '1px solid rgba(148, 163, 184, 0.05)',
+    transition: 'background 0.2s',
+  },
+  searchResultIcon: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    background: 'rgba(102, 126, 234, 0.1)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '16px',
+  },
+  searchResultContent: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+  searchResultTitle: {
+    color: '#f1f5f9',
+    fontSize: '14px',
+    fontWeight: '500',
+  },
+  searchResultSubtitle: {
+    color: '#64748b',
+    fontSize: '12px',
+  },
+  searchResultType: {
+    padding: '4px 10px',
+    borderRadius: '20px',
+    background: 'rgba(102, 126, 234, 0.1)',
+    color: '#667eea',
+    fontSize: '11px',
+    fontWeight: '500',
+  },
+  searchFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '12px 20px',
+    borderTop: '1px solid rgba(148, 163, 184, 0.1)',
+    color: '#64748b',
+    fontSize: '12px',
+  },
+  kbd: {
+    display: 'inline-block',
+    padding: '2px 6px',
+    margin: '0 4px',
+    borderRadius: '4px',
+    background: 'rgba(148, 163, 184, 0.1)',
+    border: '1px solid rgba(148, 163, 184, 0.2)',
+    fontSize: '11px',
+    fontFamily: 'monospace',
   },
   userMenuContainer: {
     position: 'relative',
