@@ -51,6 +51,13 @@ function SettingsContent() {
     compactMode: false,
   });
 
+  // Session info state
+  const [sessionInfo, setSessionInfo] = useState({
+    device: 'Navegador web',
+    location: 'Sesión activa',
+    time: 'Ahora mismo',
+  });
+
   useEffect(() => {
     const tab = searchParams?.get('tab');
     if (tab && ['profile', 'security', 'notifications', 'appearance'].includes(tab)) {
@@ -106,6 +113,45 @@ function SettingsContent() {
 
     loadProfile();
     loadNotifications();
+  }, []);
+
+  // Detect browser and OS for session info
+  useEffect(() => {
+    const detectBrowser = () => {
+      const ua = navigator.userAgent;
+      let browser = 'Navegador';
+      let os = 'Sistema';
+
+      // Detect OS
+      if (ua.includes('Windows')) os = 'Windows';
+      else if (ua.includes('Mac OS')) os = 'macOS';
+      else if (ua.includes('Linux')) os = 'Linux';
+      else if (ua.includes('Android')) os = 'Android';
+      else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+
+      // Detect Browser
+      if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome';
+      else if (ua.includes('Firefox')) browser = 'Firefox';
+      else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+      else if (ua.includes('Edg')) browser = 'Edge';
+      else if (ua.includes('Opera') || ua.includes('OPR')) browser = 'Opera';
+
+      const now = new Date();
+      const loginTime = now.toLocaleString('es-CL', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      setSessionInfo({
+        device: `${os} - ${browser}`,
+        location: 'Sesión actual',
+        time: `Iniciada ${loginTime}`,
+      });
+    };
+
+    detectBrowser();
   }, []);
 
   const showMessage = (type: 'success' | 'error', text: string) => {
@@ -550,25 +596,21 @@ function SettingsContent() {
               </div>
 
               <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>Sesiones Activas</h2>
+                <h2 style={styles.sectionTitle}>Sesión Activa</h2>
                 <p style={styles.sectionDescription}>
-                  Dispositivos donde tu cuenta está activa actualmente.
+                  Tu sesión actual en este dispositivo.
                 </p>
 
                 <div style={styles.sessionList}>
                   <div style={styles.sessionItem}>
                     <div style={styles.sessionIcon}>💻</div>
                     <div style={styles.sessionInfo}>
-                      <span style={styles.sessionDevice}>Windows - Chrome</span>
-                      <span style={styles.sessionDetails}>Santiago, Chile • Activa ahora</span>
+                      <span style={styles.sessionDevice}>{sessionInfo.device}</span>
+                      <span style={styles.sessionDetails}>{sessionInfo.location} • {sessionInfo.time}</span>
                     </div>
                     <span style={styles.currentBadge}>Sesión actual</span>
                   </div>
                 </div>
-
-                <button style={styles.dangerButton}>
-                  Cerrar todas las otras sesiones
-                </button>
               </div>
 
               <div style={styles.section}>
@@ -580,12 +622,12 @@ function SettingsContent() {
                 <div style={styles.twoFactorBox}>
                   <div style={styles.twoFactorIcon}>🔐</div>
                   <div style={styles.twoFactorContent}>
-                    <h4 style={styles.twoFactorTitle}>No configurado</h4>
+                    <h4 style={styles.twoFactorTitle}>Próximamente</h4>
                     <p style={styles.twoFactorDesc}>
-                      Protege tu cuenta con autenticación de dos factores usando una app como Google Authenticator.
+                      La autenticación de dos factores estará disponible próximamente para mayor seguridad.
                     </p>
                   </div>
-                  <button style={styles.enableButton}>Configurar</button>
+                  <span style={styles.comingSoonBadge}>Próximamente</span>
                 </div>
               </div>
             </div>
@@ -1228,6 +1270,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '13px',
     fontWeight: '500',
     cursor: 'pointer',
+  },
+  comingSoonBadge: {
+    padding: '8px 16px',
+    borderRadius: '20px',
+    background: 'rgba(148, 163, 184, 0.1)',
+    color: '#64748b',
+    fontSize: '12px',
+    fontWeight: '500',
+    whiteSpace: 'nowrap',
   },
   toggleList: {
     display: 'flex',
