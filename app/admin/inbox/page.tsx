@@ -284,6 +284,32 @@ function InboxContent() {
     }
   };
 
+  const markAllAsRead = async () => {
+    try {
+      const unreadConversations = conversations.filter((c) => c.isUnread);
+      if (unreadConversations.length === 0) return;
+
+      // Marcar todas como leídas en el servidor
+      await fetch('/api/admin/conversations', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'markAllAsRead',
+        }),
+      });
+
+      // Actualizar el estado local
+      setConversations((prev) =>
+        prev.map((c) => ({ ...c, isUnread: false }))
+      );
+
+      // Actualizar contador de no leídos
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
   const useAiSuggestion = (suggestion: string) => {
     setMessageInput(suggestion);
     inputRef.current?.focus();
@@ -478,6 +504,17 @@ function InboxContent() {
           <span style={{ fontSize: '14px', opacity: 0.9 }}>
             {conversations.length} conversaciones
           </span>
+
+          {/* Botón Marcar Todo como Leído */}
+          {conversations.filter((c) => c.isUnread).length > 0 && (
+            <button
+              onClick={markAllAsRead}
+              style={styles.markAllReadBtn}
+              title="Marcar todas las conversaciones como leídas"
+            >
+              ✓ Marcar todo como leído
+            </button>
+          )}
 
           {/* Controles de Notificación */}
           <div style={{ position: 'relative' }}>
@@ -906,6 +943,17 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '20px',
     textDecoration: 'none',
     fontSize: '14px',
+    transition: 'background 0.2s',
+  },
+  markAllReadBtn: {
+    background: 'rgba(37, 211, 102, 0.9)',
+    color: 'white',
+    padding: '8px 16px',
+    borderRadius: '20px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
     transition: 'background 0.2s',
   },
   mainContent: {
