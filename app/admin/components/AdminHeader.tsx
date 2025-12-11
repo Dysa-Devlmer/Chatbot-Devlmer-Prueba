@@ -12,12 +12,25 @@ interface AdminProfile {
   role: string;
 }
 
+interface Notification {
+  id: string;
+  type: string;
+  icon: string;
+  title: string;
+  text: string;
+  time: string;
+  relativeTime: string;
+  isUnread: boolean;
+}
+
 export function AdminHeader() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [profile, setProfile] = useState<AdminProfile | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +55,27 @@ export function AdminHeader() {
       }
     };
     loadProfile();
+  }, []);
+
+  // Load notifications from database
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const response = await fetch('/api/admin/notifications');
+        if (response.ok) {
+          const data = await response.json();
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+      }
+    };
+    loadNotifications();
+
+    // Refresh notifications every 30 seconds
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Close menus when clicking outside
@@ -147,40 +181,45 @@ export function AdminHeader() {
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
-                <span style={styles.notifBadge}>3</span>
+                {unreadCount > 0 && (
+                  <span style={styles.notifBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+                )}
               </button>
 
               {showNotifications && (
                 <div style={styles.notifDropdown}>
                   <div style={styles.dropdownHeader}>
                     <span style={styles.dropdownTitle}>Notificaciones</span>
-                    <button style={styles.markAllRead}>Marcar todo leído</button>
+                    {unreadCount > 0 && (
+                      <Link href="/admin/inbox" style={styles.markAllRead}>
+                        Ver en inbox
+                      </Link>
+                    )}
                   </div>
                   <div style={styles.notifList}>
-                    <div style={styles.notifItem}>
-                      <div style={styles.notifIcon}>💬</div>
-                      <div style={styles.notifContent}>
-                        <div style={styles.notifText}>Nuevo mensaje de +56912345678</div>
-                        <div style={styles.notifTime}>Hace 5 minutos</div>
+                    {notifications.length === 0 ? (
+                      <div style={styles.emptyNotif}>
+                        <span style={{ fontSize: '32px', marginBottom: '8px' }}>🔔</span>
+                        <span style={{ color: '#64748b', fontSize: '13px' }}>No hay notificaciones</span>
                       </div>
-                    </div>
-                    <div style={styles.notifItem}>
-                      <div style={styles.notifIcon}>🤖</div>
-                      <div style={styles.notifContent}>
-                        <div style={styles.notifText}>Bot respondió automáticamente</div>
-                        <div style={styles.notifTime}>Hace 15 minutos</div>
-                      </div>
-                    </div>
-                    <div style={styles.notifItem}>
-                      <div style={styles.notifIcon}>📊</div>
-                      <div style={styles.notifContent}>
-                        <div style={styles.notifText}>Reporte semanal disponible</div>
-                        <div style={styles.notifTime}>Hace 1 hora</div>
-                      </div>
-                    </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div key={notif.id} style={{
+                          ...styles.notifItem,
+                          background: notif.isUnread ? 'rgba(102, 126, 234, 0.1)' : 'transparent',
+                        }}>
+                          <div style={styles.notifIcon}>{notif.icon}</div>
+                          <div style={styles.notifContent}>
+                            <div style={styles.notifText}>{notif.text}</div>
+                            <div style={styles.notifTime}>{notif.relativeTime}</div>
+                          </div>
+                          {notif.isUnread && <div style={styles.unreadDot} />}
+                        </div>
+                      ))
+                    )}
                   </div>
-                  <Link href="/admin/notifications" style={styles.viewAllLink}>
-                    Ver todas las notificaciones
+                  <Link href="/admin/inbox" style={styles.viewAllLink} onClick={() => setShowNotifications(false)}>
+                    Ver todas las conversaciones
                   </Link>
                 </div>
               )}
@@ -495,6 +534,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '13px',
     textDecoration: 'none',
     borderTop: '1px solid rgba(148, 163, 184, 0.1)',
+  },
+  emptyNotif: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '32px 16px',
+  },
+  unreadDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    background: '#667eea',
+    flexShrink: 0,
   },
   userMenuContainer: {
     position: 'relative',
