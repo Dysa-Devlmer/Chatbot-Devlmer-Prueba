@@ -1,6 +1,0 @@
-version: "2"
-authtoken: 35wwl0aH8AloY91Q7jIkP9s0YZW_7SLMa1yUBbZQirVbw3cHX
-log_level: info
-log_format: logfmt
-log: E:\prueba\logs\ngrok.log
-web_addr: 127.0.0.1:4847
