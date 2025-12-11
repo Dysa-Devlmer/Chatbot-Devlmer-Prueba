@@ -71,6 +71,7 @@ function InboxContent() {
   const [conversationTags, setConversationTags] = useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [showAiPanel, setShowAiPanel] = useState(false);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevConversationsRef = useRef<Conversation[]>([]);
@@ -87,16 +88,21 @@ function InboxContent() {
     setUnreadCount,
   } = useNotifications();
 
-  // Fetch quick replies and tags on mount
+  // Fetch quick replies, tags, and unread count on mount
   useEffect(() => {
     fetchQuickReplies();
     fetchTags();
+    fetchTotalUnreadCount();
   }, []);
 
-  // Fetch conversations
+  // Fetch conversations and unread count
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 10000);
+    fetchTotalUnreadCount();
+    const interval = setInterval(() => {
+      fetchConversations();
+      fetchTotalUnreadCount();
+    }, 10000);
     return () => clearInterval(interval);
   }, [searchParams]);
 
@@ -221,6 +227,16 @@ function InboxContent() {
     }
   };
 
+  const fetchTotalUnreadCount = async () => {
+    try {
+      const response = await fetch('/api/admin/stats');
+      const data = await response.json();
+      setTotalUnreadCount(data.stats?.unreadConversations || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
   const fetchAiSuggestions = async (conversationId: string) => {
     try {
       const response = await fetch(`/api/admin/ai?action=suggestions&conversationId=${conversationId}`);
@@ -286,8 +302,7 @@ function InboxContent() {
 
   const markAllAsRead = async () => {
     try {
-      const unreadConversations = conversations.filter((c) => c.isUnread);
-      if (unreadConversations.length === 0) return;
+      if (totalUnreadCount === 0) return;
 
       // Marcar todas como leídas en el servidor
       await fetch('/api/admin/conversations', {
@@ -303,8 +318,9 @@ function InboxContent() {
         prev.map((c) => ({ ...c, isUnread: false }))
       );
 
-      // Actualizar contador de no leídos
+      // Actualizar contadores
       setUnreadCount(0);
+      setTotalUnreadCount(0);
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
@@ -506,13 +522,13 @@ function InboxContent() {
           </span>
 
           {/* Botón Marcar Todo como Leído */}
-          {conversations.filter((c) => c.isUnread).length > 0 && (
+          {totalUnreadCount > 0 && (
             <button
               onClick={markAllAsRead}
               style={styles.markAllReadBtn}
               title="Marcar todas las conversaciones como leídas"
             >
-              ✓ Marcar todo como leído
+              ✓ Marcar todo como leído ({totalUnreadCount})
             </button>
           )}
 
