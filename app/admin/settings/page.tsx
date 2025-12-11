@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -11,6 +11,9 @@ function SettingsContent() {
   const [activeTab, setActiveTab] = useState('profile');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile state
   const [profile, setProfile] = useState({
@@ -77,6 +80,9 @@ function SettingsContent() {
               theme: data.profile.theme || 'dark',
               accentColor: data.profile.accentColor || '#667eea',
             }));
+            if (data.profile.avatar) {
+              setAvatar(data.profile.avatar);
+            }
           }
         }
       } catch (error) {
@@ -186,6 +192,100 @@ function SettingsContent() {
     }
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showMessage('error', 'Por favor selecciona una imagen válida');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showMessage('error', 'La imagen es demasiado grande. Máximo 2MB.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string;
+
+        const response = await fetch('/api/admin/profile/avatar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatar: base64 }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setAvatar(data.avatar);
+          showMessage('success', 'Avatar actualizado correctamente');
+        } else {
+          const data = await response.json();
+          throw new Error(data.error || 'Error al subir avatar');
+        }
+        setUploadingAvatar(false);
+      };
+      reader.onerror = () => {
+        showMessage('error', 'Error al leer el archivo');
+        setUploadingAvatar(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error: any) {
+      showMessage('error', error.message || 'Error al subir el avatar');
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setUploadingAvatar(true);
+    try {
+      const response = await fetch('/api/admin/profile/avatar', {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setAvatar(null);
+        showMessage('success', 'Avatar eliminado correctamente');
+      } else {
+        throw new Error('Error al eliminar avatar');
+      }
+    } catch (error) {
+      showMessage('error', 'Error al eliminar el avatar');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleSaveAppearance = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/admin/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theme: appearance.theme,
+          accentColor: appearance.accentColor,
+        }),
+      });
+
+      if (response.ok) {
+        showMessage('success', 'Preferencias de apariencia guardadas');
+      } else {
+        throw new Error('Error al guardar');
+      }
+    } catch (error) {
+      showMessage('error', 'Error al guardar las preferencias');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const tabs = [
     { id: 'profile', label: 'Mi Perfil', icon: '👤' },
     { id: 'security', label: 'Seguridad', icon: '🔒' },
@@ -224,11 +324,15 @@ function SettingsContent() {
         {/* Sidebar */}
         <div style={styles.sidebar}>
           <div style={styles.profileCard}>
-            <div style={styles.avatarLarge}>
-              {session?.user?.name?.charAt(0).toUpperCase() || 'A'}
-            </div>
-            <h3 style={styles.profileName}>{session?.user?.name || 'Admin'}</h3>
-            <p style={styles.profileEmail}>{session?.user?.email || 'admin@pithy.cl'}</p>
+            {avatar ? (
+              <img src={avatar} alt="Avatar" style={styles.avatarLargeImg} />
+            ) : (
+              <div style={styles.avatarLarge}>
+                {profile.name?.charAt(0).toUpperCase() || session?.user?.name?.charAt(0).toUpperCase() || 'A'}
+              </div>
+            )}
+            <h3 style={styles.profileName}>{profile.name || session?.user?.name || 'Admin'}</h3>
+            <p style={styles.profileEmail}>{profile.email || session?.user?.email || 'admin@pithy.cl'}</p>
             <span style={styles.roleBadge}>Administrador</span>
           </div>
 
@@ -262,20 +366,49 @@ function SettingsContent() {
                 </p>
 
                 <div style={styles.avatarSection}>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleAvatarUpload}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                  />
                   <div style={styles.avatarUpload}>
-                    <div style={styles.avatarPreview}>
-                      {session?.user?.name?.charAt(0).toUpperCase() || 'A'}
-                    </div>
+                    {avatar ? (
+                      <img src={avatar} alt="Avatar" style={styles.avatarPreviewImg} />
+                    ) : (
+                      <div style={styles.avatarPreview}>
+                        {profile.name?.charAt(0).toUpperCase() || session?.user?.name?.charAt(0).toUpperCase() || 'A'}
+                      </div>
+                    )}
                     <div style={styles.avatarActions}>
-                      <button style={styles.uploadButton}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="17 8 12 3 7 8" />
-                          <line x1="12" y1="3" x2="12" y2="15" />
-                        </svg>
-                        Subir imagen
+                      <button
+                        style={styles.uploadButton}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingAvatar}
+                      >
+                        {uploadingAvatar ? (
+                          'Subiendo...'
+                        ) : (
+                          <>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Subir imagen
+                          </>
+                        )}
                       </button>
-                      <button style={styles.removeButton}>Eliminar</button>
+                      {avatar && (
+                        <button
+                          style={styles.removeButton}
+                          onClick={handleRemoveAvatar}
+                          disabled={uploadingAvatar}
+                        >
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   </div>
                   <p style={styles.avatarHint}>JPG, PNG o GIF. Máximo 2MB.</p>
@@ -694,6 +827,12 @@ function SettingsContent() {
                     </button>
                   ))}
                 </div>
+
+                <div style={styles.actions}>
+                  <button onClick={handleSaveAppearance} disabled={saving} style={styles.saveButton}>
+                    {saving ? 'Guardando...' : 'Guardar preferencias'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -798,6 +937,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 'bold',
     margin: '0 auto 16px',
   },
+  avatarLargeImg: {
+    width: '80px',
+    height: '80px',
+    borderRadius: '20px',
+    objectFit: 'cover' as const,
+    margin: '0 auto 16px',
+  },
   profileName: {
     color: '#f1f5f9',
     fontSize: '18px',
@@ -900,6 +1046,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center',
     fontSize: '28px',
     fontWeight: 'bold',
+  },
+  avatarPreviewImg: {
+    width: '72px',
+    height: '72px',
+    borderRadius: '16px',
+    objectFit: 'cover' as const,
   },
   avatarActions: {
     display: 'flex',

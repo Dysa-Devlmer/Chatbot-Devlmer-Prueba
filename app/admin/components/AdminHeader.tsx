@@ -5,13 +5,44 @@ import { useSession, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
+interface AdminProfile {
+  name: string;
+  email: string;
+  avatar: string | null;
+  role: string;
+}
+
 export function AdminHeader() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // Load profile from database
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await fetch('/api/admin/profile');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.profile) {
+            setProfile({
+              name: data.profile.name || 'Admin',
+              email: data.profile.email || 'admin@pithy.cl',
+              avatar: data.profile.avatar || null,
+              role: data.profile.role || 'Administrador',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    };
+    loadProfile();
+  }, []);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -163,16 +194,16 @@ export function AdminHeader() {
               onClick={() => setShowUserMenu(!showUserMenu)}
             >
               <div style={styles.avatar}>
-                {session?.user?.image ? (
-                  <img src={session.user.image} alt="Avatar" style={styles.avatarImage} />
+                {profile?.avatar ? (
+                  <img src={profile.avatar} alt="Avatar" style={styles.avatarImage} />
                 ) : (
-                  <span>{session?.user?.name?.charAt(0).toUpperCase() || 'A'}</span>
+                  <span>{profile?.name?.charAt(0).toUpperCase() || session?.user?.name?.charAt(0).toUpperCase() || 'A'}</span>
                 )}
                 <div style={styles.onlineIndicator} />
               </div>
               <div style={styles.userInfo}>
-                <span style={styles.userName}>{session?.user?.name || 'Admin'}</span>
-                <span style={styles.userRole}>Administrador</span>
+                <span style={styles.userName}>{profile?.name || session?.user?.name || 'Admin'}</span>
+                <span style={styles.userRole}>{profile?.role || 'Administrador'}</span>
               </div>
               <svg
                 width="16"
@@ -196,15 +227,15 @@ export function AdminHeader() {
                 {/* User Header in Dropdown */}
                 <div style={styles.dropdownUserHeader}>
                   <div style={styles.dropdownAvatar}>
-                    {session?.user?.image ? (
-                      <img src={session.user.image} alt="Avatar" style={styles.avatarImage} />
+                    {profile?.avatar ? (
+                      <img src={profile.avatar} alt="Avatar" style={styles.avatarImage} />
                     ) : (
-                      <span>{session?.user?.name?.charAt(0).toUpperCase() || 'A'}</span>
+                      <span>{profile?.name?.charAt(0).toUpperCase() || session?.user?.name?.charAt(0).toUpperCase() || 'A'}</span>
                     )}
                   </div>
                   <div style={styles.dropdownUserInfo}>
-                    <span style={styles.dropdownUserName}>{session?.user?.name || 'Admin'}</span>
-                    <span style={styles.dropdownUserEmail}>{session?.user?.email || 'admin@pithy.cl'}</span>
+                    <span style={styles.dropdownUserName}>{profile?.name || session?.user?.name || 'Admin'}</span>
+                    <span style={styles.dropdownUserEmail}>{profile?.email || session?.user?.email || 'admin@pithy.cl'}</span>
                   </div>
                 </div>
 
