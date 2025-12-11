@@ -37,19 +37,21 @@ module.exports = {
       min_uptime: '10s',
       restart_delay: 4000
     },
-    // 3. Ngrok - Tunel publico para webhooks de WhatsApp
+    // 3. Cloudflare Tunnel - Tunel publico para webhooks de WhatsApp
+    // URL fija: https://chatbot.zgamersa.com
+    // Reemplaza ngrok - sin problemas de antivirus, sin cambio de URL
     {
-      name: 'ngrok-tunnel',
-      script: 'E:\\prueba\\ngrok.exe',
-      args: 'http 7847',
+      name: 'cloudflare-tunnel',
+      script: 'cloudflared',
+      args: 'tunnel --config E:\\prueba\\cloudflared-config.yml run',
       interpreter: 'none',
       autorestart: true,
       watch: false,
       max_restarts: 5,
-      min_uptime: '5s',
+      min_uptime: '10s',
       restart_delay: 3000,
-      error_file: './logs/ngrok-error.log',
-      out_file: './logs/ngrok-out.log',
+      error_file: './logs/cloudflared-error.log',
+      out_file: './logs/cloudflared-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss'
     }
   ]
