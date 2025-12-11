@@ -1,7 +1,14 @@
+# Configuración de Cloudflare Tunnel para PITHY Chatbot
+# Dominio: chatbot.zgamersa.com
+# Tunnel ID: 870732ff-8a9c-42f9-8e69-1e72fa28555f
+
 tunnel: 870732ff-8a9c-42f9-8e69-1e72fa28555f
 credentials-file: C:\Users\zeNk0\.cloudflared\870732ff-8a9c-42f9-8e69-1e72fa28555f.json
 
 ingress:
+  # Ruta principal - chatbot.zgamersa.com -> localhost:7847
   - hostname: chatbot.zgamersa.com
     service: http://localhost:7847
+
+  # Catch-all para cualquier otra solicitud
   - service: http_status:404
