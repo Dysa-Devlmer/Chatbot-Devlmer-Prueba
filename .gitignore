@@ -57,3 +57,13 @@ nul
 
 # Claude settings (local only)
 .claude/settings.local.json
+
+# Python virtual environments
+venv/
+venv_xtts/
+pruebavenv_xtts/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
