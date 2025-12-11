@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -7,6 +8,25 @@ import Link from 'next/link';
 export function AdminHeader() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const navItems = [
     { href: '/admin', label: 'Dashboard', icon: '📊' },
@@ -17,55 +37,226 @@ export function AdminHeader() {
     { href: '/admin/scheduled', label: 'Programados', icon: '⏰' },
   ];
 
+  const userMenuItems = [
+    { href: '/admin/settings', label: 'Mi Perfil', icon: '👤', description: 'Información personal' },
+    { href: '/admin/settings?tab=security', label: 'Seguridad', icon: '🔒', description: 'Contraseña y acceso' },
+    { href: '/admin/settings?tab=notifications', label: 'Notificaciones', icon: '🔔', description: 'Preferencias de alertas' },
+    { href: '/admin/settings?tab=appearance', label: 'Apariencia', icon: '🎨', description: 'Tema y personalización' },
+  ];
+
   return (
     <header style={styles.header}>
       <div style={styles.container}>
         {/* Logo */}
-        <div style={styles.logo}>
+        <div style={styles.logoSection}>
           <Link href="/admin" style={styles.logoLink}>
-            <span style={styles.logoIcon}>🤖</span>
-            <span style={styles.logoText}>PITHY Admin</span>
+            <div style={styles.logoIcon}>
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="url(#gradient)" />
+                <path d="M10 12C10 10.8954 10.8954 10 12 10H20C21.1046 10 22 10.8954 22 12V20C22 21.1046 21.1046 22 20 22H12C10.8954 22 10 21.1046 10 20V12Z" fill="white" fillOpacity="0.9" />
+                <circle cx="14" cy="15" r="1.5" fill="#667eea" />
+                <circle cx="18" cy="15" r="1.5" fill="#667eea" />
+                <path d="M13 18.5C13.8284 19.3284 15.1716 19.3284 16 18.5" stroke="#667eea" strokeWidth="1.5" strokeLinecap="round" />
+                <defs>
+                  <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
+                    <stop stopColor="#667eea" />
+                    <stop offset="1" stopColor="#764ba2" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <div style={styles.logoText}>
+              <span style={styles.logoTitle}>PITHY</span>
+              <span style={styles.logoSubtitle}>Admin Panel</span>
+            </div>
           </Link>
         </div>
 
         {/* Navigation */}
         <nav style={styles.nav}>
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                ...styles.navLink,
-                ...(pathname === item.href ? styles.navLinkActive : {}),
-              }}
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const isActive = pathname === item.href ||
+              (item.href !== '/admin' && pathname?.startsWith(item.href));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  ...styles.navLink,
+                  ...(isActive ? styles.navLinkActive : {}),
+                }}
+              >
+                <span style={styles.navIcon}>{item.icon}</span>
+                <span style={styles.navLabel}>{item.label}</span>
+                {isActive && <div style={styles.activeIndicator} />}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* User Profile & Logout */}
-        <div style={styles.userSection}>
-          {session?.user && (
-            <>
-              <div style={styles.userInfo}>
-                <div style={styles.avatar}>
-                  {session.user.name?.charAt(0).toUpperCase() || 'A'}
-                </div>
-                <div style={styles.userDetails}>
-                  <span style={styles.userName}>{session.user.name}</span>
-                  <span style={styles.userRole}>Administrador</span>
-                </div>
-              </div>
+        {/* Right Section */}
+        <div style={styles.rightSection}>
+          {/* Quick Actions */}
+          <div style={styles.quickActions}>
+            <button style={styles.iconButton} title="Buscar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            </button>
+
+            {/* Notifications */}
+            <div ref={notifRef} style={{ position: 'relative' }}>
               <button
-                onClick={() => signOut({ callbackUrl: '/login' })}
-                style={styles.logoutButton}
+                style={styles.iconButton}
+                title="Notificaciones"
+                onClick={() => setShowNotifications(!showNotifications)}
               >
-                Cerrar Sesión
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                <span style={styles.notifBadge}>3</span>
               </button>
-            </>
-          )}
+
+              {showNotifications && (
+                <div style={styles.notifDropdown}>
+                  <div style={styles.dropdownHeader}>
+                    <span style={styles.dropdownTitle}>Notificaciones</span>
+                    <button style={styles.markAllRead}>Marcar todo leído</button>
+                  </div>
+                  <div style={styles.notifList}>
+                    <div style={styles.notifItem}>
+                      <div style={styles.notifIcon}>💬</div>
+                      <div style={styles.notifContent}>
+                        <div style={styles.notifText}>Nuevo mensaje de +56912345678</div>
+                        <div style={styles.notifTime}>Hace 5 minutos</div>
+                      </div>
+                    </div>
+                    <div style={styles.notifItem}>
+                      <div style={styles.notifIcon}>🤖</div>
+                      <div style={styles.notifContent}>
+                        <div style={styles.notifText}>Bot respondió automáticamente</div>
+                        <div style={styles.notifTime}>Hace 15 minutos</div>
+                      </div>
+                    </div>
+                    <div style={styles.notifItem}>
+                      <div style={styles.notifIcon}>📊</div>
+                      <div style={styles.notifContent}>
+                        <div style={styles.notifText}>Reporte semanal disponible</div>
+                        <div style={styles.notifTime}>Hace 1 hora</div>
+                      </div>
+                    </div>
+                  </div>
+                  <Link href="/admin/notifications" style={styles.viewAllLink}>
+                    Ver todas las notificaciones
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* User Menu */}
+          <div ref={menuRef} style={styles.userMenuContainer}>
+            <button
+              style={styles.userButton}
+              onClick={() => setShowUserMenu(!showUserMenu)}
+            >
+              <div style={styles.avatar}>
+                {session?.user?.image ? (
+                  <img src={session.user.image} alt="Avatar" style={styles.avatarImage} />
+                ) : (
+                  <span>{session?.user?.name?.charAt(0).toUpperCase() || 'A'}</span>
+                )}
+                <div style={styles.onlineIndicator} />
+              </div>
+              <div style={styles.userInfo}>
+                <span style={styles.userName}>{session?.user?.name || 'Admin'}</span>
+                <span style={styles.userRole}>Administrador</span>
+              </div>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                style={{
+                  transform: showUserMenu ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s',
+                  color: '#94a3b8',
+                }}
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+
+            {showUserMenu && (
+              <div style={styles.userDropdown}>
+                {/* User Header in Dropdown */}
+                <div style={styles.dropdownUserHeader}>
+                  <div style={styles.dropdownAvatar}>
+                    {session?.user?.image ? (
+                      <img src={session.user.image} alt="Avatar" style={styles.avatarImage} />
+                    ) : (
+                      <span>{session?.user?.name?.charAt(0).toUpperCase() || 'A'}</span>
+                    )}
+                  </div>
+                  <div style={styles.dropdownUserInfo}>
+                    <span style={styles.dropdownUserName}>{session?.user?.name || 'Admin'}</span>
+                    <span style={styles.dropdownUserEmail}>{session?.user?.email || 'admin@pithy.cl'}</span>
+                  </div>
+                </div>
+
+                <div style={styles.dropdownDivider} />
+
+                {/* Menu Items */}
+                <div style={styles.menuItems}>
+                  {userMenuItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      style={styles.menuItem}
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      <span style={styles.menuItemIcon}>{item.icon}</span>
+                      <div style={styles.menuItemContent}>
+                        <span style={styles.menuItemLabel}>{item.label}</span>
+                        <span style={styles.menuItemDescription}>{item.description}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                <div style={styles.dropdownDivider} />
+
+                {/* Quick Settings */}
+                <div style={styles.quickSettings}>
+                  <div style={styles.quickSettingItem}>
+                    <span>Modo Oscuro</span>
+                    <div style={styles.toggle}>
+                      <div style={styles.toggleKnob} />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={styles.dropdownDivider} />
+
+                {/* Logout */}
+                <button
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  style={styles.logoutButton}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  <span>Cerrar Sesión</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
@@ -74,102 +265,387 @@ export function AdminHeader() {
 
 const styles: { [key: string]: React.CSSProperties } = {
   header: {
-    backgroundColor: '#1e293b',
-    borderBottom: '1px solid #334155',
+    background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+    borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
     padding: '0 24px',
     position: 'sticky',
     top: 0,
-    zIndex: 100,
+    zIndex: 1000,
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
   },
   container: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: '64px',
-    maxWidth: '1400px',
+    height: '70px',
+    maxWidth: '1600px',
     margin: '0 auto',
   },
-  logo: {
+  logoSection: {
     display: 'flex',
     alignItems: 'center',
   },
   logoLink: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '12px',
     textDecoration: 'none',
   },
   logoIcon: {
-    fontSize: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoText: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  logoTitle: {
     color: '#f1f5f9',
-    fontSize: '18px',
+    fontSize: '20px',
     fontWeight: 'bold',
+    letterSpacing: '1px',
+  },
+  logoSubtitle: {
+    color: '#64748b',
+    fontSize: '11px',
+    letterSpacing: '0.5px',
   },
   nav: {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
+    background: 'rgba(30, 41, 59, 0.5)',
+    padding: '6px',
+    borderRadius: '12px',
   },
   navLink: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    padding: '8px 12px',
-    borderRadius: '6px',
+    gap: '8px',
+    padding: '10px 16px',
+    borderRadius: '8px',
     color: '#94a3b8',
     textDecoration: 'none',
     fontSize: '14px',
-    transition: 'all 0.2s',
+    fontWeight: '500',
+    transition: 'all 0.2s ease',
+    position: 'relative',
   },
   navLinkActive: {
-    backgroundColor: '#334155',
-    color: '#f1f5f9',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: '#ffffff',
+    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
   },
-  userSection: {
+  navIcon: {
+    fontSize: '16px',
+  },
+  navLabel: {
+    fontSize: '13px',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: '-6px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: '20px',
+    height: '3px',
+    background: '#667eea',
+    borderRadius: '2px',
+  },
+  rightSection: {
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
   },
-  userInfo: {
+  quickActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  iconButton: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
+    border: 'none',
+    background: 'rgba(148, 163, 184, 0.1)',
+    color: '#94a3b8',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: '6px',
+    right: '6px',
+    width: '16px',
+    height: '16px',
+    borderRadius: '50%',
+    background: '#ef4444',
+    color: 'white',
+    fontSize: '10px',
+    fontWeight: 'bold',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifDropdown: {
+    position: 'absolute',
+    top: '50px',
+    right: 0,
+    width: '360px',
+    background: '#1e293b',
+    borderRadius: '12px',
+    border: '1px solid rgba(148, 163, 184, 0.1)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+    overflow: 'hidden',
+  },
+  dropdownHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '16px',
+    borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
+  },
+  dropdownTitle: {
+    color: '#f1f5f9',
+    fontSize: '14px',
+    fontWeight: '600',
+  },
+  markAllRead: {
+    background: 'none',
+    border: 'none',
+    color: '#667eea',
+    fontSize: '12px',
+    cursor: 'pointer',
+  },
+  notifList: {
+    maxHeight: '300px',
+    overflowY: 'auto',
+  },
+  notifItem: {
+    display: 'flex',
+    gap: '12px',
+    padding: '12px 16px',
+    borderBottom: '1px solid rgba(148, 163, 184, 0.05)',
+    cursor: 'pointer',
+    transition: 'background 0.2s',
+  },
+  notifIcon: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '8px',
+    background: 'rgba(102, 126, 234, 0.1)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '16px',
+  },
+  notifContent: {
+    flex: 1,
+  },
+  notifText: {
+    color: '#e2e8f0',
+    fontSize: '13px',
+    marginBottom: '4px',
+  },
+  notifTime: {
+    color: '#64748b',
+    fontSize: '11px',
+  },
+  viewAllLink: {
+    display: 'block',
+    textAlign: 'center',
+    padding: '12px',
+    color: '#667eea',
+    fontSize: '13px',
+    textDecoration: 'none',
+    borderTop: '1px solid rgba(148, 163, 184, 0.1)',
+  },
+  userMenuContainer: {
+    position: 'relative',
+  },
+  userButton: {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
+    padding: '8px 12px',
+    borderRadius: '12px',
+    border: '1px solid rgba(148, 163, 184, 0.1)',
+    background: 'rgba(30, 41, 59, 0.5)',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   avatar: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '50%',
-    backgroundColor: '#3b82f6',
+    position: 'relative',
+    width: '40px',
+    height: '40px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     color: 'white',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '14px',
+    fontSize: '16px',
     fontWeight: 'bold',
   },
-  userDetails: {
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: '12px',
+    objectFit: 'cover',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: '-2px',
+    right: '-2px',
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
+    background: '#22c55e',
+    border: '2px solid #1e293b',
+  },
+  userInfo: {
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'flex-start',
   },
   userName: {
     color: '#f1f5f9',
     fontSize: '14px',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   userRole: {
     color: '#64748b',
+    fontSize: '11px',
+  },
+  userDropdown: {
+    position: 'absolute',
+    top: '60px',
+    right: 0,
+    width: '300px',
+    background: '#1e293b',
+    borderRadius: '16px',
+    border: '1px solid rgba(148, 163, 184, 0.1)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+    overflow: 'hidden',
+  },
+  dropdownUserHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '20px',
+    background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+  },
+  dropdownAvatar: {
+    width: '50px',
+    height: '50px',
+    borderRadius: '14px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '20px',
+    fontWeight: 'bold',
+  },
+  dropdownUserInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  dropdownUserName: {
+    color: '#f1f5f9',
+    fontSize: '16px',
+    fontWeight: '600',
+  },
+  dropdownUserEmail: {
+    color: '#64748b',
     fontSize: '12px',
   },
-  logoutButton: {
-    backgroundColor: 'transparent',
-    border: '1px solid #475569',
-    borderRadius: '6px',
-    padding: '8px 16px',
-    color: '#94a3b8',
+  dropdownDivider: {
+    height: '1px',
+    background: 'rgba(148, 163, 184, 0.1)',
+    margin: '0',
+  },
+  menuItems: {
+    padding: '8px',
+  },
+  menuItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px',
+    borderRadius: '10px',
+    textDecoration: 'none',
+    transition: 'background 0.2s',
+  },
+  menuItemIcon: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    background: 'rgba(102, 126, 234, 0.1)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '16px',
+  },
+  menuItemContent: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  menuItemLabel: {
+    color: '#e2e8f0',
     fontSize: '14px',
+    fontWeight: '500',
+  },
+  menuItemDescription: {
+    color: '#64748b',
+    fontSize: '11px',
+  },
+  quickSettings: {
+    padding: '12px 16px',
+  },
+  quickSettingItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    color: '#94a3b8',
+    fontSize: '13px',
+  },
+  toggle: {
+    width: '40px',
+    height: '22px',
+    borderRadius: '11px',
+    background: 'rgba(148, 163, 184, 0.2)',
+    position: 'relative',
     cursor: 'pointer',
-    transition: 'all 0.2s',
+  },
+  toggleKnob: {
+    position: 'absolute',
+    top: '2px',
+    left: '2px',
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    background: '#64748b',
+    transition: 'transform 0.2s',
+  },
+  logoutButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    width: '100%',
+    padding: '14px',
+    background: 'rgba(239, 68, 68, 0.1)',
+    border: 'none',
+    color: '#ef4444',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'background 0.2s',
   },
 };

@@ -1,11 +1,23 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
-// Credenciales del admin (en producción usar base de datos)
-const ADMIN_CREDENTIALS = {
+// Credenciales del admin (en producción usar base de datos con bcrypt)
+export const adminCredentials = {
   username: process.env.ADMIN_USERNAME || 'admin',
   password: process.env.ADMIN_PASSWORD || 'pithy2024',
+  name: 'Administrador',
+  email: 'admin@zgamersa.com',
 };
+
+// Función para actualizar contraseña (en producción usar base de datos)
+export function updateAdminPassword(newPassword: string) {
+  adminCredentials.password = newPassword;
+}
+
+// Función para verificar contraseña
+export function verifyAdminPassword(password: string): boolean {
+  return password === adminCredentials.password;
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -22,13 +34,13 @@ export const authOptions: NextAuthOptions = {
 
         // Verificar credenciales
         if (
-          credentials.username === ADMIN_CREDENTIALS.username &&
-          credentials.password === ADMIN_CREDENTIALS.password
+          credentials.username === adminCredentials.username &&
+          verifyAdminPassword(credentials.password)
         ) {
           return {
             id: '1',
-            name: 'Administrador',
-            email: 'admin@zgamersa.com',
+            name: adminCredentials.name,
+            email: adminCredentials.email,
             role: 'admin',
           };
         }
