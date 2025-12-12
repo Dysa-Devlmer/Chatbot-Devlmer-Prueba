@@ -213,6 +213,23 @@ export default function LearningPage() {
           <div style={styles.grid}>
             <div style={styles.panel}>
               <h2 style={styles.panelTitle}>Estado de Servicios</h2>
+
+              {/* Info message when services are not running */}
+              {(stats?.embeddings?.ollama_status !== 'connected' || stats?.embeddings?.chromadb_status !== 'connected') && (
+                <div style={{
+                  background: '#e7f3ff',
+                  border: '1px solid #b6d4fe',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '15px',
+                  fontSize: '13px',
+                  color: '#084298',
+                }}>
+                  <strong>Nota:</strong> El servicio de embeddings es opcional. Tu chatbot funciona perfectamente sin el.
+                  Activalo solo si deseas habilitar el aprendizaje automatico.
+                </div>
+              )}
+
               <div style={styles.serviceRow}>
                 <span>Ollama (Embeddings)</span>
                 <span style={{
@@ -220,10 +237,10 @@ export default function LearningPage() {
                   borderRadius: '12px',
                   fontSize: '12px',
                   fontWeight: 'bold',
-                  background: stats?.embeddings?.ollama_status === 'connected' ? '#d4edda' : '#f8d7da',
-                  color: stats?.embeddings?.ollama_status === 'connected' ? '#155724' : '#721c24',
+                  background: stats?.embeddings?.ollama_status === 'connected' ? '#d4edda' : '#f5f5f5',
+                  color: stats?.embeddings?.ollama_status === 'connected' ? '#155724' : '#666',
                 }}>
-                  {stats?.embeddings?.ollama_status || 'unknown'}
+                  {stats?.embeddings?.ollama_status === 'connected' ? 'Conectado' : 'No iniciado'}
                 </span>
               </div>
               <div style={styles.serviceRow}>
@@ -233,10 +250,10 @@ export default function LearningPage() {
                   borderRadius: '12px',
                   fontSize: '12px',
                   fontWeight: 'bold',
-                  background: stats?.embeddings?.chromadb_status === 'connected' ? '#d4edda' : '#f8d7da',
-                  color: stats?.embeddings?.chromadb_status === 'connected' ? '#155724' : '#721c24',
+                  background: stats?.embeddings?.chromadb_status === 'connected' ? '#d4edda' : '#f5f5f5',
+                  color: stats?.embeddings?.chromadb_status === 'connected' ? '#155724' : '#666',
                 }}>
-                  {stats?.embeddings?.chromadb_status || 'unknown'}
+                  {stats?.embeddings?.chromadb_status === 'connected' ? 'Conectado' : 'No iniciado'}
                 </span>
               </div>
             </div>
