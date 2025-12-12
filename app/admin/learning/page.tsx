@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 
 interface LearningStats {
@@ -52,26 +52,51 @@ export default function LearningPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'recent' | 'patterns'>('overview');
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'recent' | 'patterns' | 'live'>('overview');
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [secondsAgo, setSecondsAgo] = useState(0);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
+  // Auto-refresh cada 5 segundos
+  const fetchStats = useCallback(async (silent = false) => {
+    if (!silent) setRefreshing(true);
     try {
       const response = await fetch('/api/learning/stats');
       const data = await response.json();
       if (data.success) {
         setStats(data.stats);
+        setLastUpdate(new Date());
+        setSecondsAgo(0);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
-      setMessage({ type: 'error', text: 'Error al cargar estadisticas' });
+      if (!silent) setMessage({ type: 'error', text: 'Error al cargar estadisticas' });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  // Timer para mostrar "hace X segundos"
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsAgo(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Auto-refresh
+  useEffect(() => {
+    fetchStats();
+
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        fetchStats(true); // silent refresh
+      }, 5000); // cada 5 segundos
+
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh, fetchStats]);
 
   const refreshStats = async () => {
     setRefreshing(true);
@@ -114,12 +139,60 @@ export default function LearningPage() {
           <Link href="/admin" style={{ color: 'white', textDecoration: 'none', fontSize: '24px' }}>
             <span style={{ cursor: 'pointer' }}>&#8592;</span>
           </Link>
-          <h1 style={{ margin: 0, fontSize: '24px' }}>Sistema de Aprendizaje RAG</h1>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '24px' }}>Sistema de Aprendizaje RAG</h1>
+            <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '4px' }}>
+              {autoRefresh && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(255,255,255,0.2)',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                }}>
+                  <span style={{
+                    width: '8px',
+                    height: '8px',
+                    background: '#4ade80',
+                    borderRadius: '50%',
+                    animation: 'pulse 2s infinite',
+                  }} />
+                  EN VIVO - Actualizado hace {secondsAgo}s
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <button onClick={refreshStats} disabled={refreshing} style={styles.refreshBtn}>
-          {refreshing ? 'Actualizando...' : 'Actualizar Stats'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+          }}>
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              style={{ width: '16px', height: '16px' }}
+            />
+            Auto-refresh
+          </label>
+          <button onClick={() => fetchStats(false)} disabled={refreshing} style={styles.refreshBtn}>
+            {refreshing ? 'Actualizando...' : 'Actualizar'}
+          </button>
+        </div>
       </div>
+
+      {/* Pulse animation style */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
 
       {/* Message */}
       {message && (
@@ -165,6 +238,29 @@ export default function LearningPage() {
           }}
         >
           Patrones
+        </button>
+        <button
+          onClick={() => setSelectedTab('live')}
+          style={{
+            ...styles.tab,
+            background: selectedTab === 'live' ? '#10b981' : '#e0e0e0',
+            color: selectedTab === 'live' ? 'white' : '#333',
+            position: 'relative',
+          }}
+        >
+          En Vivo
+          {autoRefresh && (
+            <span style={{
+              position: 'absolute',
+              top: '-4px',
+              right: '-4px',
+              width: '10px',
+              height: '10px',
+              background: '#ef4444',
+              borderRadius: '50%',
+              animation: 'pulse 1s infinite',
+            }} />
+          )}
         </button>
       </div>
 
@@ -375,6 +471,207 @@ export default function LearningPage() {
               No hay patrones identificados aun
             </div>
           )}
+        </div>
+      )}
+
+      {selectedTab === 'live' && (
+        <div style={styles.panel}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px',
+            paddingBottom: '15px',
+            borderBottom: '1px solid #eee',
+          }}>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#333' }}>
+              Monitor en Tiempo Real
+            </h2>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '8px 16px',
+              background: autoRefresh ? '#dcfce7' : '#fef3c7',
+              borderRadius: '20px',
+              fontSize: '13px',
+            }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: autoRefresh ? '#22c55e' : '#f59e0b',
+                animation: autoRefresh ? 'pulse 1s infinite' : 'none',
+              }} />
+              {autoRefresh ? 'Monitoreando...' : 'Pausado'}
+            </div>
+          </div>
+
+          {/* Live Stats Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '15px',
+            marginBottom: '25px',
+          }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '36px', fontWeight: 'bold' }}>
+                {stats?.embeddings?.total_embeddings || 0}
+              </div>
+              <div style={{ fontSize: '13px', opacity: 0.9 }}>Vectores en ChromaDB</div>
+            </div>
+
+            <div style={{
+              background: stats?.embeddings?.ollama_status === 'connected'
+                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+              color: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '24px', marginBottom: '5px' }}>
+                {stats?.embeddings?.ollama_status === 'connected' ? '✓' : '○'}
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>Ollama</div>
+              <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                {stats?.embeddings?.ollama_status === 'connected' ? 'Conectado' : 'Desconectado'}
+              </div>
+            </div>
+
+            <div style={{
+              background: stats?.embeddings?.chromadb_status === 'connected'
+                ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+              color: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '24px', marginBottom: '5px' }}>
+                {stats?.embeddings?.chromadb_status === 'connected' ? '✓' : '○'}
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold' }}>ChromaDB</div>
+              <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                {stats?.embeddings?.chromadb_status === 'connected' ? 'Conectado' : 'Desconectado'}
+              </div>
+            </div>
+
+            <div style={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              color: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '36px', fontWeight: 'bold' }}>
+                {stats?.overview?.pendingEvaluation || 0}
+              </div>
+              <div style={{ fontSize: '13px', opacity: 0.9 }}>Pendientes Evaluacion</div>
+            </div>
+          </div>
+
+          {/* Recent Activity Feed */}
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '15px', color: '#333' }}>
+              Ultimas Conversaciones Aprendidas
+            </h3>
+            {stats?.recent && stats.recent.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {stats.recent.map((conv, index) => (
+                  <div
+                    key={conv.id}
+                    style={{
+                      background: index === 0 ? '#f0fdf4' : '#f8f9fa',
+                      border: index === 0 ? '2px solid #22c55e' : '1px solid #e5e7eb',
+                      borderRadius: '10px',
+                      padding: '15px',
+                      position: 'relative',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    {index === 0 && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '10px',
+                        background: '#22c55e',
+                        color: 'white',
+                        padding: '2px 10px',
+                        borderRadius: '10px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                      }}>
+                        NUEVO
+                      </span>
+                    )}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '10px',
+                    }}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {conv.intent && (
+                          <span style={{
+                            background: '#dbeafe',
+                            color: '#1e40af',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                          }}>
+                            {conv.intent}
+                          </span>
+                        )}
+                        <span style={{
+                          background: conv.wasHelpful === true ? '#dcfce7' : conv.wasHelpful === false ? '#fee2e2' : '#fef3c7',
+                          color: conv.wasHelpful === true ? '#166534' : conv.wasHelpful === false ? '#991b1b' : '#92400e',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                        }}>
+                          {conv.wasHelpful === true ? 'Util' : conv.wasHelpful === false ? 'No util' : 'Pendiente'}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                        {new Date(conv.createdAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Usuario:</div>
+                      <div style={{ fontSize: '14px', color: '#1f2937' }}>{conv.userMessage}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Bot:</div>
+                      <div style={{ fontSize: '13px', color: '#4b5563' }}>
+                        {conv.botResponse.length > 200 ? conv.botResponse.substring(0, 200) + '...' : conv.botResponse}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px',
+                color: '#6b7280',
+                background: '#f9fafb',
+                borderRadius: '10px',
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '10px' }}>📚</div>
+                <div>Esperando conversaciones...</div>
+                <div style={{ fontSize: '12px', marginTop: '5px' }}>
+                  Las conversaciones apareceran aqui en tiempo real
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
