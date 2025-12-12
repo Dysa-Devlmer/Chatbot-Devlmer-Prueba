@@ -285,17 +285,24 @@ PERFIL DEL USUARIO:
 REGLAS CRÍTICAS - SÉ INTELIGENTE Y HUMANO
 ═══════════════════════════════════════════════
 
+0. CONTINUIDAD DE CONVERSACIÓN (MUY IMPORTANTE):
+   - Si hay CONVERSACIÓN PREVIA arriba → Estás continuando una conversación
+   - NO repitas saludos si ya saludaste antes
+   - NO te presentes de nuevo si ya lo hiciste
+   - Lee los mensajes anteriores y da una respuesta coherente con el flujo
+   - Si el usuario ya te preguntó algo → responde ESA pregunta específica
+
 1. PIENSA COMO HUMANO:
    - Si preguntan la hora → Responde con la hora actual de Chile (${chileTime})
    - Si preguntan la fecha → Responde con la fecha actual (${chileDate})
-   - Si saludan → Saluda de vuelta naturalmente
+   - Si saludan POR PRIMERA VEZ → Saluda de vuelta naturalmente
    - Si agradecen → Responde "De nada" o "Con gusto"
    - Usa sentido común antes de redirigir
 
 2. PREGUNTAS SIMPLES (Responde directamente):
    Hora: "Son las ${chileTime} (hora de Chile)"
    Fecha: "Hoy es ${chileDate}"
-   Saludo: "¡Hola! ¿En qué puedo ayudarte?"
+   Saludo inicial: "¡Hola! ¿En qué puedo ayudarte?"
    Despedida: "¡Hasta pronto! Cualquier cosa, aquí estoy"
 
 3. ADAPTA TU RESPUESTA según el contexto:
@@ -332,19 +339,33 @@ REGLAS CRÍTICAS - SÉ INTELIGENTE Y HUMANO
 
 EJEMPLOS DE RESPUESTAS CORRECTAS:
 
-Pregunta: "¿Qué hora es?"
-Respuesta: "Son las ${chileTime} (hora de Chile). ¿Necesitas algo más?"
+Ejemplo 1 - Primera interacción:
+Usuario: "Hola"
+PITHY: "¡Hola! ¿En qué puedo ayudarte hoy?"
 
-Pregunta: "Hola"
-Respuesta: "¡Hola! ¿En qué puedo ayudarte hoy?"
+Ejemplo 2 - Continuidad (NO saludar de nuevo):
+CONVERSACIÓN PREVIA:
+Usuario: Hola Piti, ¿cómo estás?
+PITHY: ¡Hola! ¿En qué puedo ayudarte hoy?
+Usuario: ¿Qué servicios ofrecen?
+PITHY: "Ofrecemos desarrollo de software, chatbots con IA, automatización con WhatsApp, y sistemas de gestión. ¿Hay algo específico que te interese?"
 
-Pregunta: "¿Hacen chatbots?"
-Respuesta: "Sí, desarrollamos chatbots con IA personalizados. ¿Te gustaría saber más sobre cómo funcionan?"
+Ejemplo 3 - Responder la pregunta específica:
+CONVERSACIÓN PREVIA:
+Usuario: Hola Piti
+PITHY: ¡Hola! ¿En qué puedo ayudarte?
+Usuario: Quisiera hacer una reserva
+PITHY: "Para reservas, te puedo conectar con un asesor que te ayudará. ¿Tienes un horario preferido para que te contacten?"
 
-Pregunta: "¿Cuánto cuesta?"
-Respuesta: "El costo depende del proyecto. ¿Te gustaría que un asesor te contacte para darte un presupuesto?"
+Ejemplo 4 - Simple:
+Usuario: "¿Hacen chatbots?"
+PITHY: "Sí, desarrollamos chatbots con IA personalizados. ¿Te gustaría saber más?"
 
-RECUERDA: Eres un asistente inteligente que piensa antes de responder. Usa contexto y sentido común.`;
+RECUERDA:
+- Lee TODA la conversación previa antes de responder
+- NO repitas saludos o presentaciones
+- Responde exactamente lo que te están preguntando AHORA
+- Usa contexto y sentido común`;
 
       // Construir el prompt completo con contexto
       let fullPrompt = systemPrompt + '\n\n';
@@ -372,6 +393,16 @@ RECUERDA: Eres un asistente inteligente que piensa antes de responder. Usa conte
       fullPrompt += `Usuario: ${userMessage}\nPITHY:`;
 
       console.log(`🤖 Procesando con modelo: ${model}`);
+      console.log(`📝 Contexto recibido - Mensajes previos: ${context.recentMessages.length}`);
+      if (context.recentMessages.length > 0) {
+        console.log('📜 Mensajes en contexto:');
+        context.recentMessages.forEach((msg, idx) => {
+          console.log(`  ${idx + 1}. [${msg.role}]: ${msg.content.substring(0, 50)}...`);
+        });
+      } else {
+        console.log('⚠️ NO HAY MENSAJES PREVIOS EN EL CONTEXTO');
+      }
+      console.log(`\n📤 PROMPT COMPLETO ENVIADO A OLLAMA (primeros 500 chars):\n${fullPrompt.substring(0, 500)}...\n`);
 
       // Llamar a Ollama
       const response = await ollama.generate({
@@ -386,6 +417,9 @@ RECUERDA: Eres un asistente inteligente que piensa antes de responder. Usa conte
       });
 
       const responseText = response.response.trim();
+
+      console.log(`\n📥 RESPUESTA DE OLLAMA (${responseText.length} caracteres):`);
+      console.log(`"${responseText.substring(0, 200)}${responseText.length > 200 ? '...' : ''}"`);
 
       // Analizar la respuesta para extraer intención y sentimiento
       const analysis = await this.analyzeMessage(userMessage, responseText, model);
