@@ -310,10 +310,12 @@ export async function POST(request: NextRequest) {
             // Si el usuario envió audio, responder SOLO con audio (sin texto para evitar spam)
             console.log(`🔊 Generando respuesta de audio...`);
 
-            // Limpiar el texto para TTS (quitar emojis y firma del bot)
+            // Limpiar el texto para TTS (quitar firma del bot y emojis)
             const textForTTS = aiResult.response
-              .replace(/🤖 Asistente automático PITHY/g, '')
+              .replace(/— PITHY 🤖/g, '')              // Nueva firma
+              .replace(/🤖 Asistente automático PITHY/g, '')  // Firma antigua (por compatibilidad)
               .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Quitar emojis
+              .replace(/\n\n$/g, '')                   // Quitar saltos de línea finales
               .trim();
 
             const ttsResult = await AIService.textToSpeech(textForTTS);
