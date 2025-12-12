@@ -374,9 +374,11 @@ U: Adiós → P: ¡Hasta pronto!`;
         ).catch(err => console.debug('Error guardando aprendizaje:', err));
       }
 
-      // Respuesta limpia sin firma repetitiva
+      // Agregar indicador de bot (corto y claro)
+      const responseWithIndicator = `${responseText}\n\n— PITHY 🤖`;
+
       return {
-        response: responseText,
+        response: responseWithIndicator,
         intent: analysis.intent,
         entities: analysis.entities,
         sentiment: analysis.sentiment,
