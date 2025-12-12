@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         intent,
         category,
         userPhone,
-        context: context ? JSON.stringify(context) : null,
+        context: context ? JSON.stringify(context) : undefined,
         responseTime,
       },
     });
