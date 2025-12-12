@@ -221,10 +221,16 @@ export class AIService {
       // Obtener modelo activo
       const model = await this.getActiveModel();
 
-      // 🔍 RAG: Buscar conversaciones similares para contexto
+      // 🔍 RAG: Buscar conversaciones similares para contexto (con timeout para no bloquear)
       let similarConversations: SimilarConversation[] = [];
       try {
-        similarConversations = await this.searchSimilarConversations(userMessage, 3, true);
+        // Timeout de 500ms para no demorar la respuesta
+        const ragPromise = this.searchSimilarConversations(userMessage, 3, true);
+        const timeoutPromise = new Promise<SimilarConversation[]>((resolve) =>
+          setTimeout(() => resolve([]), 500)
+        );
+        similarConversations = await Promise.race([ragPromise, timeoutPromise]);
+
         if (similarConversations.length > 0) {
           console.log(`📚 RAG: Encontradas ${similarConversations.length} conversaciones similares`);
         }
