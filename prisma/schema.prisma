@@ -240,6 +240,129 @@ model Campaign {
   @@index([scheduledFor])
 }
 
+// ==========================================
+// SISTEMA DE APRENDIZAJE CONTINUO (RAG)
+// ==========================================
+
+// Conversaciones guardadas para aprendizaje
+model ConversationLearning {
+  id              String   @id @default(cuid())
+  conversationId  String?  // Referencia opcional a conversación original
+
+  // Contenido de la interacción
+  userMessage     String   // Pregunta/mensaje del usuario
+  botResponse     String   // Respuesta del bot
+
+  // Evaluación de calidad
+  wasHelpful      Boolean? // null = no evaluado, true = útil, false = no útil
+  helpfulScore    Int?     // 1-5 estrellas (opcional)
+
+  // Contexto adicional
+  context         Json?    // Información contextual (usuario, tema previo, etc.)
+  intent          String?  // Intención detectada (saludo, consulta, queja, etc.)
+  category        String?  // Categoría del tema (soporte, ventas, info, etc.)
+
+  // Vector embedding reference
+  vectorId        String?  // ID en ChromaDB para búsqueda semántica
+  embeddingModel  String   @default("nomic-embed-text") // Modelo usado
+
+  // Metadata
+  userPhone       String?  // Teléfono del usuario (para personalización)
+  responseTime    Int?     // Tiempo de respuesta en ms
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([conversationId])
+  @@index([wasHelpful])
+  @@index([intent])
+  @@index([category])
+  @@index([createdAt])
+  @@index([userPhone])
+}
+
+// Registro de feedback de usuarios
+model FeedbackLog {
+  id              String   @id @default(cuid())
+  learningId      String?  // Referencia a ConversationLearning
+  conversationId  String?  // Referencia a conversación original
+  messageId       String?  // Mensaje específico evaluado
+
+  // Tipo de feedback
+  feedbackType    String   // "thumbs_up", "thumbs_down", "star_rating", "flag", "comment"
+  rating          Int?     // 1-5 para star_rating
+
+  // Comentario opcional del usuario
+  userComment     String?
+
+  // Metadata
+  userPhone       String?
+  source          String   @default("whatsapp") // whatsapp, admin_panel, api
+
+  createdAt       DateTime @default(now())
+
+  @@index([learningId])
+  @@index([conversationId])
+  @@index([feedbackType])
+  @@index([createdAt])
+}
+
+// Patrones de preguntas frecuentes (auto-generado)
+model FrequentPattern {
+  id              String   @id @default(cuid())
+
+  // Patrón identificado
+  pattern         String   // Ejemplo: "pregunta_hora", "consulta_precio"
+  exampleQuery    String   // Ejemplo de pregunta típica
+  bestResponse    String   // Mejor respuesta identificada
+
+  // Métricas
+  frequency       Int      @default(1)  // Veces que apareció
+  successRate     Float?   // % de respuestas útiles
+  avgRating       Float?   // Promedio de calificación
+
+  // Vector embedding
+  vectorId        String?  // ID en ChromaDB
+
+  isActive        Boolean  @default(true)
+  lastSeen        DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([pattern])
+  @@index([frequency])
+  @@index([isActive])
+}
+
+// Estadísticas del sistema de aprendizaje
+model LearningStats {
+  id              String   @id @default(cuid())
+  date            DateTime @default(now()) @unique
+
+  // Métricas diarias
+  totalLearnings  Int      @default(0)  // Conversaciones guardadas
+  positiveFeedback Int     @default(0)  // Thumbs up
+  negativeFeedback Int     @default(0)  // Thumbs down
+  avgResponseTime Float?   // Tiempo promedio de respuesta
+
+  // Búsquedas semánticas
+  totalSearches   Int      @default(0)  // Búsquedas en ChromaDB
+  searchHits      Int      @default(0)  // Búsquedas con resultados útiles
+
+  // Modelo info
+  embeddingsCount Int      @default(0)  // Total de embeddings
+  vectorDbSize    Float?   // Tamaño de ChromaDB en MB
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([date])
+}
+
+// ==========================================
+// FIN SISTEMA DE APRENDIZAJE
+// ==========================================
+
 // Configuración del administrador
 model AdminProfile {
   id              String   @id @default(uuid())
