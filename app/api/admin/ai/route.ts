@@ -179,7 +179,7 @@ async function getAIConfig(): Promise<AIConfig> {
     autoRespond: configMap['ai_auto_respond'] !== 'false',
     sentimentAnalysis: configMap['ai_sentiment_analysis'] !== 'false',
     intentDetection: configMap['ai_intent_detection'] !== 'false',
-    ragEnabled: configMap['rag_enabled'] === 'true', // Por defecto deshabilitado
+    ragEnabled: configMap['rag_enabled'] !== 'false', // Por defecto HABILITADO para aprendizaje
   };
 }
 

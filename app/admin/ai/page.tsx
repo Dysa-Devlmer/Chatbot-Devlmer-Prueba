@@ -28,7 +28,7 @@ export default function AIConfigPage() {
   const [autoRespond, setAutoRespond] = useState(true);
   const [sentimentAnalysis, setSentimentAnalysis] = useState(true);
   const [intentDetection, setIntentDetection] = useState(true);
-  const [ragEnabled, setRagEnabled] = useState(false); // RAG deshabilitado por defecto para velocidad
+  const [ragEnabled, setRagEnabled] = useState(true); // RAG habilitado por defecto para aprendizaje continuo
 
   useEffect(() => {
     fetchConfig();

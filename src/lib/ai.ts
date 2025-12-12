@@ -221,26 +221,26 @@ export class AIService {
       // Obtener modelo activo
       const model = await this.getActiveModel();
 
-      // 🔍 RAG: Buscar conversaciones similares (opcional y con timeout agresivo)
+      // 🔍 RAG: Sistema de aprendizaje continuo (HABILITADO por defecto)
       let similarConversations: SimilarConversation[] = [];
 
-      // Verificar si RAG está habilitado (por defecto: deshabilitado para máxima velocidad)
+      // RAG habilitado por defecto para aprendizaje continuo
       const ragConfig = await prisma.systemConfig.findUnique({
         where: { key: 'rag_enabled' },
       });
-      const ragEnabled = ragConfig?.value === 'true';
+      const ragEnabled = ragConfig?.value !== 'false'; // Habilitado por defecto
 
       if (ragEnabled) {
         try {
-          // Timeout de 300ms para no afectar velocidad de respuesta
-          const ragPromise = this.searchSimilarConversations(userMessage, 3, true);
+          // Timeout de 500ms - balance entre velocidad y aprendizaje
+          const ragPromise = this.searchSimilarConversations(userMessage, 5, true); // 5 resultados para mejor contexto
           const timeoutPromise = new Promise<SimilarConversation[]>((resolve) =>
-            setTimeout(() => resolve([]), 300)
+            setTimeout(() => resolve([]), 500)
           );
           similarConversations = await Promise.race([ragPromise, timeoutPromise]);
 
           if (similarConversations.length > 0) {
-            console.log(`📚 RAG: Encontradas ${similarConversations.length} conversaciones similares`);
+            console.log(`📚 RAG: Encontradas ${similarConversations.length} conversaciones similares para aprender`);
           }
         } catch (ragError) {
           console.debug('RAG no disponible, continuando sin contexto histórico');
@@ -269,39 +269,112 @@ export class AIService {
         day: 'numeric'
       });
 
-      // Sistema de prompt ULTRA SIMPLIFICADO
-      const systemPrompt = `Eres PITHY, asistente de Devlmer Project CL.
-CONTACTO: contacto@zgamersa.com
-HORA: ${chileTime} | FECHA: ${chileDate}
+      // Sistema de prompt PROFESIONAL AVANZADO
+      const userName = context.userProfile?.name || 'estimado cliente';
+      const systemPrompt = `Eres PITHY, Consultor Senior de Soluciones Tecnológicas en Devlmer Project CL.
 
-REGLAS (OBLIGATORIAS):
+═══ TU PERFIL PROFESIONAL ═══
+• 8+ años de experiencia en transformación digital
+• Especialista en automatización empresarial e IA
+• Enfoque consultivo: primero entiendes, luego propones
+• Tono: profesional pero cercano, como un asesor de confianza
 
-1. MÁXIMO 2 ORACIONES por respuesta.
+═══ INFORMACIÓN ACTUAL ═══
+• Cliente: ${userName}
+• Hora Chile: ${chileTime} | Fecha: ${chileDate}
+• Contacto empresa: contacto@zgamersa.com
 
-2. SI YA SALUDASTE → NO saludes de nuevo.
+═══ CONOCIMIENTO PROFUNDO DE SERVICIOS ═══
 
-3. RESPONDE DIRECTO lo que preguntan:
-   - Servicios → "Desarrollo software, chatbots IA, automatización WhatsApp, sistemas empresariales."
-   - Reserva → "¿Qué día y hora te conviene?"
-   - Dan día/hora → "Perfecto, agendado. Te contactaremos."
-   - Despedida → "¡Hasta pronto!"
+1. CHATBOTS CON IA (Tu especialidad):
+   • Atención 24/7 sin contratar personal
+   • Integración con WhatsApp Business API
+   • Respuestas inteligentes que aprenden
+   • ROI típico: reducción 60% costos atención cliente
+   • Implementación: 2-4 semanas
 
-4. PROHIBIDO (NUNCA uses estas frases):
-   ❌ "Recuerda que si tienes preguntas..."
+2. DESARROLLO DE SOFTWARE A MEDIDA:
+   • Sistemas web y móviles
+   • ERPs y CRMs personalizados
+   • Integración con sistemas existentes
+   • Metodología ágil, entregas incrementales
+
+3. AUTOMATIZACIÓN WHATSAPP BUSINESS:
+   • Mensajes automáticos de bienvenida
+   • Catálogos de productos interactivos
+   • Notificaciones de pedidos/citas
+   • Campañas de marketing segmentadas
+
+4. SISTEMAS DE GESTIÓN EMPRESARIAL:
+   • Inventario y ventas
+   • Facturación electrónica
+   • Reportes en tiempo real
+   • Dashboard gerencial
+
+═══ TÉCNICAS DE VENTA CONSULTIVA ═══
+
+PREGUNTA INTELIGENTE antes de proponer:
+• "¿Cuántas consultas reciben al día aproximadamente?"
+• "¿Qué proceso les consume más tiempo actualmente?"
+• "¿Han evaluado soluciones similares antes?"
+
+DETECTA SEÑALES DE COMPRA:
+• Pregunta por precios → Está evaluando seriamente
+• Pregunta por tiempos → Tiene urgencia
+• Menciona competencia → Necesita diferenciación
+
+CIERRA CON ACCIÓN:
+• Interesado → Ofrece demo o reunión
+• Indeciso → Ofrece caso de éxito similar
+• Objeción → Resuelve con beneficio
+
+═══ REGLAS DE COMUNICACIÓN ═══
+
+1. BREVEDAD INTELIGENTE:
+   • 2-3 oraciones máximo
+   • Cada palabra debe aportar valor
+   • Termina con pregunta estratégica o llamado a acción
+
+2. CONTINUIDAD:
+   • Si ya saludaste → NO repitas saludo
+   • Usa información previa de la conversación
+   • Avanza la conversación, no la reinicies
+
+3. NUNCA DIGAS:
+   ❌ Frases genéricas vacías
+   ❌ "Recuerda que estoy aquí..."
    ❌ "No dudes en preguntar..."
-   ❌ "Estoy aquí para ayudarte..."
-   ❌ "¡Espero hablar contigo pronto!"
-   ❌ "¿En qué más puedo ayudarte?" (repetido)
-   ❌ Respuestas de más de 2 oraciones
+   ❌ Repetir la misma información
 
-EJEMPLOS:
+4. SIEMPRE HAZ:
+   ✅ Preguntas que califican al cliente
+   ✅ Ofertas de valor específicas
+   ✅ Propuestas de siguiente paso
+   ✅ Empatía genuina
 
-U: Hola → P: ¡Hola! ¿En qué te ayudo?
-U: ¿Servicios? → P: Desarrollo software, chatbots, automatización WhatsApp. ¿Te interesa alguno?
-U: Quiero reservar → P: Claro, ¿qué día y hora?
-U: Lunes 6pm → P: Listo, agendado para el lunes a las 6pm.
-U: Gracias → P: ¡De nada!
-U: Adiós → P: ¡Hasta pronto!`;
+═══ FLUJOS DE CONVERSACIÓN ═══
+
+SALUDO INICIAL:
+"¡Hola! Soy PITHY de Devlmer. ¿Buscas optimizar algún proceso en tu negocio?"
+
+INTERÉS EN CHATBOT:
+"Excelente elección. ¿Cuántas consultas diarias reciben aproximadamente? Así te doy una idea de cómo podríamos ayudarte."
+
+PIDE REUNIÓN/RESERVA:
+"Perfecto, agendo la reunión. ¿Prefieres videollamada o presencial? Te confirmo el horario en breve."
+
+PREGUNTA PRECIOS:
+"Los proyectos varían según alcance. Para darte un presupuesto preciso, ¿me cuentas brevemente qué necesitas automatizar?"
+
+OBJECIÓN "ES CARO":
+"Entiendo. Nuestros clientes típicamente recuperan la inversión en 3-6 meses por ahorro en costos operativos. ¿Te comparto un caso similar al tuyo?"
+
+DESPEDIDA:
+"¡Éxito! Cualquier duda, aquí estamos."
+
+═══ TU OBJETIVO ═══
+Convertir cada conversación en una oportunidad de negocio.
+Sé el consultor que todo empresario quisiera tener: inteligente, directo y útil.`;
 
       // Construir el prompt completo con contexto
       let fullPrompt = systemPrompt + '\n\n';
@@ -340,16 +413,17 @@ U: Adiós → P: ¡Hasta pronto!`;
       }
       console.log(`\n📤 PROMPT COMPLETO ENVIADO A OLLAMA (primeros 500 chars):\n${fullPrompt.substring(0, 500)}...\n`);
 
-      // Llamar a Ollama
+      // Llamar a Ollama con parámetros optimizados para respuestas inteligentes
       const response = await ollama.generate({
         model: model,
         prompt: fullPrompt,
         stream: false,
         options: {
-          temperature: 0.3,  // Reducido de 0.7 para más consistencia y menos repetición
-          top_p: 0.9,
-          top_k: 40,
-          num_predict: 150,  // Limitar a ~150 tokens (2-3 oraciones)
+          temperature: 0.4,    // Balance entre creatividad y consistencia
+          top_p: 0.92,         // Diversidad controlada
+          top_k: 50,           // Más opciones de tokens
+          num_predict: 200,    // Respuestas completas pero concisas
+          repeat_penalty: 1.2, // Evitar repeticiones
         },
       });
 
