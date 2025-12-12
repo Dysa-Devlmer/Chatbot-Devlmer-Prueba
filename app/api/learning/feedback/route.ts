@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       feedbacks,
-      summary: summary.reduce((acc, item) => {
+      summary: summary.reduce((acc: Record<string, number>, item: { feedbackType: string; _count: number }) => {
         acc[item.feedbackType] = item._count;
         return acc;
       }, {} as Record<string, number>),

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       _count: true,
     });
 
-    const feedbackSummary = feedbackStats.reduce((acc, item) => {
+    const feedbackSummary = feedbackStats.reduce((acc: Record<string, number>, item: { feedbackType: string; _count: number }) => {
       acc[item.feedbackType] = item._count;
       return acc;
     }, {} as Record<string, number>);
@@ -116,11 +116,11 @@ export async function GET(request: NextRequest) {
           total: totalFeedback,
           ...feedbackSummary,
         },
-        categories: categoryStats.map((c) => ({
+        categories: categoryStats.map((c: { category: string | null; _count: number }) => ({
           category: c.category || 'sin_categoria',
           count: c._count,
         })),
-        intents: intentStats.map((i) => ({
+        intents: intentStats.map((i: { intent: string | null; _count: number }) => ({
           intent: i.intent || 'sin_intent',
           count: i._count,
         })),

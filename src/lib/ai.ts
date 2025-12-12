@@ -11,6 +11,24 @@ const ollama = new Ollama({
   host: process.env.OLLAMA_HOST || 'http://localhost:11434',
 });
 
+// URL del servicio de embeddings para RAG
+const EMBEDDINGS_SERVICE_URL = process.env.EMBEDDINGS_SERVICE_URL || 'http://localhost:8001';
+
+// Interfaces para el sistema de aprendizaje
+interface SimilarConversation {
+  id: string;
+  user_message: string;
+  bot_response: string;
+  similarity: number;
+  was_helpful: boolean | null;
+}
+
+interface LearningResult {
+  id: string;
+  vectorId: string | null;
+  success: boolean;
+}
+
 export interface ConversationContext {
   userId: string;
   conversationId: string;
@@ -46,6 +64,88 @@ export class AIService {
         models: [],
         error: error instanceof Error ? error.message : 'Unknown error',
       };
+    }
+  }
+
+  /**
+   * Busca conversaciones similares en el sistema de aprendizaje (RAG)
+   */
+  static async searchSimilarConversations(
+    query: string,
+    nResults: number = 3,
+    filterHelpful: boolean = true
+  ): Promise<SimilarConversation[]> {
+    try {
+      const response = await fetch(`${EMBEDDINGS_SERVICE_URL}/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          n_results: nResults,
+          filter_helpful: filterHelpful,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('⚠️ Servicio de embeddings no disponible para búsqueda');
+        return [];
+      }
+
+      const data = await response.json();
+      return data.results || [];
+    } catch (error) {
+      // Silenciosamente retorna vacío si el servicio no está disponible
+      console.debug('Servicio de embeddings no disponible:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Guarda una conversación para aprendizaje futuro
+   */
+  static async storeLearning(
+    userMessage: string,
+    botResponse: string,
+    context: ConversationContext,
+    intent?: string,
+    category?: string
+  ): Promise<LearningResult | null> {
+    try {
+      const response = await fetch(`${EMBEDDINGS_SERVICE_URL}/store`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: `learn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          user_message: userMessage,
+          bot_response: botResponse,
+          conversation_id: context.conversationId,
+          user_id: context.userId,
+          intent,
+          category,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('⚠️ No se pudo guardar aprendizaje en embeddings');
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('📚 Conversación guardada para aprendizaje:', data.vector_id);
+
+      return {
+        id: data.id || '',
+        vectorId: data.vector_id || null,
+        success: true,
+      };
+    } catch (error) {
+      // No bloquear si el servicio no está disponible
+      console.debug('Servicio de embeddings no disponible para guardar:', error);
+      return null;
     }
   }
 
@@ -120,6 +220,17 @@ export class AIService {
 
       // Obtener modelo activo
       const model = await this.getActiveModel();
+
+      // 🔍 RAG: Buscar conversaciones similares para contexto
+      let similarConversations: SimilarConversation[] = [];
+      try {
+        similarConversations = await this.searchSimilarConversations(userMessage, 3, true);
+        if (similarConversations.length > 0) {
+          console.log(`📚 RAG: Encontradas ${similarConversations.length} conversaciones similares`);
+        }
+      } catch (ragError) {
+        console.debug('RAG no disponible, continuando sin contexto histórico');
+      }
 
       // Construir el contexto de la conversación
       const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
@@ -223,6 +334,17 @@ RECUERDA: Eres un asistente inteligente que piensa antes de responder. Usa conte
       // Construir el prompt completo con contexto
       let fullPrompt = systemPrompt + '\n\n';
 
+      // 📚 RAG: Agregar contexto de conversaciones similares exitosas
+      if (similarConversations.length > 0) {
+        fullPrompt += 'EJEMPLOS DE RESPUESTAS EXITOSAS ANTERIORES (usa como referencia pero NO copies exactamente):\n';
+        similarConversations.forEach((conv, index) => {
+          fullPrompt += `Ejemplo ${index + 1} (similitud: ${(conv.similarity * 100).toFixed(0)}%):\n`;
+          fullPrompt += `  Pregunta: "${conv.user_message}"\n`;
+          fullPrompt += `  Respuesta: "${conv.bot_response}"\n\n`;
+        });
+        fullPrompt += 'Usa estos ejemplos como guía para el tono y estilo, pero adapta tu respuesta al contexto actual.\n\n';
+      }
+
       // Agregar contexto de mensajes previos
       if (context.recentMessages.length > 0) {
         fullPrompt += 'CONVERSACIÓN PREVIA:\n';
@@ -254,6 +376,15 @@ RECUERDA: Eres un asistente inteligente que piensa antes de responder. Usa conte
       const analysis = await this.analyzeMessage(userMessage, responseText, model);
 
       console.log(`✅ Respuesta generada (${responseText.length} caracteres)`);
+
+      // 📚 RAG: Guardar conversación para aprendizaje futuro (no bloquea)
+      this.storeLearning(
+        userMessage,
+        responseText,
+        context,
+        analysis.intent,
+        analysis.intent // Usar intent como category también
+      ).catch(err => console.debug('Error guardando aprendizaje:', err));
 
       // Agregar firma automática del bot
       const responseWithSignature = `${responseText}\n\n🤖 Asistente automático PITHY`;
@@ -1141,6 +1272,48 @@ engine.runAndWait()
         available: false,
         backend: 'unknown',
         error: error instanceof Error ? error.message : 'Error verificando TTS',
+      };
+    }
+  }
+
+  /**
+   * Verifica si el servicio de embeddings/RAG está disponible
+   */
+  static async checkEmbeddingsStatus(): Promise<{
+    available: boolean;
+    totalEmbeddings: number;
+    ollamaStatus: string;
+    chromadbStatus: string;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(`${EMBEDDINGS_SERVICE_URL}/stats`);
+
+      if (!response.ok) {
+        return {
+          available: false,
+          totalEmbeddings: 0,
+          ollamaStatus: 'unknown',
+          chromadbStatus: 'unknown',
+          error: `Error del servidor: ${response.statusText}`,
+        };
+      }
+
+      const stats = await response.json();
+
+      return {
+        available: true,
+        totalEmbeddings: stats.total_embeddings || 0,
+        ollamaStatus: stats.ollama_status || 'unknown',
+        chromadbStatus: stats.chromadb_status || 'unknown',
+      };
+    } catch (error) {
+      return {
+        available: false,
+        totalEmbeddings: 0,
+        ollamaStatus: 'offline',
+        chromadbStatus: 'offline',
+        error: 'Servicio de embeddings no disponible. Inicia con: cd embeddings-service && uvicorn main:app --port 8001',
       };
     }
   }
