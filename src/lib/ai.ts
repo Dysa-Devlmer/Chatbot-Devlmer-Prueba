@@ -221,21 +221,30 @@ export class AIService {
       // Obtener modelo activo
       const model = await this.getActiveModel();
 
-      // 🔍 RAG: Buscar conversaciones similares para contexto (con timeout para no bloquear)
+      // 🔍 RAG: Buscar conversaciones similares (opcional y con timeout agresivo)
       let similarConversations: SimilarConversation[] = [];
-      try {
-        // Timeout de 500ms para no demorar la respuesta
-        const ragPromise = this.searchSimilarConversations(userMessage, 3, true);
-        const timeoutPromise = new Promise<SimilarConversation[]>((resolve) =>
-          setTimeout(() => resolve([]), 500)
-        );
-        similarConversations = await Promise.race([ragPromise, timeoutPromise]);
 
-        if (similarConversations.length > 0) {
-          console.log(`📚 RAG: Encontradas ${similarConversations.length} conversaciones similares`);
+      // Verificar si RAG está habilitado (por defecto: deshabilitado para máxima velocidad)
+      const ragConfig = await prisma.systemConfig.findUnique({
+        where: { key: 'rag_enabled' },
+      });
+      const ragEnabled = ragConfig?.value === 'true';
+
+      if (ragEnabled) {
+        try {
+          // Timeout de 300ms para no afectar velocidad de respuesta
+          const ragPromise = this.searchSimilarConversations(userMessage, 3, true);
+          const timeoutPromise = new Promise<SimilarConversation[]>((resolve) =>
+            setTimeout(() => resolve([]), 300)
+          );
+          similarConversations = await Promise.race([ragPromise, timeoutPromise]);
+
+          if (similarConversations.length > 0) {
+            console.log(`📚 RAG: Encontradas ${similarConversations.length} conversaciones similares`);
+          }
+        } catch (ragError) {
+          console.debug('RAG no disponible, continuando sin contexto histórico');
         }
-      } catch (ragError) {
-        console.debug('RAG no disponible, continuando sin contexto histórico');
       }
 
       // Construir el contexto de la conversación
@@ -383,14 +392,16 @@ RECUERDA: Eres un asistente inteligente que piensa antes de responder. Usa conte
 
       console.log(`✅ Respuesta generada (${responseText.length} caracteres)`);
 
-      // 📚 RAG: Guardar conversación para aprendizaje futuro (no bloquea)
-      this.storeLearning(
-        userMessage,
-        responseText,
-        context,
-        analysis.intent,
-        analysis.intent // Usar intent como category también
-      ).catch(err => console.debug('Error guardando aprendizaje:', err));
+      // 📚 RAG: Guardar conversación para aprendizaje futuro (solo si RAG está habilitado)
+      if (ragEnabled) {
+        this.storeLearning(
+          userMessage,
+          responseText,
+          context,
+          analysis.intent,
+          analysis.intent // Usar intent como category también
+        ).catch(err => console.debug('Error guardando aprendizaje:', err));
+      }
 
       // Agregar firma automática del bot
       const responseWithSignature = `${responseText}\n\n🤖 Asistente automático PITHY`;

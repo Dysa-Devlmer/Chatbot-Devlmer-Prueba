@@ -12,6 +12,7 @@ export interface AIConfig {
   autoRespond: boolean;
   sentimentAnalysis: boolean;
   intentDetection: boolean;
+  ragEnabled: boolean;
 }
 
 export interface ConversationInsights {
@@ -83,6 +84,7 @@ export async function PATCH(request: NextRequest) {
       autoRespond,
       sentimentAnalysis,
       intentDetection,
+      ragEnabled,
     } = body;
 
     // Actualizar configuraciones
@@ -108,6 +110,9 @@ export async function PATCH(request: NextRequest) {
     }
     if (intentDetection !== undefined) {
       updates.push({ key: 'ai_intent_detection', value: String(intentDetection) });
+    }
+    if (ragEnabled !== undefined) {
+      updates.push({ key: 'rag_enabled', value: String(ragEnabled) });
     }
 
     // Upsert cada configuracion
@@ -144,6 +149,7 @@ async function getAIConfig(): Promise<AIConfig> {
           'ai_auto_respond',
           'ai_sentiment_analysis',
           'ai_intent_detection',
+          'rag_enabled',
         ],
       },
     },
@@ -173,6 +179,7 @@ async function getAIConfig(): Promise<AIConfig> {
     autoRespond: configMap['ai_auto_respond'] !== 'false',
     sentimentAnalysis: configMap['ai_sentiment_analysis'] !== 'false',
     intentDetection: configMap['ai_intent_detection'] !== 'false',
+    ragEnabled: configMap['rag_enabled'] === 'true', // Por defecto deshabilitado
   };
 }
 

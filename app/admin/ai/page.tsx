@@ -28,6 +28,7 @@ export default function AIConfigPage() {
   const [autoRespond, setAutoRespond] = useState(true);
   const [sentimentAnalysis, setSentimentAnalysis] = useState(true);
   const [intentDetection, setIntentDetection] = useState(true);
+  const [ragEnabled, setRagEnabled] = useState(false); // RAG deshabilitado por defecto para velocidad
 
   useEffect(() => {
     fetchConfig();
@@ -46,6 +47,7 @@ export default function AIConfigPage() {
         setAutoRespond(data.config.autoRespond);
         setSentimentAnalysis(data.config.sentimentAnalysis);
         setIntentDetection(data.config.intentDetection);
+        setRagEnabled(data.config.ragEnabled || false);
       }
     } catch (error) {
       console.error('Error fetching AI config:', error);
@@ -71,6 +73,7 @@ export default function AIConfigPage() {
           autoRespond,
           sentimentAnalysis,
           intentDetection,
+          ragEnabled,
         }),
       });
 
@@ -276,9 +279,9 @@ export default function AIConfigPage() {
           {/* Intent Detection */}
           <div style={styles.settingRow}>
             <div>
-              <div style={styles.settingLabel}>Detección de Intención</div>
+              <div style={styles.settingLabel}>Deteccion de Intencion</div>
               <div style={styles.settingDesc}>
-                Identificar la intención detrás de cada mensaje
+                Identificar la intencion detras de cada mensaje
               </div>
             </div>
             <button
@@ -294,6 +297,32 @@ export default function AIConfigPage() {
                 style={{
                   ...styles.toggleKnob,
                   transform: intentDetection ? 'translateX(26px)' : 'translateX(2px)',
+                }}
+              />
+            </button>
+          </div>
+
+          {/* RAG Learning System */}
+          <div style={styles.settingRow}>
+            <div>
+              <div style={styles.settingLabel}>Aprendizaje RAG</div>
+              <div style={styles.settingDesc}>
+                Sistema de aprendizaje continuo (puede agregar ~300ms de latencia)
+              </div>
+            </div>
+            <button
+              onClick={() => setRagEnabled(!ragEnabled)}
+              disabled={!aiEnabled}
+              style={{
+                ...styles.toggle,
+                background: ragEnabled && aiEnabled ? '#6610f2' : '#ccc',
+                opacity: aiEnabled ? 1 : 0.5,
+              }}
+            >
+              <span
+                style={{
+                  ...styles.toggleKnob,
+                  transform: ragEnabled ? 'translateX(26px)' : 'translateX(2px)',
                 }}
               />
             </button>
