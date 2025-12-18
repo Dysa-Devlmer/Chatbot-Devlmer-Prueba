@@ -48,7 +48,27 @@ export async function POST(request: NextRequest) {
         );
 
         // Obtener o crear conversación
-        const conversation = await ConversationService.getOrCreateConversation(user.id);
+        let conversation = await ConversationService.getOrCreateConversation(user.id);
+
+        // RESET DE SESIÓN POR INACTIVIDAD (24 horas)
+        const INACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
+        const lastMessage = await ConversationService.getLastMessage(conversation.id);
+
+        if (lastMessage && lastMessage.timestamp) {
+          const timeSinceLastMessage = Date.now() - new Date(lastMessage.timestamp).getTime();
+
+          if (timeSinceLastMessage > INACTIVITY_TIMEOUT) {
+            console.log(`🔄 Sesión expirada (${Math.round(timeSinceLastMessage / (60 * 60 * 1000))} horas) - Cerrando conversación anterior`);
+
+            // Cerrar la conversación anterior
+            await ConversationService.closeConversation(conversation.id, conversation.sentiment || undefined);
+
+            // Crear nueva conversación limpia
+            conversation = await ConversationService.getOrCreateConversation(user.id);
+
+            console.log(`✅ Nueva sesión iniciada - ID: ${conversation.id}`);
+          }
+        }
 
         // Extraer contenido del mensaje según el tipo
         let messageContent = '';

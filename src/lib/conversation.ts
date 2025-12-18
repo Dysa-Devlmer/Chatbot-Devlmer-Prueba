@@ -320,6 +320,23 @@ export class ConversationService {
   }
 
   /**
+   * Obtiene el último mensaje de una conversación (cualquier dirección)
+   */
+  static async getLastMessage(conversationId: string) {
+    try {
+      return await prisma.message.findFirst({
+        where: {
+          conversationId,
+        },
+        orderBy: { timestamp: 'desc' },
+      });
+    } catch (error) {
+      console.error('Error obteniendo último mensaje:', error);
+      return null;
+    }
+  }
+
+  /**
    * Actualiza el contenido de un mensaje (útil para transcripciones de audio)
    */
   static async updateMessageContent(
