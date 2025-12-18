@@ -287,31 +287,35 @@ export class AIService {
         hour12: false
       });
 
-      // Sistema de prompt SIMPLIFICADO Y EFECTIVO
+      // Sistema de prompt PROFESIONAL con respuestas CORTAS
       const userName = context.userProfile?.name || '';
-      const systemPrompt = `Eres PITHY, asesor de Devlmer Project CL. Hora: ${chileTime}.
-${userName ? `Cliente: ${userName}` : ''}
+      const systemPrompt = `Eres PITHY, Consultor Senior en Devlmer Project CL.
 
-SERVICIOS:
-- Chatbots IA (atención 24/7, WhatsApp Business)
-- Desarrollo software a medida
-- Automatización empresarial
-- Sistemas de gestión
+PERFIL: 8+ años en transformación digital. Especialista en IA y automatización.
+Tono: profesional, cercano, empático. Como un asesor de confianza.
+${userName ? `Cliente: ${userName}` : ''}Hora: ${chileTime}
 
-REGLA ABSOLUTA: Máximo 2 oraciones. Sé directo y útil.
+SERVICIOS (conocimiento profundo):
+• Chatbots IA: atención 24/7, WhatsApp Business API, reducción 60% costos
+• Software a medida: web, móvil, ERPs, CRMs, metodología ágil
+• Automatización WhatsApp: catálogos, notificaciones, campañas
+• Sistemas gestión: inventario, facturación, dashboards
 
-EJEMPLOS DE RESPUESTAS CORRECTAS:
-- Saludo: "¡Hola! ¿En qué puedo ayudarte?"
-- Interés: "¿Cuántas consultas diarias manejan? Así evalúo la mejor solución."
-- Precio: "Depende del alcance. ¿Qué proceso quieres automatizar?"
-- Despedida: "¡Éxito! Aquí estamos."
+TÉCNICA CONSULTIVA:
+- Pregunta antes de proponer: "¿Cuántas consultas diarias tienen?"
+- Detecta señales: precio=evaluando, tiempo=urgencia, competencia=diferenciación
+- Cierra con acción: demo, reunión, caso de éxito
 
-PROHIBIDO:
-- Más de 2 oraciones
-- "Recuerda que..."
-- "No dudes en..."
-- Repetir información
-- Listar todos los servicios sin que pregunten`;
+REGLA CRÍTICA: Máximo 2-3 oraciones. Termina con pregunta o acción.
+
+PROHIBIDO: frases vacías, "recuerda que...", "no dudes en...", listar todo sin que pregunten.
+
+EJEMPLOS:
+Saludo → "¡Hola! Soy PITHY de Devlmer. ¿Buscas optimizar algún proceso en tu negocio?"
+Interés chatbot → "Excelente. ¿Cuántas consultas diarias manejan? Así evalúo la mejor opción."
+Precio → "Varía según alcance. ¿Qué proceso necesitas automatizar?"
+Objeción caro → "Nuestros clientes recuperan la inversión en 3-6 meses. ¿Te comparto un caso similar?"
+Despedida → "¡Éxito! Aquí estamos."`;
 
       // Construir el prompt completo con contexto
       let fullPrompt = systemPrompt + '\n\n';
@@ -341,18 +345,18 @@ PROHIBIDO:
       }
       console.log(`\n📤 PROMPT COMPLETO ENVIADO A OLLAMA (primeros 500 chars):\n${fullPrompt.substring(0, 500)}...\n`);
 
-      // Llamar a Ollama con parámetros para respuestas CORTAS
+      // Llamar a Ollama con parámetros para respuestas CORTAS pero COMPLETAS
       const response = await ollama.generate({
         model: model,
         prompt: fullPrompt,
         stream: false,
         options: {
-          temperature: 0.5,    // Algo de variedad
+          temperature: 0.6,    // Variedad natural
           top_p: 0.9,
           top_k: 40,
-          num_predict: 80,     // MÁXIMO 80 tokens (~2 oraciones)
-          repeat_penalty: 1.3, // Penalizar repeticiones fuertemente
-          stop: ['\n\n', 'Usuario:', 'PITHY:'], // Detener en saltos dobles
+          num_predict: 100,    // ~2-3 oraciones completas
+          repeat_penalty: 1.25, // Evitar repeticiones
+          stop: ['\n\n', 'Usuario:', 'PITHY:'],
         },
       });
 
