@@ -341,7 +341,7 @@ PROHIBIDO: "recuerda que...", "no dudes en...", respuestas largas.`;
       }
       console.log(`\n📤 PROMPT COMPLETO ENVIADO A OLLAMA (primeros 500 chars):\n${fullPrompt.substring(0, 500)}...\n`);
 
-      // Llamar a Ollama con parámetros para respuestas ULTRA CORTAS
+      // Llamar a Ollama con parámetros para respuestas CORTAS pero COMPLETAS
       const response = await ollama.generate({
         model: model,
         prompt: fullPrompt,
@@ -350,7 +350,7 @@ PROHIBIDO: "recuerda que...", "no dudes en...", respuestas largas.`;
           temperature: 0.5,    // Más predecible
           top_p: 0.9,
           top_k: 40,
-          num_predict: 60,     // MÁXIMO 60 tokens (~40 palabras)
+          num_predict: 80,     // MÁXIMO 80 tokens (~50 palabras, permite completar oraciones)
           repeat_penalty: 1.3, // Penalizar repeticiones
           stop: ['\n\n', 'Usuario:', 'PITHY:', 'U:'],
         },
