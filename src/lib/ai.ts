@@ -195,6 +195,20 @@ export class AIService {
   }
 
   /**
+   * Detecta si el mensaje es un saludo simple
+   */
+  private static isSimpleGreeting(message: string): boolean {
+    const greetings = [
+      'hola', 'hi', 'hello', 'buenas', 'buenos dias', 'buenas tardes',
+      'buenas noches', 'hey', 'ola', 'holi', 'holaa', 'holaaa',
+      'hola pithy', 'hola!', 'hola!!', 'que tal', 'como estas',
+      'buen dia', 'saludos', 'buenas!'
+    ];
+    const normalized = message.toLowerCase().trim().replace(/[!?.,]/g, '');
+    return greetings.some(g => normalized === g || normalized.startsWith(g + ' '));
+  }
+
+  /**
    * Procesa un mensaje del usuario con IA y genera una respuesta inteligente
    */
   static async processMessage(
@@ -218,6 +232,17 @@ export class AIService {
         };
       }
 
+      // 🎯 DETECCIÓN DE SALUDOS SIMPLES - Respuesta directa sin IA
+      if (this.isSimpleGreeting(userMessage) && context.recentMessages.length === 0) {
+        console.log('👋 Saludo detectado - respuesta rápida');
+        const greetingResponse = '¡Hola! Soy PITHY de Devlmer. ¿En qué puedo ayudarte hoy?';
+        return {
+          response: `${greetingResponse}\n\n— PITHY 🤖`,
+          intent: 'saludo',
+          sentiment: 'positive',
+        };
+      }
+
       // Obtener modelo activo
       const model = await this.getActiveModel();
 
@@ -233,7 +258,7 @@ export class AIService {
       if (ragEnabled) {
         try {
           // Timeout de 500ms - balance entre velocidad y aprendizaje
-          const ragPromise = this.searchSimilarConversations(userMessage, 5, true); // 5 resultados para mejor contexto
+          const ragPromise = this.searchSimilarConversations(userMessage, 3, true);
           const timeoutPromise = new Promise<SimilarConversation[]>((resolve) =>
             setTimeout(() => resolve([]), 500)
           );
@@ -261,145 +286,48 @@ export class AIService {
         minute: '2-digit',
         hour12: false
       });
-      const chileDate = now.toLocaleDateString('es-CL', {
-        timeZone: 'America/Santiago',
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
 
-      // Sistema de prompt PROFESIONAL AVANZADO
-      const userName = context.userProfile?.name || 'estimado cliente';
-      const systemPrompt = `Eres PITHY, Consultor Senior de Soluciones Tecnológicas en Devlmer Project CL.
+      // Sistema de prompt SIMPLIFICADO Y EFECTIVO
+      const userName = context.userProfile?.name || '';
+      const systemPrompt = `Eres PITHY, asesor de Devlmer Project CL. Hora: ${chileTime}.
+${userName ? `Cliente: ${userName}` : ''}
 
-═══ TU PERFIL PROFESIONAL ═══
-• 8+ años de experiencia en transformación digital
-• Especialista en automatización empresarial e IA
-• Enfoque consultivo: primero entiendes, luego propones
-• Tono: profesional pero cercano, como un asesor de confianza
+SERVICIOS:
+- Chatbots IA (atención 24/7, WhatsApp Business)
+- Desarrollo software a medida
+- Automatización empresarial
+- Sistemas de gestión
 
-═══ INFORMACIÓN ACTUAL ═══
-• Cliente: ${userName}
-• Hora Chile: ${chileTime} | Fecha: ${chileDate}
-• Contacto empresa: contacto@zgamersa.com
+REGLA ABSOLUTA: Máximo 2 oraciones. Sé directo y útil.
 
-═══ CONOCIMIENTO PROFUNDO DE SERVICIOS ═══
+EJEMPLOS DE RESPUESTAS CORRECTAS:
+- Saludo: "¡Hola! ¿En qué puedo ayudarte?"
+- Interés: "¿Cuántas consultas diarias manejan? Así evalúo la mejor solución."
+- Precio: "Depende del alcance. ¿Qué proceso quieres automatizar?"
+- Despedida: "¡Éxito! Aquí estamos."
 
-1. CHATBOTS CON IA (Tu especialidad):
-   • Atención 24/7 sin contratar personal
-   • Integración con WhatsApp Business API
-   • Respuestas inteligentes que aprenden
-   • ROI típico: reducción 60% costos atención cliente
-   • Implementación: 2-4 semanas
-
-2. DESARROLLO DE SOFTWARE A MEDIDA:
-   • Sistemas web y móviles
-   • ERPs y CRMs personalizados
-   • Integración con sistemas existentes
-   • Metodología ágil, entregas incrementales
-
-3. AUTOMATIZACIÓN WHATSAPP BUSINESS:
-   • Mensajes automáticos de bienvenida
-   • Catálogos de productos interactivos
-   • Notificaciones de pedidos/citas
-   • Campañas de marketing segmentadas
-
-4. SISTEMAS DE GESTIÓN EMPRESARIAL:
-   • Inventario y ventas
-   • Facturación electrónica
-   • Reportes en tiempo real
-   • Dashboard gerencial
-
-═══ TÉCNICAS DE VENTA CONSULTIVA ═══
-
-PREGUNTA INTELIGENTE antes de proponer:
-• "¿Cuántas consultas reciben al día aproximadamente?"
-• "¿Qué proceso les consume más tiempo actualmente?"
-• "¿Han evaluado soluciones similares antes?"
-
-DETECTA SEÑALES DE COMPRA:
-• Pregunta por precios → Está evaluando seriamente
-• Pregunta por tiempos → Tiene urgencia
-• Menciona competencia → Necesita diferenciación
-
-CIERRA CON ACCIÓN:
-• Interesado → Ofrece demo o reunión
-• Indeciso → Ofrece caso de éxito similar
-• Objeción → Resuelve con beneficio
-
-═══ REGLAS DE COMUNICACIÓN ═══
-
-1. BREVEDAD INTELIGENTE:
-   • 2-3 oraciones máximo
-   • Cada palabra debe aportar valor
-   • Termina con pregunta estratégica o llamado a acción
-
-2. CONTINUIDAD:
-   • Si ya saludaste → NO repitas saludo
-   • Usa información previa de la conversación
-   • Avanza la conversación, no la reinicies
-
-3. NUNCA DIGAS:
-   ❌ Frases genéricas vacías
-   ❌ "Recuerda que estoy aquí..."
-   ❌ "No dudes en preguntar..."
-   ❌ Repetir la misma información
-
-4. SIEMPRE HAZ:
-   ✅ Preguntas que califican al cliente
-   ✅ Ofertas de valor específicas
-   ✅ Propuestas de siguiente paso
-   ✅ Empatía genuina
-
-═══ FLUJOS DE CONVERSACIÓN ═══
-
-SALUDO INICIAL:
-"¡Hola! Soy PITHY de Devlmer. ¿Buscas optimizar algún proceso en tu negocio?"
-
-INTERÉS EN CHATBOT:
-"Excelente elección. ¿Cuántas consultas diarias reciben aproximadamente? Así te doy una idea de cómo podríamos ayudarte."
-
-PIDE REUNIÓN/RESERVA:
-"Perfecto, agendo la reunión. ¿Prefieres videollamada o presencial? Te confirmo el horario en breve."
-
-PREGUNTA PRECIOS:
-"Los proyectos varían según alcance. Para darte un presupuesto preciso, ¿me cuentas brevemente qué necesitas automatizar?"
-
-OBJECIÓN "ES CARO":
-"Entiendo. Nuestros clientes típicamente recuperan la inversión en 3-6 meses por ahorro en costos operativos. ¿Te comparto un caso similar al tuyo?"
-
-DESPEDIDA:
-"¡Éxito! Cualquier duda, aquí estamos."
-
-═══ TU OBJETIVO ═══
-Convertir cada conversación en una oportunidad de negocio.
-Sé el consultor que todo empresario quisiera tener: inteligente, directo y útil.`;
+PROHIBIDO:
+- Más de 2 oraciones
+- "Recuerda que..."
+- "No dudes en..."
+- Repetir información
+- Listar todos los servicios sin que pregunten`;
 
       // Construir el prompt completo con contexto
       let fullPrompt = systemPrompt + '\n\n';
 
-      // 📚 RAG: Agregar contexto de conversaciones similares exitosas
-      if (similarConversations.length > 0) {
-        fullPrompt += 'EJEMPLOS DE RESPUESTAS EXITOSAS ANTERIORES (usa como referencia pero NO copies exactamente):\n';
-        similarConversations.forEach((conv, index) => {
-          fullPrompt += `Ejemplo ${index + 1} (similitud: ${(conv.similarity * 100).toFixed(0)}%):\n`;
-          fullPrompt += `  Pregunta: "${conv.user_message}"\n`;
-          fullPrompt += `  Respuesta: "${conv.bot_response}"\n\n`;
-        });
-        fullPrompt += 'Usa estos ejemplos como guía para el tono y estilo, pero adapta tu respuesta al contexto actual.\n\n';
-      }
-
-      // Agregar contexto de mensajes previos
+      // Agregar contexto de mensajes previos (simplificado)
       if (context.recentMessages.length > 0) {
-        fullPrompt += 'CONVERSACIÓN PREVIA:\n';
-        context.recentMessages.forEach(msg => {
-          fullPrompt += `${msg.role === 'user' ? 'Usuario' : 'PITHY'}: ${msg.content}\n`;
+        fullPrompt += 'HISTORIAL:\n';
+        // Solo últimos 3 mensajes para mantener contexto corto
+        const recentOnly = context.recentMessages.slice(-3);
+        recentOnly.forEach(msg => {
+          fullPrompt += `${msg.role === 'user' ? 'U' : 'P'}: ${msg.content}\n`;
         });
         fullPrompt += '\n';
       }
 
-      fullPrompt += `Usuario: ${userMessage}\nPITHY:`;
+      fullPrompt += `Usuario: ${userMessage}\n\nIMPORTANTE: Responde en máximo 2 oraciones cortas.\nPITHY:`;
 
       console.log(`🤖 Procesando con modelo: ${model}`);
       console.log(`📝 Contexto recibido - Mensajes previos: ${context.recentMessages.length}`);
@@ -413,17 +341,18 @@ Sé el consultor que todo empresario quisiera tener: inteligente, directo y úti
       }
       console.log(`\n📤 PROMPT COMPLETO ENVIADO A OLLAMA (primeros 500 chars):\n${fullPrompt.substring(0, 500)}...\n`);
 
-      // Llamar a Ollama con parámetros optimizados para respuestas inteligentes
+      // Llamar a Ollama con parámetros para respuestas CORTAS
       const response = await ollama.generate({
         model: model,
         prompt: fullPrompt,
         stream: false,
         options: {
-          temperature: 0.4,    // Balance entre creatividad y consistencia
-          top_p: 0.92,         // Diversidad controlada
-          top_k: 50,           // Más opciones de tokens
-          num_predict: 200,    // Respuestas completas pero concisas
-          repeat_penalty: 1.2, // Evitar repeticiones
+          temperature: 0.5,    // Algo de variedad
+          top_p: 0.9,
+          top_k: 40,
+          num_predict: 80,     // MÁXIMO 80 tokens (~2 oraciones)
+          repeat_penalty: 1.3, // Penalizar repeticiones fuertemente
+          stop: ['\n\n', 'Usuario:', 'PITHY:'], // Detener en saltos dobles
         },
       });
 
