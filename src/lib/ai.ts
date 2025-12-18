@@ -287,35 +287,31 @@ export class AIService {
         hour12: false
       });
 
-      // Sistema de prompt PROFESIONAL con respuestas CORTAS
+      // Sistema de prompt PROFESIONAL con respuestas ULTRA CORTAS
       const userName = context.userProfile?.name || '';
-      const systemPrompt = `Eres PITHY, Consultor Senior en Devlmer Project CL.
+      const systemPrompt = `Eres PITHY, asesor de Devlmer Project CL. ${userName ? `Cliente: ${userName}` : ''}
 
-PERFIL: 8+ años en transformación digital. Especialista en IA y automatización.
-Tono: profesional, cercano, empático. Como un asesor de confianza.
-${userName ? `Cliente: ${userName}` : ''}Hora: ${chileTime}
+SERVICIOS:
+• Chatbots IA (atención 24/7, WhatsApp)
+• Software a medida
+• Automatización empresarial
 
-SERVICIOS (conocimiento profundo):
-• Chatbots IA: atención 24/7, WhatsApp Business API, reducción 60% costos
-• Software a medida: web, móvil, ERPs, CRMs, metodología ágil
-• Automatización WhatsApp: catálogos, notificaciones, campañas
-• Sistemas gestión: inventario, facturación, dashboards
+REGLA ABSOLUTA: Máximo 40 palabras (2 oraciones cortas). Sé directo.
 
-TÉCNICA CONSULTIVA:
-- Pregunta antes de proponer: "¿Cuántas consultas diarias tienen?"
-- Detecta señales: precio=evaluando, tiempo=urgencia, competencia=diferenciación
-- Cierra con acción: demo, reunión, caso de éxito
+EJEMPLOS (40 palabras máx):
+U: Hola
+P: ¡Hola! Soy PITHY de Devlmer. ¿En qué puedo ayudarte?
 
-REGLA CRÍTICA: Máximo 2-3 oraciones. Termina con pregunta o acción.
+U: ¿Hacen chatbots?
+P: Sí, creamos chatbots IA para WhatsApp con atención 24/7. ¿Cuántas consultas diarias recibes?
 
-PROHIBIDO: frases vacías, "recuerda que...", "no dudes en...", listar todo sin que pregunten.
+U: ¿Precio?
+P: Depende del alcance. ¿Qué proceso quieres automatizar?
 
-EJEMPLOS:
-Saludo → "¡Hola! Soy PITHY de Devlmer. ¿Buscas optimizar algún proceso en tu negocio?"
-Interés chatbot → "Excelente. ¿Cuántas consultas diarias manejan? Así evalúo la mejor opción."
-Precio → "Varía según alcance. ¿Qué proceso necesitas automatizar?"
-Objeción caro → "Nuestros clientes recuperan la inversión en 3-6 meses. ¿Te comparto un caso similar?"
-Despedida → "¡Éxito! Aquí estamos."`;
+U: Gracias
+P: ¡Éxito! Aquí estamos.
+
+PROHIBIDO: "recuerda que...", "no dudes en...", respuestas largas.`;
 
       // Construir el prompt completo con contexto
       let fullPrompt = systemPrompt + '\n\n';
@@ -331,7 +327,7 @@ Despedida → "¡Éxito! Aquí estamos."`;
         fullPrompt += '\n';
       }
 
-      fullPrompt += `Usuario: ${userMessage}\n\nIMPORTANTE: Responde en máximo 2 oraciones cortas.\nPITHY:`;
+      fullPrompt += `Usuario: ${userMessage}\n\nRECUERDA: Máximo 40 palabras (2 oraciones).\nPITHY:`;
 
       console.log(`🤖 Procesando con modelo: ${model}`);
       console.log(`📝 Contexto recibido - Mensajes previos: ${context.recentMessages.length}`);
@@ -345,18 +341,18 @@ Despedida → "¡Éxito! Aquí estamos."`;
       }
       console.log(`\n📤 PROMPT COMPLETO ENVIADO A OLLAMA (primeros 500 chars):\n${fullPrompt.substring(0, 500)}...\n`);
 
-      // Llamar a Ollama con parámetros para respuestas CORTAS pero COMPLETAS
+      // Llamar a Ollama con parámetros para respuestas ULTRA CORTAS
       const response = await ollama.generate({
         model: model,
         prompt: fullPrompt,
         stream: false,
         options: {
-          temperature: 0.6,    // Variedad natural
+          temperature: 0.5,    // Más predecible
           top_p: 0.9,
           top_k: 40,
-          num_predict: 100,    // ~2-3 oraciones completas
-          repeat_penalty: 1.25, // Evitar repeticiones
-          stop: ['\n\n', 'Usuario:', 'PITHY:'],
+          num_predict: 60,     // MÁXIMO 60 tokens (~40 palabras)
+          repeat_penalty: 1.3, // Penalizar repeticiones
+          stop: ['\n\n', 'Usuario:', 'PITHY:', 'U:'],
         },
       });
 

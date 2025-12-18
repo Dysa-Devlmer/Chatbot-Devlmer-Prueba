@@ -331,12 +331,18 @@ export async function POST(request: NextRequest) {
             console.log(`🔊 Generando respuesta de audio...`);
 
             // Limpiar el texto para TTS (quitar firma del bot y emojis)
-            const textForTTS = aiResult.response
+            let textForTTS = aiResult.response
               .replace(/— PITHY 🤖/g, '')              // Nueva firma
               .replace(/🤖 Asistente automático PITHY/g, '')  // Firma antigua (por compatibilidad)
               .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Quitar emojis
               .replace(/\n\n$/g, '')                   // Quitar saltos de línea finales
               .trim();
+
+            // Truncar texto para TTS (edge-tts tiene límite de ~300 caracteres)
+            if (textForTTS.length > 300) {
+              console.log(`⚠️ Texto muy largo (${textForTTS.length} chars), truncando a 300...`);
+              textForTTS = textForTTS.substring(0, 297) + '...';
+            }
 
             const ttsResult = await AIService.textToSpeech(textForTTS);
 
