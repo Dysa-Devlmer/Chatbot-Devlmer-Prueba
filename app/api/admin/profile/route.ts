@@ -14,9 +14,10 @@ async function getOrCreateAdminProfile() {
       data: {
         username: 'admin',
         password: 'pithy2024',
-        name: 'Administrador',
-        email: 'admin@pithy.cl',
-        company: 'PITHY',
+        name: 'Pierre Benites (Devlmer)',
+        email: 'bpier@zgamersa.com',
+        company: 'zgamersa.com',
+        role: 'CEO',
       },
     });
   }

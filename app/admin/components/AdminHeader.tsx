@@ -59,9 +59,9 @@ export function AdminHeader() {
           if (data.profile) {
             setProfile({
               name: data.profile.name || 'Admin',
-              email: data.profile.email || 'admin@pithy.cl',
+              email: data.profile.email || 'bpier@zgamersa.com',
               avatar: data.profile.avatar || null,
-              role: data.profile.role || 'Administrador',
+              role: data.profile.role || 'CEO',
             });
           }
         }
@@ -339,7 +339,7 @@ export function AdminHeader() {
                   </div>
                   <div style={styles.dropdownUserInfo}>
                     <span style={styles.dropdownUserName}>{profile?.name || session?.user?.name || 'Admin'}</span>
-                    <span style={styles.dropdownUserEmail}>{profile?.email || session?.user?.email || 'admin@pithy.cl'}</span>
+                    <span style={styles.dropdownUserEmail}>{profile?.email || session?.user?.email || 'bpier@zgamersa.com'}</span>
                   </div>
                 </div>
 

@@ -1,6 +1,18 @@
 {
-  "name": "chatbot-devlmer",
+  "name": "pithy-chatbot",
   "version": "0.1.0",
+  "description": "PITHY - Asistente IA profesional. Respuestas precisas. Disponibilidad total.",
+  "author": {
+    "name": "Pierre Arturo Benites Solier (Devlmer)",
+    "email": "bpier@zgamersa.com",
+    "url": "https://zgamersa.com"
+  },
+  "license": "PROPRIETARY",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dysa-Devlmer/Chatbot-Devlmer.git"
+  },
+  "homepage": "https://chatbot.zgamersa.com",
   "private": true,
   "scripts": {
     "dev": "next dev -p 7847",

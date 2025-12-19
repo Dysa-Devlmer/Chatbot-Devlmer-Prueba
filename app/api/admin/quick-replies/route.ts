@@ -49,7 +49,7 @@ const DEFAULT_QUICK_REPLIES = [
   {
     title: 'Contacto',
     shortcut: '/contacto',
-    content: '📞 Puedes contactarnos por:\n\n• WhatsApp: +56 9 6541 9765\n• Email: contacto@zgamersa.com\n• Web: chatbot.zgamersa.com',
+    content: '📞 Puedes contactarnos por:\n\n• WhatsApp: +56 9 6541 9765\n• Email: info@zgamersa.com\n• Web: zgamersa.com\n• Chatbot: chatbot.zgamersa.com',
     category: 'info',
     emoji: '📞',
   },
