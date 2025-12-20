@@ -1,16 +1,16 @@
-import { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaClient } from '@prisma/client';
+/**
+ * NextAuth Configuration
+ *
+ * Configuración de autenticación usando:
+ * - AuthService para lógica de negocio
+ * - bcrypt para verificación de passwords
+ * - JWT para sesiones
+ */
 
-const prisma = new PrismaClient();
-
-// Default credentials (used if database is not available)
-const defaultCredentials = {
-  username: process.env.ADMIN_USERNAME || 'admin',
-  password: process.env.ADMIN_PASSWORD || 'pithy2024',
-  name: 'Administrador',
-  email: 'admin@pithy.cl',
-};
+import { NextAuthOptions } from 'next-auth'
+import CredentialsProvider from 'next-auth/providers/credentials'
+import { authService } from '@/services/AuthService'
+import { authLogger, logError } from '@/lib/logger'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -22,79 +22,31 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) {
-          return null;
+          authLogger.warn('Login attempt without credentials')
+          return null
         }
 
         try {
-          // Try to get admin profile from database
-          const profile = await prisma.adminProfile.findFirst({
-            where: { username: credentials.username },
-          });
+          // Usar AuthService para autenticar
+          const result = await authService.login({
+            username: credentials.username,
+            password: credentials.password,
+          })
 
-          if (profile) {
-            // Verify password from database
-            if (credentials.password === profile.password) {
-              return {
-                id: profile.id,
-                name: profile.name,
-                email: profile.email,
-                role: profile.role,
-              };
-            }
-            return null;
+          // Retornar usuario autenticado
+          return {
+            id: result.admin.id,
+            name: result.admin.name,
+            email: result.admin.email,
+            role: result.admin.role,
+            image: result.admin.avatar || undefined,
           }
-
-          // Fallback to default credentials if no profile in database
-          if (
-            credentials.username === defaultCredentials.username &&
-            credentials.password === defaultCredentials.password
-          ) {
-            // Create profile in database for future use
-            try {
-              const newProfile = await prisma.adminProfile.create({
-                data: {
-                  username: defaultCredentials.username,
-                  password: defaultCredentials.password,
-                  name: defaultCredentials.name,
-                  email: defaultCredentials.email,
-                },
-              });
-
-              return {
-                id: newProfile.id,
-                name: newProfile.name,
-                email: newProfile.email,
-                role: newProfile.role,
-              };
-            } catch (createError) {
-              // Profile might already exist, just return default
-              return {
-                id: '1',
-                name: defaultCredentials.name,
-                email: defaultCredentials.email,
-                role: 'admin',
-              };
-            }
-          }
-
-          return null;
         } catch (error) {
-          console.error('Auth error:', error);
-
-          // Fallback to default credentials if database error
-          if (
-            credentials.username === defaultCredentials.username &&
-            credentials.password === defaultCredentials.password
-          ) {
-            return {
-              id: '1',
-              name: defaultCredentials.name,
-              email: defaultCredentials.email,
-              role: 'admin',
-            };
-          }
-
-          return null;
+          // AuthService ya loguea el error, solo retornamos null
+          logError(authLogger, error, {
+            username: credentials.username,
+          })
+          return null
         }
       },
     }),

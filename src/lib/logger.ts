@@ -1,101 +1,162 @@
 /**
- * Sistema de Logging Estructurado con Pino
+ * Sistema de Logging Estructurado con Winston
  *
- * Logger centralizado para toda la aplicación con:
+ * Logger centralizado enterprise-grade con:
  * - Logs estructurados en JSON (producción)
  * - Pretty print en desarrollo
- * - Niveles: trace, debug, info, warn, error, fatal
- * - Contexto automático (timestamp, pid, hostname)
+ * - Niveles: error, warn, info, http, verbose, debug, silly
+ * - Redacción automática de datos sensibles
+ * - Rotación de archivos de log
+ * - Compatible con Turbopack y Webpack
  */
 
-import pino from 'pino'
+import winston from 'winston'
+import { format } from 'winston'
 
-// Configuración del logger según entorno
-const logger = pino({
-  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'development' ? 'debug' : 'info'),
+const { combine, timestamp, errors, json, printf, colorize } = format
 
-  // Formato pretty en desarrollo, JSON en producción
-  transport: process.env.NODE_ENV === 'development'
-    ? {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'HH:MM:ss Z',
-          ignore: 'pid,hostname',
-          singleLine: false,
-        },
-      }
-    : undefined,
+/**
+ * Formato custom para desarrollo (legible)
+ */
+const devFormat = printf(({ level, message, timestamp, module, ...metadata }) => {
+  let msg = `${timestamp} [${level}]`
 
-  // Configuración base
-  base: {
-    env: process.env.NODE_ENV || 'development',
-    app: 'pithy-chatbot',
-  },
+  if (module) {
+    msg += ` [${module}]`
+  }
 
-  // Serializers para formatear datos sensibles
-  serializers: {
-    req: pino.stdSerializers.req,
-    res: pino.stdSerializers.res,
-    err: pino.stdSerializers.err,
-  },
+  msg += `: ${message}`
 
-  // Redactar datos sensibles
-  redact: {
-    paths: [
-      'req.headers.authorization',
-      'req.headers.cookie',
-      'password',
-      'token',
-      'secret',
-      'apiKey',
-      'WHATSAPP_TOKEN',
-      'NEXTAUTH_SECRET',
-    ],
-    remove: true,
-  },
+  if (Object.keys(metadata).length > 0) {
+    msg += ` ${JSON.stringify(metadata, null, 2)}`
+  }
+
+  return msg
 })
+
+/**
+ * Formato para redactar datos sensibles
+ */
+const redactFormat = format((info) => {
+  const sensitiveKeys = [
+    'password', 'token', 'secret', 'apiKey', 'authorization',
+    'WHATSAPP_TOKEN', 'NEXTAUTH_SECRET', 'cookie', 'jwt'
+  ]
+
+  const redact = (obj: any): any => {
+    if (typeof obj !== 'object' || obj === null) return obj
+
+    const redacted = Array.isArray(obj) ? [...obj] : { ...obj }
+
+    for (const key in redacted) {
+      const lowerKey = key.toLowerCase()
+
+      if (sensitiveKeys.some(k => lowerKey.includes(k.toLowerCase()))) {
+        redacted[key] = '[REDACTED]'
+      } else if (typeof redacted[key] === 'object') {
+        redacted[key] = redact(redacted[key])
+      }
+    }
+
+    return redacted
+  }
+
+  return redact(info)
+})
+
+/**
+ * Crear logger base
+ */
+const createLogger = (module?: string) => {
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info')
+
+  return winston.createLogger({
+    level: logLevel,
+    defaultMeta: {
+      service: 'pithy-chatbot',
+      env: process.env.NODE_ENV || 'development',
+      module: module || 'app',
+    },
+    format: combine(
+      errors({ stack: true }),
+      timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+      redactFormat(),
+      isDevelopment
+        ? combine(colorize(), devFormat)
+        : json()
+    ),
+    transports: [
+      // Console output
+      new winston.transports.Console({
+        stderrLevels: ['error'],
+      }),
+
+      // Archivo de errores (solo producción)
+      ...(!isDevelopment ? [
+        new winston.transports.File({
+          filename: 'logs/error.log',
+          level: 'error',
+          maxsize: 10 * 1024 * 1024, // 10MB
+          maxFiles: 5,
+        }),
+        new winston.transports.File({
+          filename: 'logs/combined.log',
+          maxsize: 10 * 1024 * 1024, // 10MB
+          maxFiles: 10,
+        }),
+      ] : []),
+    ],
+    // No salir en uncaught exceptions
+    exitOnError: false,
+  })
+}
+
+/**
+ * Logger principal
+ */
+const logger = createLogger()
 
 /**
  * Logger para WhatsApp
  */
-export const whatsappLogger = logger.child({ module: 'whatsapp' })
+export const whatsappLogger = createLogger('whatsapp')
 
 /**
  * Logger para IA (Ollama, Claude, OpenAI)
  */
-export const aiLogger = logger.child({ module: 'ai' })
+export const aiLogger = createLogger('ai')
 
 /**
  * Logger para Base de Datos
  */
-export const dbLogger = logger.child({ module: 'database' })
+export const dbLogger = createLogger('database')
 
 /**
  * Logger para Autenticación
  */
-export const authLogger = logger.child({ module: 'auth' })
+export const authLogger = createLogger('auth')
 
 /**
  * Logger para Sistema de Aprendizaje (RAG)
  */
-export const learningLogger = logger.child({ module: 'learning' })
+export const learningLogger = createLogger('learning')
 
 /**
  * Logger para TTS (Text-to-Speech)
  */
-export const ttsLogger = logger.child({ module: 'tts' })
+export const ttsLogger = createLogger('tts')
 
 /**
  * Logger para API Routes
  */
-export const apiLogger = logger.child({ module: 'api' })
+export const apiLogger = createLogger('api')
 
 /**
  * Wrapper para capturar errores con contexto
  */
 export function logError(
-  logger: pino.Logger,
+  logger: winston.Logger,
   error: unknown,
   context?: Record<string, any>
 ) {
@@ -107,19 +168,23 @@ export function logError(
       }
     : { error: String(error) }
 
-  logger.error({ ...errorObj, ...context }, 'Error occurred')
+  logger.error('Error occurred', { ...errorObj, ...context })
 }
 
 /**
  * Helper para medir tiempo de ejecución
  */
-export function createTimer(logger: pino.Logger, operation: string) {
+export function createTimer(logger: winston.Logger, operation: string) {
   const start = Date.now()
 
   return {
     end: (metadata?: Record<string, any>) => {
       const duration = Date.now() - start
-      logger.info({ operation, duration, ...metadata }, `Operation completed in ${duration}ms`)
+      logger.info(`Operation completed in ${duration}ms`, {
+        operation,
+        duration,
+        ...metadata,
+      })
     },
   }
 }
