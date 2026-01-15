@@ -133,6 +133,11 @@ export const aiLogger = createLogger('ai')
 export const perplexityLogger = createLogger('perplexity')
 
 /**
+ * Logger para Message Processor
+ */
+export const messageProcessorLogger = createLogger('message-processor')
+
+/**
  * Logger para Base de Datos
  */
 export const dbLogger = createLogger('database')

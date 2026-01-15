@@ -2,13 +2,13 @@
 
 **"Asistente IA profesional. Respuestas precisas. Disponibilidad total."**
 
-Sistema de chatbot inteligente para WhatsApp Business con IA local (Ollama).
+Sistema de chatbot inteligente para WhatsApp Business con soporte para múltiples proveedores de IA (Ollama local o Perplexity en la nube).
 
 Desarrollado por **Pierre Arturo Benites Solier (Devlmer)** | [zgamersa.com](https://zgamersa.com)
 
 ## 🚀 Características
 
-- **IA Local Gratuita**: Utiliza Ollama (sin costos de API)
+- **Múltiples Proveedores de IA**: Utiliza Ollama (local y gratuito) o Perplexity (en la nube con modelos avanzados)
 - **WhatsApp Business Integration**: Conexión directa con Meta Business API
 - **Panel de Administración**: Interfaz web para gestionar conversaciones
 - **Modo Automático/Manual**: Alterna entre respuestas automáticas y manuales
@@ -23,6 +23,23 @@ Desarrollado por **Pierre Arturo Benites Solier (Devlmer)** | [zgamersa.com](htt
 | Panel Admin | **7847** | http://localhost:7847/admin |
 | ngrok Dashboard | **4847** | http://localhost:4847 |
 | Ollama API | **11434** | http://localhost:11434 |
+
+## 🧠 Proveedores de IA
+
+El sistema soporta múltiples proveedores de inteligencia artificial:
+
+### Ollama (Local)
+- **Ventajas**: Gratuito, privacidad completa, sin costos de API
+- **Configuración**: Requiere instalación local de Ollama
+- **Modelos populares**: Llama 3.2, Mistral, Phi-3, Gemma 2
+
+### Perplexity AI (Nube)
+- **Ventajas**: Modelos de vanguardia, conocimientos recientes, menor latencia
+- **Configuración**: Requiere API key de Perplexity
+- **Modelos disponibles**: Llama 3.1 Sonar, Mixtral, y otros modelos avanzados
+- **Documentación**: [PERPLEXITY-INTEGRATION.md](PERPLEXITY-INTEGRATION.md)
+
+Puede cambiar entre proveedores desde el panel de administración en la pestaña "IA".
 
 ## 📦 Requisitos
 

@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import AIConfiguration from './components/AIConfiguration';
 
 function SettingsContent() {
   const { data: session, update } = useSession();
@@ -51,6 +52,18 @@ function SettingsContent() {
     compactMode: false,
   });
 
+  // AI Configuration state
+  const [aiConfig, setAiConfig] = useState({
+    ai_provider: 'ollama',
+    ai_model: 'llama3.2',
+    perplexity_api_key: '',
+    perplexity_model: 'llama-3.1-sonar-large-128k-chat',
+    perplexity_temperature: '0.7',
+    perplexity_max_tokens: '1024',
+    ai_enabled: 'true',
+    rag_enabled: 'true',
+  });
+
   // Session info state
   const [sessionInfo, setSessionInfo] = useState({
     device: 'Navegador web',
@@ -60,7 +73,7 @@ function SettingsContent() {
 
   useEffect(() => {
     const tab = searchParams?.get('tab');
-    if (tab && ['profile', 'security', 'notifications', 'appearance'].includes(tab)) {
+    if (tab && ['profile', 'security', 'notifications', 'appearance', 'ai'].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -111,8 +124,32 @@ function SettingsContent() {
       }
     };
 
+    const loadAIConfig = async () => {
+      try {
+        const response = await fetch('/api/admin/ai-config');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.config) {
+            setAiConfig({
+              ai_provider: data.config.ai_provider?.value || 'ollama',
+              ai_model: data.config.ai_model?.value || 'llama3.2',
+              perplexity_api_key: data.config.perplexity_api_key?.value || '',
+              perplexity_model: data.config.perplexity_model?.value || 'llama-3.1-sonar-large-128k-chat',
+              perplexity_temperature: data.config.perplexity_temperature?.value || '0.7',
+              perplexity_max_tokens: data.config.perplexity_max_tokens?.value || '1024',
+              ai_enabled: data.config.ai_enabled?.value || 'true',
+              rag_enabled: data.config.rag_enabled?.value || 'true',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading AI config:', error);
+      }
+    };
+
     loadProfile();
     loadNotifications();
+    loadAIConfig();
   }, []);
 
   // Detect browser and OS for session info
@@ -332,11 +369,33 @@ function SettingsContent() {
     }
   };
 
+  const handleSaveAIConfig = async (config: typeof aiConfig) => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/admin/ai-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+
+      if (response.ok) {
+        showMessage('success', 'Configuración de IA actualizada correctamente');
+      } else {
+        throw new Error('Error al guardar la configuración de IA');
+      }
+    } catch (error) {
+      showMessage('error', 'Error al guardar la configuración de IA');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const tabs = [
     { id: 'profile', label: 'Mi Perfil', icon: '👤' },
     { id: 'security', label: 'Seguridad', icon: '🔒' },
     { id: 'notifications', label: 'Notificaciones', icon: '🔔' },
     { id: 'appearance', label: 'Apariencia', icon: '🎨' },
+    { id: 'ai', label: 'IA', icon: '🤖' },
   ];
 
   return (
@@ -876,6 +935,17 @@ function SettingsContent() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* AI Configuration Tab */}
+          {activeTab === 'ai' && (
+            <div style={styles.tabContent}>
+              <AIConfiguration
+                initialConfig={aiConfig}
+                onSave={handleSaveAIConfig}
+                saving={saving}
+              />
             </div>
           )}
         </div>
