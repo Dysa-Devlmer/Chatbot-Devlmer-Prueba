@@ -128,6 +128,11 @@ export const whatsappLogger = createLogger('whatsapp')
 export const aiLogger = createLogger('ai')
 
 /**
+ * Logger para Perplexity
+ */
+export const perplexityLogger = createLogger('perplexity')
+
+/**
  * Logger para Base de Datos
  */
 export const dbLogger = createLogger('database')
@@ -190,3 +195,4 @@ export function createTimer(logger: winston.Logger, operation: string) {
 }
 
 export default logger
+
