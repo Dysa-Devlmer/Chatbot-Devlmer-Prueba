@@ -399,7 +399,7 @@ export class MessageProcessorService {
       const sortedHistory = [...history].reverse()
 
       const recentMessages = sortedHistory.map((message) => ({
-        role: message.direction === 'inbound' ? 'user' : 'assistant',
+        role: (message.direction === 'inbound' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: message.content,
       }))
 

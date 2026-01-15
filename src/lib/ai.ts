@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { exec } from 'child_process';
 import { TranscriptionCache, TTSCache } from './audio-cache';
-import PerplexityService from './perplexity';
+import { perplexityService } from '../services/PerplexityService';
 
 // Inicializar cliente de Ollama (local y gratuito!)
 const ollama = new Ollama({
@@ -160,7 +160,7 @@ export class AIService {
       });
 
       if (config?.value === 'perplexity') {
-        const isPerplexityConfigured = await PerplexityService.isConfigured();
+        const isPerplexityConfigured = await perplexityService.isConfigured();
         if (isPerplexityConfigured) {
           return 'perplexity';
         }
@@ -349,20 +349,12 @@ PROHIBIDO: inventar fechas, cambiar horarios, asumir información, frases largas
         // Procesar con Perplexity
         console.log('🤖 Procesando con Perplexity');
 
-        // Preparar mensajes para Perplexity
-        const perplexityMessages = [
-          { role: 'system', content: systemPrompt },
-          ...context.recentMessages.map(msg => ({
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content
-          })),
-          { role: 'user', content: userMessage }
-        ];
-
-        const perplexityResponse = await PerplexityService.sendMessage(perplexityMessages);
-
-        if (!perplexityResponse.success) {
-          console.error('Error con Perplexity:', perplexityResponse.error);
+        // Usar generateResponse de perplexityService que maneja context y sistemPrompt automáticamente
+        try {
+          const perplexityResponse = await perplexityService.generateResponse(userMessage, context);
+          responseText = perplexityResponse.response;
+        } catch (error) {
+          console.error('Error con Perplexity:', error);
 
           // Fallback a Ollama si Perplexity falla
           console.log('⚠️ Fallback a Ollama debido a error con Perplexity');
@@ -412,8 +404,6 @@ PROHIBIDO: inventar fechas, cambiar horarios, asumir información, frases largas
           });
 
           responseText = response.response.trim();
-        } else {
-          responseText = perplexityResponse.response.trim();
         }
       } else {
         // Procesar con Ollama (comportamiento por defecto)
