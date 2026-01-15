@@ -23,6 +23,9 @@ export async function webhookAuthMiddleware(
   userId?: string,
   phoneNumber?: string
 ): Promise<WebhookAuthResult> {
+  // Obtener IP del cliente
+  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+
   try {
     if (!HMACValidator.isConfigured()) {
       whatsappLogger.error('HMAC validation not configured')
@@ -35,7 +38,7 @@ export async function webhookAuthMiddleware(
     const signature = request.headers.get('X-Hub-Signature-256')
     if (!signature) {
       whatsappLogger.warn('Missing X-Hub-Signature-256 header', {
-        ip: request.ip,
+        ip,
       })
       return {
         valid: false,
@@ -61,7 +64,7 @@ export async function webhookAuthMiddleware(
     if (!hmacResult.valid) {
       whatsappLogger.warn('HMAC validation failed', {
         error: hmacResult.error,
-        ip: request.ip,
+        ip: ip,
       })
       return {
         valid: false,
@@ -70,10 +73,10 @@ export async function webhookAuthMiddleware(
     }
 
     whatsappLogger.info('HMAC validation passed', {
-      ip: request.ip,
+      ip: ip,
     })
 
-    let rateLimitKey = phoneNumber || userId || request.ip || 'unknown'
+    let rateLimitKey = phoneNumber || userId || ip || 'unknown'
 
     if (!phoneNumber && body) {
       try {
@@ -95,7 +98,7 @@ export async function webhookAuthMiddleware(
     if (!rateLimitResult.allowed) {
       whatsappLogger.warn('Rate limit exceeded', {
         key: rateLimitKey,
-        ip: request.ip,
+        ip: ip,
         resetTime: new Date(rateLimitResult.resetTime).toISOString(),
       })
 
@@ -127,7 +130,7 @@ export async function webhookAuthMiddleware(
     const errorMsg = error instanceof Error ? error.message : 'Unknown error'
     whatsappLogger.error('Webhook auth error', {
       error: errorMsg,
-      ip: request.ip,
+      ip: ip,
     })
 
     return {

@@ -19,7 +19,8 @@
     "build": "next build",
     "start": "next start -p 7847",
     "lint": "eslint",
-    "test": "set PERPLEXITY_API_KEY=test&& set CLAUDE_API_KEY=test&& node --test --test-force-exit --import tsx src/**/__tests__/**/*.test.ts"
+    "test": "set PERPLEXITY_API_KEY=test&& set CLAUDE_API_KEY=test&& node --test --test-force-exit --import tsx src/**/__tests__/**/*.test.ts",
+    "test:e2e": "set PERPLEXITY_API_KEY=test&& set CLAUDE_API_KEY=test&& node --test --test-force-exit --import tsx e2e/scenarios/**/*.e2e.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
