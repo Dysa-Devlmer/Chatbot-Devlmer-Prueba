@@ -273,3 +273,24 @@ export type AIConfig = z.infer<typeof aiConfigSchema>
 export type LearningFeedback = z.infer<typeof learningFeedbackSchema>
 export type ScheduleMessage = z.infer<typeof scheduleMessageSchema>
 export type SearchConversations = z.infer<typeof searchConversationsSchema>
+
+export interface ConversationContext {
+  userId: string
+  conversationId: string
+  recentMessages: Array<{
+    role: 'user' | 'assistant'
+    content: string
+  }>
+  userProfile?: {
+    name?: string
+    language?: string
+    preferences?: Record<string, unknown>
+  }
+}
+
+export interface AIResponse {
+  response: string
+  intent?: string
+  entities?: Record<string, unknown>
+  sources?: string[]
+}
