@@ -294,3 +294,128 @@ export interface AIResponse {
   entities?: Record<string, unknown>
   sources?: string[]
 }
+
+export interface ProcessMessageInput {
+  messageContent: string
+  messageType: 'text' | 'audio' | 'image' | 'document' | 'video'
+  mediaUrl?: string
+  mediaPath?: string
+  mediaMimeType?: string
+  userId: string
+  conversationId: string
+  phoneNumber: string
+  whatsappId: string
+}
+
+export interface ProcessMessageResult {
+  success: boolean
+  response: string
+  audioPath?: string
+  audioSent?: boolean
+  intent?: string
+  entities?: Record<string, unknown>
+  error?: string
+  details?: {
+    transcriptionText?: string
+    procesingTime?: number
+    aiProvider?: 'perplexity' | 'claude' | 'fallback'
+  }
+}
+
+export interface ProcessingOptions {
+  includeAudio?: boolean
+  maxTextLength?: number
+  timeout?: number
+  fallbackToText?: boolean
+}
+
+export interface WhatsAppMessagePayload {
+  object: string
+  entry: Array<{
+    id: string
+    changes: Array<{
+      value: {
+        messaging_product: string
+        metadata: {
+          display_phone_number: string
+          phone_number_id: string
+        }
+        contacts?: Array<{
+          profile: { name: string }
+          wa_id: string
+        }>
+        messages?: Array<{
+          from: string
+          id: string
+          timestamp: string
+          type: 'text' | 'audio' | 'image' | 'video' | 'document' | 'location'
+          text?: { body: string }
+          audio?: { id: string; mime_type: string; sha256: string }
+          image?: { id: string; mime_type: string; sha256: string; caption?: string }
+          video?: { id: string; mime_type: string; sha256: string; caption?: string }
+          document?: { id: string; mime_type: string; sha256: string; filename?: string; caption?: string }
+          location?: { latitude: number; longitude: number; name?: string; address?: string }
+        }>
+        statuses?: Array<{
+          id: string
+          status: 'sent' | 'delivered' | 'read' | 'failed'
+          timestamp: string
+          recipient_id: string
+        }>
+      }
+      field: string
+    }>
+  }>
+}
+
+export interface WhatsAppProcessResult {
+  success: boolean
+  message?: string
+  type?: string
+  error?: string
+  details?: {
+    userId?: string
+    conversationId?: string
+    webhookLogId?: string
+    processingTime?: number
+  }
+}
+
+export interface WhatsAppResponseConfig {
+  includeAudio?: boolean
+  maxTextLength?: number
+  respectHours?: boolean
+  forceManualMode?: boolean
+}
+
+export interface HMACValidationResult {
+  valid: boolean
+  error?: string
+  timestamp?: number
+  appId?: string
+}
+
+export interface RateLimitConfig {
+  windowMs: number
+  maxRequests: number
+  message?: string
+  skipSuccessfulRequests?: boolean
+  skipFailedRequests?: boolean
+}
+
+export interface RateLimitResult {
+  allowed: boolean
+  limit: number
+  remaining: number
+  resetTime: number
+  error?: string
+}
+
+export interface RateLimitStore {
+  key: string
+  count: number
+  firstRequestTime: number
+  lastRequestTime: number
+  isBlocked?: boolean
+  blockUntil?: number
+}

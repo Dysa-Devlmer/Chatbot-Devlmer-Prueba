@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { exec } from 'child_process';
 import { TranscriptionCache, TTSCache } from './audio-cache';
+import PerplexityService from './perplexity';
 
 // Inicializar cliente de Ollama (local y gratuito!)
 const ollama = new Ollama({
@@ -150,6 +151,30 @@ export class AIService {
   }
 
   /**
+   * Obtiene el proveedor de IA configurado (Ollama o Perplexity)
+   */
+  static async getActiveProvider(): Promise<'ollama' | 'perplexity'> {
+    try {
+      const config = await prisma.systemConfig.findUnique({
+        where: { key: 'ai_provider' },
+      });
+
+      if (config?.value === 'perplexity') {
+        const isPerplexityConfigured = await PerplexityService.isConfigured();
+        if (isPerplexityConfigured) {
+          return 'perplexity';
+        }
+      }
+
+      // Si no está configurado como Perplexity o no tiene API key válida, usar Ollama
+      return 'ollama';
+    } catch (error) {
+      console.error('Error obteniendo proveedor de IA activo:', error);
+      return 'ollama'; // Por defecto usar Ollama
+    }
+  }
+
+  /**
    * Obtiene el modelo configurado o usa uno por defecto
    */
   static async getActiveModel(): Promise<string> {
@@ -243,8 +268,8 @@ export class AIService {
         };
       }
 
-      // Obtener modelo activo
-      const model = await this.getActiveModel();
+      // Obtener proveedor de IA activo
+      const provider = await this.getActiveProvider();
 
       // 🔍 RAG: Sistema de aprendizaje continuo (HABILITADO por defecto)
       let similarConversations: SimilarConversation[] = [];
@@ -317,56 +342,143 @@ P: Corregido: martes a las 3pm. ¿Algún tema específico?
 
 PROHIBIDO: inventar fechas, cambiar horarios, asumir información, frases largas.`;
 
-      // Construir el prompt completo con contexto
-      let fullPrompt = systemPrompt + '\n\n';
+      // Procesar con el proveedor de IA correspondiente
+      let responseText: string;
 
-      // Agregar contexto de mensajes previos (simplificado)
-      if (context.recentMessages.length > 0) {
-        fullPrompt += 'HISTORIAL:\n';
-        // Solo últimos 3 mensajes para mantener contexto corto
-        const recentOnly = context.recentMessages.slice(-3);
-        recentOnly.forEach(msg => {
-          fullPrompt += `${msg.role === 'user' ? 'U' : 'P'}: ${msg.content}\n`;
-        });
-        fullPrompt += '\n';
-      }
+      if (provider === 'perplexity') {
+        // Procesar con Perplexity
+        console.log('🤖 Procesando con Perplexity');
 
-      fullPrompt += `Usuario: ${userMessage}\n\nRECUERDA: Máximo 40 palabras (2 oraciones).\nPITHY:`;
+        // Preparar mensajes para Perplexity
+        const perplexityMessages = [
+          { role: 'system', content: systemPrompt },
+          ...context.recentMessages.map(msg => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content
+          })),
+          { role: 'user', content: userMessage }
+        ];
 
-      console.log(`🤖 Procesando con modelo: ${model}`);
-      console.log(`📝 Contexto recibido - Mensajes previos: ${context.recentMessages.length}`);
-      if (context.recentMessages.length > 0) {
-        console.log('📜 Mensajes en contexto:');
-        context.recentMessages.forEach((msg, idx) => {
-          console.log(`  ${idx + 1}. [${msg.role}]: ${msg.content.substring(0, 50)}...`);
-        });
+        const perplexityResponse = await PerplexityService.sendMessage(perplexityMessages);
+
+        if (!perplexityResponse.success) {
+          console.error('Error con Perplexity:', perplexityResponse.error);
+
+          // Fallback a Ollama si Perplexity falla
+          console.log('⚠️ Fallback a Ollama debido a error con Perplexity');
+          const model = await this.getActiveModel();
+
+          // Construir el prompt completo con contexto
+          let fullPrompt = systemPrompt + '\n\n';
+
+          // Agregar contexto de mensajes previos (simplificado)
+          if (context.recentMessages.length > 0) {
+            fullPrompt += 'HISTORIAL:\n';
+            // Solo últimos 3 mensajes para mantener contexto corto
+            const recentOnly = context.recentMessages.slice(-3);
+            recentOnly.forEach(msg => {
+              fullPrompt += `${msg.role === 'user' ? 'U' : 'P'}: ${msg.content}\n`;
+            });
+            fullPrompt += '\n';
+          }
+
+          fullPrompt += `Usuario: ${userMessage}\n\nRECUERDA: Máximo 40 palabras (2 oraciones).\nPITHY:`;
+
+          console.log(`🤖 Procesando con modelo Ollama: ${model}`);
+          console.log(`📝 Contexto recibido - Mensajes previos: ${context.recentMessages.length}`);
+          if (context.recentMessages.length > 0) {
+            console.log('📜 Mensajes en contexto:');
+            context.recentMessages.forEach((msg, idx) => {
+              console.log(`  ${idx + 1}. [${msg.role}]: ${msg.content.substring(0, 50)}...`);
+            });
+          } else {
+            console.log('⚠️ NO HAY MENSAJES PREVIOS EN EL CONTEXTO');
+          }
+          console.log(`\n📤 PROMPT COMPLETO ENVIADO A OLLAMA (primeros 500 chars):\n${fullPrompt.substring(0, 500)}...\n`);
+
+          // Llamar a Ollama con parámetros para respuestas CORTAS pero COMPLETAS
+          const response = await ollama.generate({
+            model: model,
+            prompt: fullPrompt,
+            stream: false,
+            options: {
+              temperature: 0.5,    // Más predecible
+              top_p: 0.9,
+              top_k: 40,
+              num_predict: 80,     // MÁXIMO 80 tokens (~50 palabras, permite completar oraciones)
+              repeat_penalty: 1.3, // Penalizar repeticiones
+              stop: ['\n\n', 'Usuario:', 'PITHY:', 'U:'],
+            },
+          });
+
+          responseText = response.response.trim();
+        } else {
+          responseText = perplexityResponse.response.trim();
+        }
       } else {
-        console.log('⚠️ NO HAY MENSAJES PREVIOS EN EL CONTEXTO');
+        // Procesar con Ollama (comportamiento por defecto)
+        const model = await this.getActiveModel();
+
+        // Construir el prompt completo con contexto
+        let fullPrompt = systemPrompt + '\n\n';
+
+        // Agregar contexto de mensajes previos (simplificado)
+        if (context.recentMessages.length > 0) {
+          fullPrompt += 'HISTORIAL:\n';
+          // Solo últimos 3 mensajes para mantener contexto corto
+          const recentOnly = context.recentMessages.slice(-3);
+          recentOnly.forEach(msg => {
+            fullPrompt += `${msg.role === 'user' ? 'U' : 'P'}: ${msg.content}\n`;
+          });
+          fullPrompt += '\n';
+        }
+
+        fullPrompt += `Usuario: ${userMessage}\n\nRECUERDA: Máximo 40 palabras (2 oraciones).\nPITHY:`;
+
+        console.log(`🤖 Procesando con modelo Ollama: ${model}`);
+        console.log(`📝 Contexto recibido - Mensajes previos: ${context.recentMessages.length}`);
+        if (context.recentMessages.length > 0) {
+          console.log('📜 Mensajes en contexto:');
+          context.recentMessages.forEach((msg, idx) => {
+            console.log(`  ${idx + 1}. [${msg.role}]: ${msg.content.substring(0, 50)}...`);
+          });
+        } else {
+          console.log('⚠️ NO HAY MENSAJES PREVIOS EN EL CONTEXTO');
+        }
+        console.log(`\n📤 PROMPT COMPLETO ENVIADO A OLLAMA (primeros 500 chars):\n${fullPrompt.substring(0, 500)}...\n`);
+
+        // Llamar a Ollama con parámetros para respuestas CORTAS pero COMPLETAS
+        const response = await ollama.generate({
+          model: model,
+          prompt: fullPrompt,
+          stream: false,
+          options: {
+            temperature: 0.5,    // Más predecible
+            top_p: 0.9,
+            top_k: 40,
+            num_predict: 80,     // MÁXIMO 80 tokens (~50 palabras, permite completar oraciones)
+            repeat_penalty: 1.3, // Penalizar repeticiones
+            stop: ['\n\n', 'Usuario:', 'PITHY:', 'U:'],
+          },
+        });
+
+        responseText = response.response.trim();
       }
-      console.log(`\n📤 PROMPT COMPLETO ENVIADO A OLLAMA (primeros 500 chars):\n${fullPrompt.substring(0, 500)}...\n`);
 
-      // Llamar a Ollama con parámetros para respuestas CORTAS pero COMPLETAS
-      const response = await ollama.generate({
-        model: model,
-        prompt: fullPrompt,
-        stream: false,
-        options: {
-          temperature: 0.5,    // Más predecible
-          top_p: 0.9,
-          top_k: 40,
-          num_predict: 80,     // MÁXIMO 80 tokens (~50 palabras, permite completar oraciones)
-          repeat_penalty: 1.3, // Penalizar repeticiones
-          stop: ['\n\n', 'Usuario:', 'PITHY:', 'U:'],
-        },
-      });
-
-      const responseText = response.response.trim();
-
-      console.log(`\n📥 RESPUESTA DE OLLAMA (${responseText.length} caracteres):`);
+      console.log(`\n📥 RESPUESTA DE IA (${responseText.length} caracteres):`);
       console.log(`"${responseText.substring(0, 200)}${responseText.length > 200 ? '...' : ''}"`);
 
       // Analizar la respuesta para extraer intención y sentimiento
-      const analysis = await this.analyzeMessage(userMessage, responseText, model);
+      let analysis: { intent?: string; entities?: any; sentiment?: string };
+
+      if (provider === 'perplexity') {
+        // Para Perplexity, usamos Ollama para análisis si está disponible
+        const model = await this.getActiveModel();
+        analysis = await this.analyzeMessage(userMessage, responseText, model);
+      } else {
+        const model = await this.getActiveModel();
+        analysis = await this.analyzeMessage(userMessage, responseText, model);
+      }
 
       console.log(`✅ Respuesta generada (${responseText.length} caracteres)`);
 

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import AIIndicator from './AIIndicator';
 
 interface AdminProfile {
   name: string;
@@ -219,6 +220,9 @@ export function AdminHeader() {
 
         {/* Right Section */}
         <div style={styles.rightSection}>
+          {/* AI Indicator */}
+          <AIIndicator />
+
           {/* Quick Actions */}
           <div style={styles.quickActions}>
             <button
