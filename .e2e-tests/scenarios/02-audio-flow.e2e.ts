@@ -7,7 +7,7 @@ import { ConversationService } from '@/lib/conversation';
 import { HorariosService } from '@/lib/horarios';
 import { AIService } from '@/lib/ai';
 import { WhatsAppService } from '@/services/WhatsAppService';
-// import { generateAudioPayload } from '../helpers/webhook'; // Eliminado para evitar problemas de tipo
+// import { generateAudioPayload } from '../helpers/webhook'; // Eliminado completamente ya que no se usa
 import { getMessagesForConversation, getUserByPhoneNumber, clearTestData } from '../helpers/database';
 
 const TEST_PHONE_NUMBER = '56987654321';
@@ -221,7 +221,38 @@ test('E2E: Audio Flow - should transcribe audio content correctly', async () => 
   } as any) as any;
 
   // 2. PREPARAR
-  const payload = generateAudioPayload();
+  const payload = {
+    object: "whatsapp_business_account",
+    entry: [{
+      id: "259609383376410",
+      changes: [{
+        value: {
+          messaging_product: "whatsapp",
+          metadata: {
+            display_phone_number: "15551234567",
+            phone_number_id: "123456789012345"
+          },
+          contacts: [{
+            profile: { name: "Usuario Audio" },
+            wa_id: TEST_PHONE_NUMBER
+          }],
+          messages: [{
+            from: TEST_PHONE_NUMBER,
+            id: "wamid.HBgNNTY5ODc2NTQzMjFGAAhEVElLRU5fQUNDRVNTX1RPS0VOAA==",
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+            type: "audio",
+            audio: {
+              id: "1234567890",
+              mime_type: "audio/ogg; codecs=opus",
+              sha256: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              voice: true
+            }
+          }]
+        },
+        field: "messages"
+      }]
+    }]
+  };
 
   // 3. EJECUTAR
   const service = new WhatsAppService(messageProcessorService, whatsappClient);
@@ -245,7 +276,38 @@ test('E2E: Audio Flow - should process audio and generate AI response', async ()
   } as any) as any;
 
   // 2. PREPARAR
-  const payload = generateAudioPayload();
+  const payload = {
+    object: "whatsapp_business_account",
+    entry: [{
+      id: "259609383376410",
+      changes: [{
+        value: {
+          messaging_product: "whatsapp",
+          metadata: {
+            display_phone_number: "15551234567",
+            phone_number_id: "123456789012345"
+          },
+          contacts: [{
+            profile: { name: "Usuario Audio" },
+            wa_id: TEST_PHONE_NUMBER
+          }],
+          messages: [{
+            from: TEST_PHONE_NUMBER,
+            id: "wamid.HBgNNTY5ODc2NTQzMjFGAAhEVElLRU5fQUNDRVNTX1RPS0VOAA==",
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+            type: "audio",
+            audio: {
+              id: "1234567890",
+              mime_type: "audio/ogg; codecs=opus",
+              sha256: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              voice: true
+            }
+          }]
+        },
+        field: "messages"
+      }]
+    }]
+  };
 
   // 3. EJECUTAR
   const service = new WhatsAppService(messageProcessorService, whatsappClient);
@@ -269,7 +331,38 @@ test('E2E: Audio Flow - should generate TTS response for audio input', async () 
   } as any) as any;
 
   // 2. PREPARAR
-  const payload = generateAudioPayload();
+  const payload = {
+    object: "whatsapp_business_account",
+    entry: [{
+      id: "259609383376410",
+      changes: [{
+        value: {
+          messaging_product: "whatsapp",
+          metadata: {
+            display_phone_number: "15551234567",
+            phone_number_id: "123456789012345"
+          },
+          contacts: [{
+            profile: { name: "Usuario Audio" },
+            wa_id: TEST_PHONE_NUMBER
+          }],
+          messages: [{
+            from: TEST_PHONE_NUMBER,
+            id: "wamid.HBgNNTY5ODc2NTQzMjFGAAhEVElLRU5fQUNDRVNTX1RPS0VOAA==",
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+            type: "audio",
+            audio: {
+              id: "1234567890",
+              mime_type: "audio/ogg; codecs=opus",
+              sha256: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              voice: true
+            }
+          }]
+        },
+        field: "messages"
+      }]
+    }]
+  };
 
   // 3. EJECUTAR
   const service = new WhatsAppService(messageProcessorService, whatsappClient);
@@ -293,7 +386,8 @@ test('E2E: Audio Flow - should handle multiple audio messages in sequence', asyn
   } as any) as any;
 
   // Preparar primer payload
-  const payload1 = generateAudioPayload({
+  const payload1 = {
+    object: "whatsapp_business_account",
     entry: [{
       changes: [{
         value: {
@@ -308,7 +402,7 @@ test('E2E: Audio Flow - should handle multiple audio messages in sequence', asyn
         field: "messages"
       }]
     }]
-  });
+  };
 
   // Ejecutar primer mensaje de audio
   const service = new WhatsAppService(messageProcessorService, whatsappClient);
@@ -324,7 +418,8 @@ test('E2E: Audio Flow - should handle multiple audio messages in sequence', asyn
   } as any) as any;
 
   // Preparar segundo payload
-  const payload2 = generateAudioPayload({
+  const payload2 = {
+    object: "whatsapp_business_account",
     entry: [{
       changes: [{
         value: {
@@ -339,7 +434,7 @@ test('E2E: Audio Flow - should handle multiple audio messages in sequence', asyn
         field: "messages"
       }]
     }]
-  });
+  };
 
   // Ejecutar segundo mensaje de audio
   const result2 = await service.processWebhookPayload(payload2 as any);
@@ -370,7 +465,38 @@ test('E2E: Audio Flow - should handle audio with transcription errors gracefully
   } as any) as any;
 
   // 2. PREPARAR
-  const payload = generateAudioPayload();
+  const payload = {
+    object: "whatsapp_business_account",
+    entry: [{
+      id: "259609383376410",
+      changes: [{
+        value: {
+          messaging_product: "whatsapp",
+          metadata: {
+            display_phone_number: "15551234567",
+            phone_number_id: "123456789012345"
+          },
+          contacts: [{
+            profile: { name: "Usuario Audio" },
+            wa_id: TEST_PHONE_NUMBER
+          }],
+          messages: [{
+            from: TEST_PHONE_NUMBER,
+            id: "wamid.HBgNNTY5ODc2NTQzMjFGAAhEVElLRU5fQUNDRVNTX1RPS0VOAA==",
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+            type: "audio",
+            audio: {
+              id: "1234567890",
+              mime_type: "audio/ogg; codecs=opus",
+              sha256: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              voice: true
+            }
+          }]
+        },
+        field: "messages"
+      }]
+    }]
+  };
 
   // 3. EJECUTAR
   const service = new WhatsAppService(messageProcessorService, whatsappClient);
@@ -395,7 +521,38 @@ test('E2E: Audio Flow - should preserve audio metadata in database', async () =>
   } as any) as any;
 
   // 2. PREPARAR
-  const payload = generateAudioPayload();
+  const payload = {
+    object: "whatsapp_business_account",
+    entry: [{
+      id: "259609383376410",
+      changes: [{
+        value: {
+          messaging_product: "whatsapp",
+          metadata: {
+            display_phone_number: "15551234567",
+            phone_number_id: "123456789012345"
+          },
+          contacts: [{
+            profile: { name: "Usuario Audio" },
+            wa_id: TEST_PHONE_NUMBER
+          }],
+          messages: [{
+            from: TEST_PHONE_NUMBER,
+            id: "wamid.HBgNNTY5ODc2NTQzMjFGAAhEVElLRU5fQUNDRVNTX1RPS0VOAA==",
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+            type: "audio",
+            audio: {
+              id: "1234567890",
+              mime_type: "audio/ogg; codecs=opus",
+              sha256: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              voice: true
+            }
+          }]
+        },
+        field: "messages"
+      }]
+    }]
+  };
 
   // 3. EJECUTAR
   const service = new WhatsAppService(messageProcessorService, whatsappClient);
