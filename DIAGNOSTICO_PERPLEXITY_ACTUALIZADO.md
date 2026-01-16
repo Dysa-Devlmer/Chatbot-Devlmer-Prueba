@@ -141,7 +141,7 @@ O si falla:
 
 ```diff
 - PERPLEXITY_API_KEY=pk_dummy_for_development_only
-+ PERPLEXITY_API_KEY=[REDACTED_API_KEY]
++ PERPLEXITY_API_KEY=[VALID_API_KEY_PROVIDED_BY_USER]
 ```
 
 **Archivo**: `E:\prueba\.env.local` (Línea 27)
