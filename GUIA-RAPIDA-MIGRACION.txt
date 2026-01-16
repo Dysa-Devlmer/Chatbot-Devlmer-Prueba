@@ -1,0 +1,116 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║      GUÍA RÁPIDA: MIGRACIÓN DE BASE DE DATOS                 ║
+║      (5 minutos - 3 pasos simples)                           ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+
+┌───────────────────────────────────────────────────────────────┐
+│ PASO 1: CERRAR EL SERVIDOR NEXT.JS                           │
+└───────────────────────────────────────────────────────────────┘
+
+  1. Busca la ventana de PowerShell que muestra:
+     "⚡ Next.js Server - Puerto 7847"
+
+  2. Cierra esa ventana (haz clic en la X)
+
+  ✅ Listo cuando: Ya no puedes acceder a http://localhost:7847
+
+
+┌───────────────────────────────────────────────────────────────┐
+│ PASO 2: EJECUTAR LA MIGRACIÓN                                │
+└───────────────────────────────────────────────────────────────┘
+
+  🎯 MÉTODO SIMPLE (Recomendado):
+
+     1. Haz doble clic en: MIGRAR-BD.bat
+
+     2. Presiona cualquier tecla cuando se te solicite
+
+     3. Espera a que termine (1-2 minutos)
+
+
+  🎯 MÉTODO ALTERNATIVO (PowerShell):
+
+     1. Abre PowerShell en esta carpeta
+
+     2. Ejecuta:
+        powershell -ExecutionPolicy Bypass -File actualizar-base-datos.ps1
+
+
+  ✅ Listo cuando: Veas "✅ MIGRACIÓN COMPLETADA"
+
+
+┌───────────────────────────────────────────────────────────────┐
+│ PASO 3: REINICIAR EL SERVIDOR                                │
+└───────────────────────────────────────────────────────────────┘
+
+  🎯 MÉTODO SIMPLE (Recomendado):
+
+     1. Haz doble clic en: ngrok-start.bat
+        (Esto reiniciará ngrok y te dará la URL del webhook)
+
+     2. Abre PowerShell y ejecuta:
+        npm run dev
+
+
+  🎯 MÉTODO ALTERNATIVO (Automático):
+
+     1. Ejecuta:
+        powershell -ExecutionPolicy Bypass -File start-system.ps1
+
+
+  ✅ Listo cuando: Puedes acceder a http://localhost:7847/admin
+
+
+═══════════════════════════════════════════════════════════════
+
+🎉 ¡FELICIDADES! MIGRACIÓN COMPLETADA
+
+Ahora puedes acceder a las nuevas funcionalidades:
+
+  📊 Analytics:        http://localhost:7847/admin/analytics
+  ⚡ Quick Replies:    Panel Admin > Configuración
+  🏷️  Tags:            http://localhost:7847/admin/tags
+  🤖 AI Config:        http://localhost:7847/admin/ai
+  📅 Scheduled:        http://localhost:7847/admin/scheduled
+  💬 Inbox:            http://localhost:7847/admin/inbox
+
+═══════════════════════════════════════════════════════════════
+
+⚠️  RECORDATORIO IMPORTANTE:
+
+Después de reiniciar, necesitas configurar el webhook en Meta:
+
+1. La URL de ngrok cambia cada vez que reinicias
+2. Busca la nueva URL en: logs\webhook-url.txt
+3. O ejecútala: ngrok-start.bat (te mostrará la URL)
+4. Configúrala en: https://developers.facebook.com/apps
+
+═══════════════════════════════════════════════════════════════
+
+❓ ¿PROBLEMAS?
+
+Error: "EPERM: operation not permitted"
+→ Asegúrate de que cerraste la ventana de Next.js
+
+Error: "No se encuentra el comando npx"
+→ Asegúrate de que Node.js está instalado
+
+El servidor no inicia:
+→ Verifica que no haya otro proceso usando el puerto 7847
+→ Ejecuta: netstat -ano | findstr :7847
+
+═══════════════════════════════════════════════════════════════
+
+📝 ARCHIVOS DE REFERENCIA:
+
+• MIGRAR-BD.bat                    → Script de migración simple
+• actualizar-base-datos.ps1        → Script de migración avanzado
+• start-system.ps1                 → Inicio automático completo
+• ngrok-start.bat                  → Reiniciar solo ngrok
+• CONFIGURACION-WEBHOOK.txt        → Guía del webhook
+• INSTRUCCIONES-ACTUALIZACION.md   → Documentación completa
+
+═══════════════════════════════════════════════════════════════

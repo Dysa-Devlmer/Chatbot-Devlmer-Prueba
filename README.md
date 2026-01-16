@@ -1,10 +1,14 @@
-# PITHY Chatbot - Devlmer Project CL
+# PITHY Chatbot
 
-Sistema de chatbot inteligente para WhatsApp Business con IA local (Ollama).
+**"Asistente IA profesional. Respuestas precisas. Disponibilidad total."**
+
+Sistema de chatbot inteligente para WhatsApp Business con soporte para múltiples proveedores de IA (Ollama local o Perplexity en la nube).
+
+Desarrollado por **Pierre Arturo Benites Solier (Devlmer)** | [zgamersa.com](https://zgamersa.com)
 
 ## 🚀 Características
 
-- **IA Local Gratuita**: Utiliza Ollama (sin costos de API)
+- **Múltiples Proveedores de IA**: Utiliza Ollama (local y gratuito) o Perplexity (en la nube con modelos avanzados)
 - **WhatsApp Business Integration**: Conexión directa con Meta Business API
 - **Panel de Administración**: Interfaz web para gestionar conversaciones
 - **Modo Automático/Manual**: Alterna entre respuestas automáticas y manuales
@@ -19,6 +23,23 @@ Sistema de chatbot inteligente para WhatsApp Business con IA local (Ollama).
 | Panel Admin | **7847** | http://localhost:7847/admin |
 | ngrok Dashboard | **4847** | http://localhost:4847 |
 | Ollama API | **11434** | http://localhost:11434 |
+
+## 🧠 Proveedores de IA
+
+El sistema soporta múltiples proveedores de inteligencia artificial:
+
+### Ollama (Local)
+- **Ventajas**: Gratuito, privacidad completa, sin costos de API
+- **Configuración**: Requiere instalación local de Ollama
+- **Modelos populares**: Llama 3.2, Mistral, Phi-3, Gemma 2
+
+### Perplexity AI (Nube)
+- **Ventajas**: Modelos de vanguardia, conocimientos recientes, menor latencia
+- **Configuración**: Requiere API key de Perplexity
+- **Modelos disponibles**: Llama 3.1 Sonar, Mixtral, y otros modelos avanzados
+- **Documentación**: [PERPLEXITY-INTEGRATION.md](PERPLEXITY-INTEGRATION.md)
+
+Puede cambiar entre proveedores desde el panel de administración en la pestaña "IA".
 
 ## 📦 Requisitos
 
@@ -172,20 +193,41 @@ npx prisma generate
 
 ## 🤝 Contribuir
 
-Este es un proyecto privado de Devlmer Project CL.
+Este es un proyecto privado y propietario.
+No se aceptan contribuciones externas sin autorización previa.
 
 ## 👤 Autor
 
-**Ulmer Solier**
-Devlmer Project CL
+**Pierre Arturo Benites Solier (Devlmer)**
+- **RUT:** 25.484.075-0
+- **Rol:** CEO & Fundador
+- **Email:** bpier@zgamersa.com
+- **LinkedIn:** [linkedin.com/in/ulmersolier](https://linkedin.com/in/ulmersolier)
+- **Sitio Web:** [zgamersa.com](https://zgamersa.com)
+- **WhatsApp:** +56 9 6541 9765
+
+## 📞 Contacto
+
+- **Email General:** info@zgamersa.com
+- **Email CEO:** bpier@zgamersa.com
+- **WhatsApp:** +56 9 6541 9765
+- **Chatbot:** [chatbot.zgamersa.com](https://chatbot.zgamersa.com)
 
 ## 📄 Licencia
 
-Propietario - Todos los derechos reservados
+Copyright © 2024 Pierre Arturo Benites Solier (Devlmer)
+Licencia Propietaria - Todos los derechos reservados
+
+Ver LICENSE.txt para más detalles.
 
 ---
 
-**Última actualización**: Diciembre 2025
-**Versión**: 1.0.0
+**Última actualización**: Diciembre 2024
+**Versión**: 0.1.0
 **Puerto Next.js**: 7847
-**Puerto ngrok**: 4847
+**Cloudflare Tunnel**: https://chatbot.zgamersa.com
+
+---
+
+💼 **Creado y desarrollado por Pierre Arturo Benites Solier (Devlmer)**
+🌐 **zgamersa.com** | 📧 **bpier@zgamersa.com** | 📱 **+56 9 6541 9765**

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "WhatsApp Chatbot JARVIS",
-  description: "WhatsApp Business API Integration",
+  title: "PITHY Chatbot - Admin",
+  description: "Panel de Administración del Chatbot PITHY",
 };
 
 export default function RootLayout({
@@ -11,9 +12,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

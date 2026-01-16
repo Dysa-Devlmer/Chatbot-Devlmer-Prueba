@@ -1,14 +1,16 @@
 ACUERDO DE LICENCIA DE SOFTWARE - PITHY CHATBOT
 
-Copyright (c) 2024 Devlmer Project CL
+Copyright (c) 2024 Pierre Arturo Benites Solier (Devlmer)
+RUT: 25.484.075-0
 Todos los derechos reservados.
 
 TÉRMINOS Y CONDICIONES DE USO
 
 1. CONCESIÓN DE LICENCIA
-   Este software se proporciona bajo licencia, no se vende. Devlmer Project CL
-   le otorga una licencia no exclusiva para usar PITHY Chatbot en sus
-   instalaciones comerciales.
+   Este software se proporciona bajo licencia, no se vende. Pierre Arturo
+   Benites Solier (Devlmer) le otorga una licencia no exclusiva para usar
+   PITHY Chatbot ("Asistente IA profesional. Respuestas precisas. Disponibilidad
+   total.") en sus instalaciones comerciales.
 
 2. RESTRICCIONES
    - No puede redistribuir este software sin autorización escrita
@@ -28,7 +30,10 @@ TÉRMINOS Y CONDICIONES DE USO
    Las actualizaciones del software pueden estar disponibles a través de
    nuestro sitio web oficial.
 
-Para más información, visite: https://devlmer.cl
-Soporte: soporte@devlmer.cl
+Para más información, visite: https://zgamersa.com
+Chatbot: https://chatbot.zgamersa.com
+Email general: info@zgamersa.com
+Email CEO: bpier@zgamersa.com
+WhatsApp: +56 9 6541 9765
 
 Al instalar este software, usted acepta estos términos y condiciones.

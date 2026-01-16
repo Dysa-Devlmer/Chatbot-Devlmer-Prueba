@@ -125,9 +125,19 @@ export class HorariosService {
     const horaCierre = this.horaAMinutos(horarioDia.cierre);
 
     // Verificar si está dentro del horario
-    if (horaActual >= horaApertura && horaActual < horaCierre) {
+    // Manejar horarios que cruzan medianoche (ej: 9:00 - 3:00)
+    const cruzaMedianoche = horaCierre < horaApertura;
+    const dentroHorario = cruzaMedianoche
+      ? (horaActual >= horaApertura || horaActual < horaCierre)
+      : (horaActual >= horaApertura && horaActual < horaCierre);
+
+    if (dentroHorario) {
       // Verificar si está próximo a cerrar
-      const minutosParaCierre = horaCierre - horaActual;
+      const minutosParaCierre = cruzaMedianoche && horaActual < horaCierre
+        ? horaCierre - horaActual // Estamos en la madrugada antes del cierre
+        : cruzaMedianoche
+        ? (24 * 60 - horaActual) + horaCierre // Estamos antes de medianoche
+        : horaCierre - horaActual; // Horario normal
       if (minutosParaCierre <= config.configuracion.avisar_antes_de_cerrar_minutos) {
         return {
           abierto: true,

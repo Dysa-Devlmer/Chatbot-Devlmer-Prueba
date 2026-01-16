@@ -49,7 +49,7 @@ const DEFAULT_QUICK_REPLIES = [
   {
     title: 'Contacto',
     shortcut: '/contacto',
-    content: '📞 Puedes contactarnos por:\n\n• WhatsApp: Este chat\n• Email: contacto@devlmer.cl\n• Web: www.devlmer.cl',
+    content: '📞 Puedes contactarnos por:\n\n• WhatsApp: +56 9 6541 9765\n• Email: info@zgamersa.com\n• Web: zgamersa.com\n• Chatbot: chatbot.zgamersa.com',
     category: 'info',
     emoji: '📞',
   },
@@ -119,13 +119,14 @@ export async function GET() {
     });
 
     // Transformar a formato QuickReply
-    const quickReplies = templates.map((t) => ({
+    type TemplateRecord = typeof templates[number];
+    const quickReplies = templates.map((t: TemplateRecord) => ({
       id: t.id,
       title: t.name,
-      shortcut: (t.variables as any)?.shortcut || `/${t.name.toLowerCase()}`,
+      shortcut: (t.variables as Record<string, string> | null)?.shortcut || `/${t.name.toLowerCase()}`,
       content: t.content,
       category: t.category,
-      emoji: (t.variables as any)?.emoji || '📝',
+      emoji: (t.variables as Record<string, string> | null)?.emoji || '📝',
       usageCount: t.usageCount,
       isActive: t.isActive,
       createdAt: t.createdAt,
@@ -133,7 +134,8 @@ export async function GET() {
     }));
 
     // Agrupar por categoría
-    const byCategory = quickReplies.reduce((acc: Record<string, typeof quickReplies>, reply) => {
+    type QuickReplyItem = typeof quickReplies[number];
+    const byCategory = quickReplies.reduce((acc: Record<string, QuickReplyItem[]>, reply: QuickReplyItem) => {
       if (!acc[reply.category]) {
         acc[reply.category] = [];
       }

@@ -1,0 +1,39 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "259609383376410",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15551234567",
+              "phone_number_id": "123456789012345"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Juan Pérez"
+                },
+                "wa_id": "56912345678"
+              }
+            ],
+            "messages": [
+              {
+                "from": "56912345678",
+                "id": "wamid.HBgNNTY5MTIzNDU2NzhGAAhEVElLRU5fQUNDRVNTX1RPS0VOAA==",
+                "timestamp": "1705330000",
+                "text": {
+                  "body": "¿Cuál es el clima hoy?"
+                },
+                "type": "text"
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

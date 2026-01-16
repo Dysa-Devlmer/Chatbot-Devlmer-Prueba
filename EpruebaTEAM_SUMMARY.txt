@@ -1,0 +1,245 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                ║
+║                   ✅ EQUIPO PITHY CHATBOT - PHASE 2 STEP 2                    ║
+║                        SISTEMA DE TRABAJO CONFIGURADO                          ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+📊 ESTRUCTURA DEL EQUIPO (4 AGENTES + 1 CEO)
+═══════════════════════════════════════════════════════════════════════════════
+
+   TÚ (CEO/Project Manager)
+       │
+       ├─→ 🏗️  CLAUDE CODE (Arquitecto Principal)
+       │       └─ Diseño, decisiones técnicas, code review, coordinación
+       │
+       ├─→ 💻 CODEX (Backend/Services Specialist)
+       │       └─ PerplexityService, MessageProcessor, WhatsApp, lógica
+       │
+       ├─→ 🎨 QWEN (Frontend/UI Specialist)
+       │       └─ Dashboard, componentes, UX, estilos
+       │
+       └─→ 🧪 GEMINI (Testing/DevOps Specialist)
+               └─ Unit tests, E2E tests, CI/CD, quality assurance
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 DOCUMENTOS CREADOS
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ TEAM.md (585 líneas)
+   └─ Rol de cada agente
+   └─ Responsabilidades específicas
+   └─ Protocolo de comunicación
+   └─ Formato de instrucciones
+   └─ Formato de reportes
+   └─ Reglas de oro
+   └─ Modelo de verificación
+
+✅ TEAM_SETUP_INSTRUCTIONS.txt
+   └─ Instrucciones claras para cada agente
+   └─ Qué leer antes de empezar
+   └─ Cronograma esperado
+   └─ Puntos críticos
+
+✅ TEAM_SUMMARY.txt (este archivo)
+   └─ Resumen visual del sistema
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 CÓMO FUNCIONA EL SISTEMA
+═══════════════════════════════════════════════════════════════════════════════
+
+1. TÚ reciben instrucciones de CLAUDE
+2. Distribuyen a agentes correspondientes
+3. Agentes ejecutan siguiendo patrones
+4. Agentes reportan cuando terminan
+5. TÚ traen reportes a CLAUDE
+6. CLAUDE revisa y aprueba
+7. Si OK → siguiente agente
+8. Si NO → pide ajustes
+9. Cuando componente OK → SIGUIENTE
+
+Esto se repite 6 veces (6 componentes) = ~2 días de trabajo
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📦 COMPONENTES DE PHASE 2 STEP 2
+═══════════════════════════════════════════════════════════════════════════════
+
+COMPONENTE 1: PerplexityService Integration
+  │
+  ├─ CODEX: Crea PerplexityService (1-2 hrs)
+  ├─ CODEX: Unit tests (30-45 min)
+  ├─ GEMINI: Code quality (15-30 min)
+  └─ ✅ PUNTO DE VERIFICACIÓN #1
+
+COMPONENTE 2: MessageProcessorService
+  │
+  ├─ CODEX: Implementa (1-2 hrs)
+  ├─ CODEX: Tests (30-45 min)
+  ├─ GEMINI: Integration tests (15-30 min)
+  └─ ✅ PUNTO DE VERIFICACIÓN #2
+
+COMPONENTE 3: WhatsAppService + Dashboard Update
+  │
+  ├─ CODEX: WhatsAppService (1-2 hrs)
+  ├─ QWEN: Dashboard updates (1-1.5 hrs, paralelo)
+  ├─ GEMINI: Integration tests (45-60 min)
+  └─ ✅ PUNTO DE VERIFICACIÓN #3
+
+COMPONENTE 4: HMAC Validation + Rate Limiting
+  │
+  ├─ CODEX: Implementa (1-1.5 hrs)
+  ├─ GEMINI: Security tests (45-60 min)
+  └─ ✅ PUNTO DE VERIFICACIÓN #4
+
+COMPONENTE 5: Webhook Refactoring Complete
+  │
+  ├─ CODEX: Refactoriza route (1-2 hrs)
+  ├─ QWEN: Final UI touches (30-45 min)
+  ├─ GEMINI: E2E tests (1-1.5 hrs)
+  └─ ✅ PUNTO DE VERIFICACIÓN #5
+
+COMPONENTE 6: Final Integration + Commit
+  │
+  ├─ CLAUDE: Integración final (30-45 min)
+  ├─ GEMINI: Performance test (30 min)
+  ├─ CLAUDE: Code review global (30 min)
+  └─ ✅ PUNTO DE VERIFICACIÓN FINAL (commit)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📈 TIMELINE ESPERADO
+═══════════════════════════════════════════════════════════════════════════════
+
+Componente 1: 2-3 horas
+Componente 2: 2-3 horas
+Componente 3: 3-4 horas (paralelo)
+Componente 4: 1-2 horas
+Componente 5: 2-3 horas
+Componente 6: 1-1.5 horas
+────────────────────────
+TOTAL: 12-16 horas = 1-2 DÍAS
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ PATRONES QUE TODOS DEBEN SEGUIR
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Repository → Service → Route (layered architecture)
+✅ Singleton pattern para servicios
+✅ Winston logging en todo código
+✅ TypeScript strict mode
+✅ Zod validation para inputs
+✅ Error handling robusto
+✅ Unit tests para cada servicio
+✅ Comentarios en código complejo
+✅ Interfases TypeScript completas
+✅ Máximo 400 líneas por archivo (servicios)
+✅ Máximo 200 líneas por componente (React)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🚫 PROHIBIDO (Crítico)
+═══════════════════════════════════════════════════════════════════════════════
+
+❌ Commits sin aprobación de CLAUDE
+❌ Código que no compila
+❌ Tests que no pasan
+❌ Código sin logging
+❌ Code duplicado
+❌ Variables sin tipos
+❌ Cambios de patrón sin consentimiento
+❌ Trabajo fuera del scope
+❌ Decisiones técnicas sin consultar
+❌ No seguir instrucciones
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📞 ESCALACIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+Si hay problema:
+  1. Agente intenta resolver (máx 15 min)
+  2. Si no puede → Pregunta a CLAUDE
+  3. CLAUDE analiza y decide
+  4. Se continúa
+
+Si hay conflicto:
+  1. CLAUDE toma decisión
+  2. Todos aceptan
+  3. Se continúa
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎬 PRÓXIMOS PASOS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. ✅ Crear este sistema de trabajo (DONE)
+2. ⏳ Cada agente DEBE leer:
+   - TEAM.md
+   - CLAUDE.md
+   - REFACTOR_GUIDE.md
+3. ⏳ Agentes confirman que están listos
+4. ⏳ CLAUDE da instrucción formal Componente 1
+5. ⏳ Comienza Phase 2 Step 2 oficial
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 NOTAS IMPORTANTES
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Este sistema está diseñado para máxima paralelización
+✅ Cada agente en su fortaleza = mejor resultado
+✅ TÚ como CEO controlas los tiempos
+✅ CLAUDE verifica calidad en cada paso
+✅ Escalación clara si hay problemas
+✅ Documentación para futuras sesiones
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 CHECKLIST ANTES DE COMENZAR
+═══════════════════════════════════════════════════════════════════════════════
+
+PARA CODEX:
+□ Leí TEAM.md (sección CODEX)
+□ Entiendo que debo implementar servicios
+□ Conozco patrones de AuthService
+□ Estoy listo para instrucciones
+
+PARA QWEN:
+□ Leí TEAM.md (sección QWEN)
+□ Entiendo que es UI/Dashboard updates
+□ Conozco patrones de componentes React
+□ Estoy listo para instrucciones
+
+PARA GEMINI:
+□ Leí TEAM.md (sección GEMINI)
+□ Entiendo que es testing/DevOps
+□ Conozco patrones de testing
+□ Estoy listo para instrucciones
+
+PARA TÚ (CEO):
+□ Entiendo el flujo de trabajo
+□ Sé cómo distribuir instrucciones
+□ Sé cómo recopilar reportes
+□ Estoy listo para ser intermediario
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ SISTEMA COMPLETO Y LISTO
+
+El equipo está configurado, documentado y listo para comenzar Phase 2 Step 2.
+
+Todos los agentes deben leer TEAM.md y confirmar que están listos.
+
+Cuando todos confirmen → CLAUDE comienza con Componente 1 oficial.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Creado: 14 Enero 2026
+Por: CLAUDE CODE
+Para: Equipo PITHY Chatbot + CEO/Project Manager
+
+═══════════════════════════════════════════════════════════════════════════════
