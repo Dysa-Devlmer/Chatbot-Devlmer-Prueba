@@ -137,7 +137,7 @@ export const POST = createPublicHandler(async (request) => {
 - **Causa**: PERPLEXITY_API_KEY era dummy value
 - **Solución**: Usuario proporcionó API key válida
 ```env
-PERPLEXITY_API_KEY=[REDACTED_API_KEY]
+PERPLEXITY_API_KEY=[VALID_API_KEY_PROVIDED_BY_USER]
 ```
 
 **Error 400 - Message Format Mismatch**
