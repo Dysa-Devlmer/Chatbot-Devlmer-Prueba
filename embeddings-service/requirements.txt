@@ -1,0 +1,19 @@
+# Embeddings Service Dependencies
+# Sistema de Aprendizaje Continuo para Chatbot JARVIS
+
+# FastAPI framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+
+# ChromaDB - Vector Database
+chromadb==0.4.22
+
+# HTTP client for Ollama
+httpx==0.26.0
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.3
+
+# Optional: for better performance
+numpy==1.26.3

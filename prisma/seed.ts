@@ -47,8 +47,8 @@ Desarrollado con Next.js 16 + Prisma + WhatsApp Business API`,
       response: `📞 *Información de Contacto*
 
 WhatsApp: +56 9 6541 9765
-Email: soporte@devlmer.com
-Sitio web: https://devlmer.com
+Email: contacto@zgamersa.com
+Web: chatbot.zgamersa.com
 
 Horario de atención:
 Lunes a Viernes: 9:00 - 18:00 (CLT)

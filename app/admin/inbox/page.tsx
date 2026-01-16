@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface User {
   id: string;
@@ -30,6 +31,15 @@ interface Conversation {
   startedAt: string;
   user: User;
   messages: Message[];
+  tags?: string; // JSON array of tag IDs
+}
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  category: string;
 }
 
 interface QuickReply {
@@ -55,18 +65,44 @@ function InboxContent() {
   const [filteredReplies, setFilteredReplies] = useState<QuickReply[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [showTagSelector, setShowTagSelector] = useState(false);
+  const [conversationTags, setConversationTags] = useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevConversationsRef = useRef<Conversation[]>([]);
+  const prevMessagesRef = useRef<Message[]>([]);
 
-  // Fetch quick replies on mount
+  // Hook de notificaciones
+  const {
+    isSupported: notificationsSupported,
+    permission: notificationPermission,
+    soundEnabled,
+    requestPermission,
+    setSoundEnabled,
+    notifyNewMessage,
+    setUnreadCount,
+  } = useNotifications();
+
+  // Fetch quick replies, tags, and unread count on mount
   useEffect(() => {
     fetchQuickReplies();
+    fetchTags();
+    fetchTotalUnreadCount();
   }, []);
 
-  // Fetch conversations
+  // Fetch conversations and unread count
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 10000);
+    fetchTotalUnreadCount();
+    const interval = setInterval(() => {
+      fetchConversations();
+      fetchTotalUnreadCount();
+    }, 10000);
     return () => clearInterval(interval);
   }, [searchParams]);
 
@@ -83,6 +119,48 @@ function InboxContent() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Detectar nuevos mensajes y notificar
+  useEffect(() => {
+    if (messages.length > 0 && prevMessagesRef.current.length > 0) {
+      const prevIds = new Set(prevMessagesRef.current.map((m) => m.id));
+      const newMessages = messages.filter(
+        (m) => !prevIds.has(m.id) && m.direction === 'inbound'
+      );
+
+      newMessages.forEach((msg) => {
+        notifyNewMessage(msg);
+      });
+    }
+    prevMessagesRef.current = messages;
+  }, [messages, notifyNewMessage]);
+
+  // Detectar nuevas conversaciones no leídas
+  useEffect(() => {
+    if (conversations.length > 0) {
+      const prevUnreadIds = new Set(
+        prevConversationsRef.current.filter((c) => c.isUnread).map((c) => c.id)
+      );
+      const newUnread = conversations.filter(
+        (c) => c.isUnread && !prevUnreadIds.has(c.id)
+      );
+
+      // Notificar nuevas conversaciones no leídas
+      newUnread.forEach((conv) => {
+        if (conv.messages[0] && conv.messages[0].direction === 'inbound') {
+          notifyNewMessage({
+            ...conv.messages[0],
+            user: conv.user,
+          });
+        }
+      });
+
+      // Actualizar contador de no leídos
+      const totalUnread = conversations.filter((c) => c.isUnread).length;
+      setUnreadCount(totalUnread);
+    }
+    prevConversationsRef.current = conversations;
+  }, [conversations, notifyNewMessage, setUnreadCount]);
 
   // Filter quick replies based on input
   useEffect(() => {
@@ -139,6 +217,37 @@ function InboxContent() {
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const response = await fetch('/api/admin/tags');
+      const data = await response.json();
+      setTags(data.tags || []);
+    } catch (error) {
+      console.error('Error fetching tags:', error);
+    }
+  };
+
+  const fetchTotalUnreadCount = async () => {
+    try {
+      const response = await fetch('/api/admin/stats');
+      const data = await response.json();
+      setTotalUnreadCount(data.stats?.unreadConversations || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  const fetchAiSuggestions = async (conversationId: string) => {
+    try {
+      const response = await fetch(`/api/admin/ai?action=suggestions&conversationId=${conversationId}`);
+      const data = await response.json();
+      setAiSuggestions(data.suggestions || []);
+    } catch (error) {
+      console.error('Error fetching AI suggestions:', error);
+      setAiSuggestions([]);
+    }
+  };
+
   const fetchConversations = async () => {
     try {
       const mode = searchParams?.get('mode');
@@ -172,6 +281,9 @@ function InboxContent() {
     setSelectedConversation(conversation);
     inputRef.current?.focus();
 
+    // Fetch AI suggestions for this conversation
+    fetchAiSuggestions(conversation.id);
+
     if (conversation.isUnread) {
       await fetch('/api/admin/conversations', {
         method: 'PATCH',
@@ -186,6 +298,37 @@ function InboxContent() {
         prev.map((c) => (c.id === conversation.id ? { ...c, isUnread: false } : c))
       );
     }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      if (totalUnreadCount === 0) return;
+
+      // Marcar todas como leídas en el servidor
+      await fetch('/api/admin/conversations', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'markAllAsRead',
+        }),
+      });
+
+      // Actualizar el estado local
+      setConversations((prev) =>
+        prev.map((c) => ({ ...c, isUnread: false }))
+      );
+
+      // Actualizar contadores
+      setUnreadCount(0);
+      setTotalUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
+  const useAiSuggestion = (suggestion: string) => {
+    setMessageInput(suggestion);
+    inputRef.current?.focus();
   };
 
   const toggleBotMode = async (conversationId: string, currentMode: string) => {
@@ -211,6 +354,54 @@ function InboxContent() {
     } catch (error) {
       console.error('Error toggling bot mode:', error);
     }
+  };
+
+  // Cargar tags de la conversacion seleccionada
+  useEffect(() => {
+    if (selectedConversation?.tags) {
+      try {
+        const parsedTags = JSON.parse(selectedConversation.tags);
+        setConversationTags(Array.isArray(parsedTags) ? parsedTags : []);
+      } catch {
+        setConversationTags([]);
+      }
+    } else {
+      setConversationTags([]);
+    }
+  }, [selectedConversation]);
+
+  const toggleTag = async (tagId: string) => {
+    if (!selectedConversation) return;
+
+    const newTags = conversationTags.includes(tagId)
+      ? conversationTags.filter((t) => t !== tagId)
+      : [...conversationTags, tagId];
+
+    setConversationTags(newTags);
+
+    try {
+      await fetch('/api/admin/tags', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: selectedConversation.id,
+          tagIds: newTags,
+        }),
+      });
+
+      // Actualizar la conversacion localmente
+      const updatedTags = JSON.stringify(newTags);
+      setSelectedConversation({ ...selectedConversation, tags: updatedTags });
+      setConversations((prev) =>
+        prev.map((c) => (c.id === selectedConversation.id ? { ...c, tags: updatedTags } : c))
+      );
+    } catch (error) {
+      console.error('Error updating tags:', error);
+    }
+  };
+
+  const getTagById = (tagId: string): Tag | undefined => {
+    return tags.find((t) => t.id === tagId);
   };
 
   const useQuickReply = async (reply: QuickReply) => {
@@ -345,6 +536,83 @@ function InboxContent() {
           <span style={{ fontSize: '14px', opacity: 0.9 }}>
             {conversations.length} conversaciones
           </span>
+
+          {/* Botón Marcar Todo como Leído */}
+          {totalUnreadCount > 0 && (
+            <button
+              onClick={markAllAsRead}
+              style={styles.markAllReadBtn}
+              title="Marcar todas las conversaciones como leídas"
+            >
+              ✓ Marcar todo como leído ({totalUnreadCount})
+            </button>
+          )}
+
+          {/* Controles de Notificación */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowNotificationSettings(!showNotificationSettings)}
+              style={styles.notificationBtn}
+              title="Configurar notificaciones"
+            >
+              🔔
+              {conversations.filter((c) => c.isUnread).length > 0 && (
+                <span style={styles.notificationBadge}>
+                  {conversations.filter((c) => c.isUnread).length}
+                </span>
+              )}
+            </button>
+
+            {/* Panel de configuración de notificaciones */}
+            {showNotificationSettings && (
+              <div style={styles.notificationPanel}>
+                <h4 style={{ margin: '0 0 15px 0', fontSize: '14px' }}>🔔 Notificaciones</h4>
+
+                {/* Estado del permiso */}
+                <div style={styles.notificationRow}>
+                  <span>Estado:</span>
+                  <span style={{
+                    color: notificationPermission === 'granted' ? '#25D366' : '#FF6B6B'
+                  }}>
+                    {notificationPermission === 'granted' ? '✅ Activadas' :
+                     notificationPermission === 'denied' ? '❌ Bloqueadas' : '⚠️ Sin permiso'}
+                  </span>
+                </div>
+
+                {/* Botón para solicitar permiso */}
+                {notificationsSupported && notificationPermission !== 'granted' && (
+                  <button
+                    onClick={requestPermission}
+                    style={styles.enableNotificationsBtn}
+                  >
+                    Activar notificaciones
+                  </button>
+                )}
+
+                {/* Toggle de sonido */}
+                <div style={styles.notificationRow}>
+                  <span>🔊 Sonido:</span>
+                  <button
+                    onClick={() => setSoundEnabled(!soundEnabled)}
+                    style={{
+                      ...styles.toggleBtn,
+                      background: soundEnabled ? '#25D366' : '#ccc',
+                    }}
+                  >
+                    <span style={{
+                      ...styles.toggleKnob,
+                      transform: soundEnabled ? 'translateX(20px)' : 'translateX(0)',
+                    }} />
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '11px', color: '#888', margin: '10px 0 0 0' }}>
+                  Las notificaciones te alertan cuando llegan nuevos mensajes.
+                </p>
+              </div>
+            )}
+          </div>
+
           <Link href="/admin/quick-replies" style={styles.manageRepliesBtn}>
             ⚙️ Gestionar Respuestas
           </Link>
@@ -409,15 +677,89 @@ function InboxContent() {
                   {selectedConversation.user.phoneNumber}
                 </div>
               </div>
-              <button
-                onClick={() => toggleBotMode(selectedConversation.id, selectedConversation.botMode)}
-                style={{
-                  ...styles.modeButton,
-                  background: selectedConversation.botMode === 'auto' ? '#4ECDC4' : '#FF6B6B',
-                }}
-              >
-                {selectedConversation.botMode === 'auto' ? '🤖 Modo Automático' : '👤 Modo Manual'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Tag Selector */}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowTagSelector(!showTagSelector)}
+                    style={styles.tagSelectorBtn}
+                    title="Gestionar etiquetas"
+                  >
+                    🏷️ Tags
+                    {conversationTags.length > 0 && (
+                      <span style={styles.tagCount}>{conversationTags.length}</span>
+                    )}
+                  </button>
+
+                  {showTagSelector && (
+                    <div style={styles.tagSelectorPanel}>
+                      <div style={styles.tagSelectorHeader}>
+                        <span style={{ fontWeight: '600' }}>🏷️ Etiquetas</span>
+                        <button
+                          onClick={() => setShowTagSelector(false)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      {/* Current Tags */}
+                      {conversationTags.length > 0 && (
+                        <div style={styles.currentTags}>
+                          {conversationTags.map((tagId) => {
+                            const tag = getTagById(tagId);
+                            if (!tag) return null;
+                            return (
+                              <span
+                                key={tagId}
+                                style={{
+                                  ...styles.tagChip,
+                                  background: tag.color,
+                                }}
+                                onClick={() => toggleTag(tagId)}
+                                title="Click para remover"
+                              >
+                                {tag.icon} {tag.name} ✕
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Available Tags */}
+                      <div style={styles.availableTags}>
+                        {tags
+                          .filter((t) => !conversationTags.includes(t.id))
+                          .map((tag) => (
+                            <div
+                              key={tag.id}
+                              onClick={() => toggleTag(tag.id)}
+                              style={styles.tagOption}
+                            >
+                              <span
+                                style={{
+                                  ...styles.tagDot,
+                                  background: tag.color,
+                                }}
+                              />
+                              <span>{tag.icon} {tag.name}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => toggleBotMode(selectedConversation.id, selectedConversation.botMode)}
+                  style={{
+                    ...styles.modeButton,
+                    background: selectedConversation.botMode === 'auto' ? '#4ECDC4' : '#FF6B6B',
+                  }}
+                >
+                  {selectedConversation.botMode === 'auto' ? '🤖 Modo Automático' : '👤 Modo Manual'}
+                </button>
+              </div>
             </div>
 
             {/* Messages */}
@@ -499,6 +841,33 @@ function InboxContent() {
                   </button>
                 ))}
               </div>
+
+              {/* AI Suggestions */}
+              {aiSuggestions.length > 0 && (
+                <div style={styles.aiSuggestionsSection}>
+                  <div style={styles.aiSuggestionsHeader}>
+                    <span>🤖 Sugerencias de IA</span>
+                    <button
+                      onClick={() => fetchAiSuggestions(selectedConversation.id)}
+                      style={styles.refreshBtn}
+                      title="Actualizar sugerencias"
+                    >
+                      🔄
+                    </button>
+                  </div>
+                  <div style={styles.aiSuggestionsList}>
+                    {aiSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => useAiSuggestion(suggestion)}
+                        style={styles.aiSuggestionBtn}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Command suggestions popup */}
@@ -588,7 +957,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#f0f2f5',
+    backgroundColor: '#f0f2f5',
   },
   header: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -606,6 +975,17 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '20px',
     textDecoration: 'none',
     fontSize: '14px',
+    transition: 'background 0.2s',
+  },
+  markAllReadBtn: {
+    background: 'rgba(37, 211, 102, 0.9)',
+    color: 'white',
+    padding: '8px 16px',
+    borderRadius: '20px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
     transition: 'background 0.2s',
   },
   mainContent: {
@@ -821,5 +1201,212 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     fontSize: '12px',
     fontFamily: 'monospace',
+  },
+  // Notification Styles
+  notificationBtn: {
+    position: 'relative',
+    background: 'rgba(255,255,255,0.2)',
+    border: 'none',
+    borderRadius: '50%',
+    width: '40px',
+    height: '40px',
+    fontSize: '18px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background 0.2s',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: '-5px',
+    right: '-5px',
+    background: '#FF6B6B',
+    color: 'white',
+    fontSize: '11px',
+    fontWeight: 'bold',
+    padding: '2px 6px',
+    borderRadius: '10px',
+    minWidth: '18px',
+    textAlign: 'center',
+  },
+  notificationPanel: {
+    position: 'absolute',
+    top: '50px',
+    right: '0',
+    background: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    padding: '15px',
+    width: '280px',
+    zIndex: 1000,
+    color: '#333',
+  },
+  notificationRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 0',
+    borderBottom: '1px solid #f0f0f0',
+    fontSize: '13px',
+  },
+  enableNotificationsBtn: {
+    width: '100%',
+    padding: '10px 15px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+    marginTop: '10px',
+    marginBottom: '10px',
+    transition: 'opacity 0.2s',
+  },
+  toggleBtn: {
+    position: 'relative',
+    width: '44px',
+    height: '24px',
+    borderRadius: '12px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background 0.2s',
+    padding: '0',
+  },
+  toggleKnob: {
+    position: 'absolute',
+    top: '2px',
+    left: '2px',
+    width: '20px',
+    height: '20px',
+    background: 'white',
+    borderRadius: '50%',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+    transition: 'transform 0.2s',
+  },
+  // Tag Selector Styles
+  tagSelectorBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 16px',
+    background: '#f0f2f5',
+    border: 'none',
+    borderRadius: '20px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#333',
+    transition: 'background 0.2s',
+  },
+  tagCount: {
+    background: '#667eea',
+    color: 'white',
+    padding: '2px 8px',
+    borderRadius: '10px',
+    fontSize: '11px',
+    fontWeight: 'bold',
+  },
+  tagSelectorPanel: {
+    position: 'absolute',
+    top: '45px',
+    right: '0',
+    background: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    padding: '15px',
+    width: '280px',
+    zIndex: 1000,
+    maxHeight: '350px',
+    overflowY: 'auto',
+  },
+  tagSelectorHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '12px',
+    paddingBottom: '10px',
+    borderBottom: '1px solid #f0f0f0',
+  },
+  currentTags: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '12px',
+    paddingBottom: '12px',
+    borderBottom: '1px solid #f0f0f0',
+  },
+  tagChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '4px 10px',
+    borderRadius: '12px',
+    color: 'white',
+    fontSize: '12px',
+    cursor: 'pointer',
+    transition: 'opacity 0.2s',
+  },
+  availableTags: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  tagOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '8px 10px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    transition: 'background 0.2s',
+  },
+  tagDot: {
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
+  },
+  // AI Suggestions Styles
+  aiSuggestionsSection: {
+    marginTop: '15px',
+    paddingTop: '15px',
+    borderTop: '1px solid #e0e0e0',
+  },
+  aiSuggestionsHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '10px',
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#4ECDC4',
+  },
+  refreshBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '14px',
+    padding: '5px',
+    borderRadius: '50%',
+    transition: 'background 0.2s',
+  },
+  aiSuggestionsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  aiSuggestionBtn: {
+    background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+    border: '1px solid #4ECDC4',
+    borderRadius: '8px',
+    padding: '10px 15px',
+    textAlign: 'left',
+    cursor: 'pointer',
+    fontSize: '13px',
+    color: '#333',
+    transition: 'all 0.2s',
+    lineHeight: '1.4',
   },
 };

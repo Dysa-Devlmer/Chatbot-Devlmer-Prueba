@@ -1,0 +1,74 @@
+╔════════════════════════════════════════════════════════════════╗
+║                 CONFIGURACIÓN DEL WEBHOOK                      ║
+║                    PITHY CHATBOT - WhatsApp                    ║
+╚════════════════════════════════════════════════════════════════╝
+
+📱 CONFIGURACIÓN EN META DEVELOPER CONSOLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Ve a: https://developers.facebook.com/apps
+
+2. Selecciona tu aplicación
+
+3. Ve a WhatsApp > Configuration
+
+4. En "Webhook", haz clic en "Edit"
+
+5. Ingresa estos datos:
+
+   📍 Callback URL:
+   https://primulaceous-skinflintily-garret.ngrok-free.dev/api/whatsapp/webhook
+
+   🔑 Verify Token:
+   mi_token_secreto_123
+
+6. Haz clic en "Verify and Save"
+
+7. Suscríbete a los siguientes campos del webhook:
+   ☑️ messages
+   ☑️ message_status
+
+
+⚙️ HORARIO DE ATENCIÓN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Lunes a Viernes:  9:00 AM - 12:00 AM (medianoche)
+Sábados:         10:00 AM -  2:00 PM
+Domingos:        Cerrado
+
+Para modificar: edita config-horarios.json
+
+
+🔗 ENLACES ÚTILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 Panel Admin:     http://localhost:7847/admin
+📊 Panel Analytics: http://localhost:7847/admin/analytics
+💬 Bandeja Entrada: http://localhost:7847/admin/inbox
+⚡ Quick Replies:   http://localhost:7847/admin/quick-replies
+🌐 Panel Ngrok:     http://localhost:4847
+
+
+📝 NOTAS IMPORTANTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  La URL de ngrok cambia cada vez que reinicias el servicio
+⚠️  Si reinicias ngrok, debes actualizar la URL en Meta Console
+⚠️  El sistema usa Ollama (IA local) - No hay costos de API
+⚠️  Todos los datos se guardan en la base de datos local (SQLite)
+
+
+🚀 INICIAR EL SISTEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Opción 1 (Recomendada):
+   powershell -ExecutionPolicy Bypass -File iniciar-chatbot.ps1
+
+Opción 2 (Solo ngrok):
+   ngrok-start.bat
+
+
+📞 SOPORTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Revisa COMO-USAR-EL-CHATBOT.md para más información

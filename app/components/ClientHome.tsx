@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import AdminAccessButton from './AdminAccessButton';
 
 export default function ClientHome() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -239,6 +240,9 @@ export default function ClientHome() {
           <li>Si respondes al mensaje, el bot te responderá automáticamente</li>
         </ol>
       </div>
+
+      {/* Botón de acceso admin */}
+      <AdminAccessButton />
     </div>
   );
 }

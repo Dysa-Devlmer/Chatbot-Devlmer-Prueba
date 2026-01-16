@@ -239,6 +239,108 @@ export default function AdminDashboard() {
               </p>
             </div>
           </Link>
+
+          <Link href="/admin/tags" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '30px',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 8px 12px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>🏷️</div>
+              <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>Etiquetas</h3>
+              <p style={{ margin: 0, color: '#666' }}>
+                Organiza conversaciones con tags personalizados
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/admin/ai" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #4ECDC4 0%, #25D366 100%)',
+              borderRadius: '12px',
+              padding: '30px',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 8px 12px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>🤖</div>
+              <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>Configuracion IA</h3>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)' }}>
+                Ajusta el modelo, temperatura y caracteristicas de IA
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/admin/learning" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #6610f2 0%, #e83e8c 100%)',
+              borderRadius: '12px',
+              padding: '30px',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              color: 'white',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 8px 12px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>🧠</div>
+              <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>Aprendizaje RAG</h3>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)' }}>
+                Sistema de aprendizaje continuo con embeddings
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/admin/scheduled" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '30px',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 8px 12px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '15px' }}>📅</div>
+              <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>Mensajes Programados</h3>
+              <p style={{ margin: 0, color: '#666' }}>
+                Programa mensajes para enviar automáticamente
+              </p>
+            </div>
+          </Link>
         </div>
 
         {/* System Info */}

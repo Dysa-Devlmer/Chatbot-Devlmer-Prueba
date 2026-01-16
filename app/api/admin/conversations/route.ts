@@ -54,6 +54,39 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// PUT - Acciones en lote (marcar todo como leído, etc.)
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { action } = body;
+
+    if (action === 'markAllAsRead') {
+      // Marcar todas las conversaciones como leídas
+      const result = await prisma.conversation.updateMany({
+        where: { isUnread: true },
+        data: { isUnread: false },
+      });
+
+      return NextResponse.json({
+        success: true,
+        updated: result.count,
+        message: `${result.count} conversaciones marcadas como leídas`,
+      });
+    }
+
+    return NextResponse.json(
+      { error: 'Acción no válida' },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('Error in bulk action:', error);
+    return NextResponse.json(
+      { error: 'Error al ejecutar acción' },
+      { status: 500 }
+    );
+  }
+}
+
 // PATCH - Actualizar una conversación (cambiar modo bot, marcar como leído, etc.)
 export async function PATCH(request: NextRequest) {
   try {
