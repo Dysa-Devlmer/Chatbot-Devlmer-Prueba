@@ -6,6 +6,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { perplexityLogger, logError } from '@/lib/logger'
 import { ConversationContext, AIResponse } from '@/types/schemas'
+import { ollamaService } from './OllamaService'
 
 export interface PerplexityMessage {
   role: 'user' | 'assistant' | 'system'
@@ -113,51 +114,61 @@ export class PerplexityService {
         message: originalError.message,
       })
 
-      return this.handleFallback(formattedText, originalError)
+      return this.handleFallback(formattedText, originalError, context)
     }
   }
 
   /**
-   * Fallback automatico a Claude si Perplexity falla.
+   * Fallback automático: Claude → Ollama si ambos fallan
    */
   async handleFallback(
     text: string,
-    originalError: Error
+    originalError: Error,
+    context?: ConversationContext
   ): Promise<AIResponse> {
     perplexityLogger.warn('Perplexity failed, trying Claude fallback', {
       error: originalError.message,
     })
 
-    if (!this.claudeApiKey) {
-      perplexityLogger.error('Claude fallback unavailable: missing CLAUDE_API_KEY')
-      return this.getGenericResponse()
+    // Intenta con Claude primero
+    if (this.claudeApiKey) {
+      try {
+        if (!this.claudeClient) {
+          this.claudeClient = new Anthropic({ apiKey: this.claudeApiKey })
+        }
+
+        const response = await this.claudeClient.messages.create({
+          model: process.env.CLAUDE_MODEL?.trim() || 'claude-3-5-sonnet-latest',
+          max_tokens: this.maxTokens,
+          temperature: this.temperature,
+          messages: [{ role: 'user', content: text }],
+        })
+
+        const responseText = response.content
+          .filter((block) => block.type === 'text')
+          .map((block) => block.text)
+          .join('')
+          .trim()
+
+        if (responseText) {
+          perplexityLogger.info('Claude fallback succeeded')
+          return { response: responseText }
+        }
+      } catch (error) {
+        perplexityLogger.warn('Claude fallback failed', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+      }
+    } else {
+      perplexityLogger.warn('Claude fallback unavailable: missing CLAUDE_API_KEY')
     }
 
+    // Intenta con Ollama como último fallback
     try {
-      if (!this.claudeClient) {
-        this.claudeClient = new Anthropic({ apiKey: this.claudeApiKey })
-      }
-
-      const response = await this.claudeClient.messages.create({
-        model: process.env.CLAUDE_MODEL?.trim() || 'claude-3-5-sonnet-latest',
-        max_tokens: this.maxTokens,
-        temperature: this.temperature,
-        messages: [{ role: 'user', content: text }],
-      })
-
-      const responseText = response.content
-        .filter((block) => block.type === 'text')
-        .map((block) => block.text)
-        .join('')
-        .trim()
-
-      if (!responseText) {
-        throw new Error('Claude returned an empty response')
-      }
-
-      return { response: responseText }
+      perplexityLogger.info('Trying Ollama fallback')
+      return await ollamaService.generateResponse(text, context)
     } catch (error) {
-      logError(perplexityLogger, error, { stage: 'claude-fallback' })
+      logError(perplexityLogger, error, { stage: 'ollama-fallback' })
       return this.getGenericResponse()
     }
   }
@@ -210,11 +221,14 @@ export class PerplexityService {
       }
 
       const data = (await response.json()) as PerplexityApiResponse
-      const content = data.choices?.[0]?.message?.content?.trim()
+      let content = data.choices?.[0]?.message?.content?.trim()
 
       if (!content) {
         throw new Error('Perplexity returned an empty response')
       }
+
+      // Limpiar la respuesta: remover referencias y hacer más legible
+      content = this.cleanResponse(content)
 
       return {
         response: content,
@@ -229,6 +243,40 @@ export class PerplexityService {
     } finally {
       clearTimeout(timeout)
     }
+  }
+
+  /**
+   * Limpia la respuesta de Perplexity para hacerla más legible y humana
+   * Remueve: citations [1][2], asteriscos decorativos, markdown excesivo
+   */
+  private cleanResponse(text: string): string {
+    let cleaned = text
+
+    // Remover referencias numeradas [1], [2], etc.
+    cleaned = cleaned.replace(/\[\d+\]/g, '')
+
+    // Remover asteriscos múltiples (**, ***, etc.)
+    cleaned = cleaned.replace(/\*\*+/g, '')
+
+    // Remover números entre paréntesis (1), (2), etc.
+    cleaned = cleaned.replace(/\(\d+\)/g, '')
+
+    // Convertir líneas de guiones múltiples en puntos seguidos
+    cleaned = cleaned.replace(/---+/g, '.')
+
+    // Remover guiones al inicio de líneas (bullets) y reemplazar con punto
+    cleaned = cleaned.replace(/^\s*-\s+/gm, '')
+
+    // Limpiar espacios múltiples
+    cleaned = cleaned.replace(/\s+/g, ' ')
+
+    // Remover saltos de línea excesivos
+    cleaned = cleaned.replace(/\n\n+/g, '\n')
+
+    // Trimear
+    cleaned = cleaned.trim()
+
+    return cleaned
   }
 
   private extractSources(data: PerplexityApiResponse): string[] | undefined {
@@ -266,20 +314,33 @@ export class PerplexityService {
   ): PerplexityMessage[] {
     const messages: PerplexityMessage[] = []
 
+    // Agregar contexto del sistema
     const systemContext = this.buildSystemContext(context)
     if (systemContext) {
       messages.push({ role: 'system', content: systemContext })
     }
 
+    // Perplexity requiere que los mensajes altern entre user y assistant
+    // Por eso, incluir solo el resumen del contexto en el sistema, no mensajes individuales
     if (context?.recentMessages?.length) {
-      context.recentMessages.forEach((message) => {
-        messages.push({
-          role: message.role,
-          content: this.formatMessage(message.content),
+      // Construir un resumen de conversación anterior en lugar de mensajes individuales
+      const conversationSummary = context.recentMessages
+        .slice(-6) // Últimos 6 mensajes para no saturar
+        .map((msg) => {
+          const role = msg.role === 'user' ? 'Usuario' : 'Asistente'
+          return `${role}: ${this.formatMessage(msg.content)}`
         })
-      })
+        .join('\n')
+
+      if (conversationSummary) {
+        messages.push({
+          role: 'system',
+          content: `Contexto de conversación anterior:\n${conversationSummary}`,
+        })
+      }
     }
 
+    // Mensaje actual del usuario
     messages.push({ role: 'user', content: text })
 
     return messages

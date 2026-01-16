@@ -60,6 +60,7 @@ function InboxContent() {
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [isChangingMode, setIsChangingMode] = useState(false);
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [filteredReplies, setFilteredReplies] = useState<QuickReply[]>([]);
@@ -333,6 +334,7 @@ function InboxContent() {
 
   const toggleBotMode = async (conversationId: string, currentMode: string) => {
     const newMode = currentMode === 'auto' ? 'manual' : 'auto';
+    setIsChangingMode(true);
 
     try {
       await fetch('/api/admin/conversations', {
@@ -353,6 +355,8 @@ function InboxContent() {
       );
     } catch (error) {
       console.error('Error toggling bot mode:', error);
+    } finally {
+      setIsChangingMode(false);
     }
   };
 
@@ -752,12 +756,24 @@ function InboxContent() {
 
                 <button
                   onClick={() => toggleBotMode(selectedConversation.id, selectedConversation.botMode)}
+                  disabled={isChangingMode}
                   style={{
                     ...styles.modeButton,
                     background: selectedConversation.botMode === 'auto' ? '#4ECDC4' : '#FF6B6B',
+                    opacity: isChangingMode ? 0.5 : 1,
+                    cursor: isChangingMode ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {selectedConversation.botMode === 'auto' ? '🤖 Modo Automático' : '👤 Modo Manual'}
+                  {isChangingMode ? (
+                    <>
+                      <span style={{ marginRight: '8px' }}>⏳</span>
+                      Cambiando...
+                    </>
+                  ) : (
+                    <>
+                      {selectedConversation.botMode === 'auto' ? '🤖 Modo Automático' : '👤 Modo Manual'}
+                    </>
+                  )}
                 </button>
               </div>
             </div>

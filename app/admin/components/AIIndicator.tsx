@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from 'react'
 
+type Provider = 'perplexity' | 'claude' | 'fallback'
+
+type Status = 'active' | 'inactive' | 'error'
+
 export default function AIIndicator() {
-  const [provider, setProvider] = useState<'perplexity' | 'claude' | 'unknown'>('unknown')
-  const [status, setStatus] = useState<'online' | 'offline' | 'checking'>('checking')
+  const [provider, setProvider] = useState<Provider>('fallback')
+  const [status, setStatus] = useState<Status>('inactive')
 
   useEffect(() => {
     fetchStatus()
@@ -17,23 +21,23 @@ export default function AIIndicator() {
       setProvider(data.provider)
       setStatus(data.status)
     } catch {
-      setStatus('offline')
+      setStatus('error')
     }
   }
 
   const statusColor = {
-    online: 'bg-green-500',
-    offline: 'bg-red-500',
-    checking: 'bg-yellow-500'
+    active: 'bg-green-500',
+    inactive: 'bg-yellow-500',
+    error: 'bg-red-500'
   }[status]
 
   return (
     <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full">
       <div className={`w-2 h-2 rounded-full ${statusColor}`}></div>
       <span className="text-sm font-semibold">
-        {provider === 'perplexity' && '🧠 Perplexity'}
-        {provider === 'claude' && '🤖 Claude (Fallback)'}
-        {provider === 'unknown' && '❓ Verificando...'}
+        {provider === 'perplexity' && 'Perplexity'}
+        {provider === 'claude' && 'Claude (Fallback)'}
+        {provider === 'fallback' && 'Fallback'}
       </span>
     </div>
   )
