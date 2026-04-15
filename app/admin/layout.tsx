@@ -7,6 +7,7 @@ export default function AdminLayout({
 }) {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+
       <AdminHeader />
       <main style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
         {children}
