@@ -137,7 +137,7 @@ export class ConversationRepository {
     dbLogger.debug('Getting or creating active conversation', { userId })
 
     // Primero intentar encontrar conversación activa
-    let conversation = await this.findActiveByUser(userId)
+    const conversation = await this.findActiveByUser(userId)
 
     if (conversation) {
       dbLogger.debug('Active conversation found', {

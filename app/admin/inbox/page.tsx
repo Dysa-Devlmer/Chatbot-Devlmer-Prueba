@@ -189,7 +189,7 @@ function InboxContent() {
 
         if (visibleReplies[index] && selectedConversation) {
           e.preventDefault();
-          useQuickReply(visibleReplies[index]);
+          applyQuickReply(visibleReplies[index]);
         }
       }
 
@@ -327,7 +327,7 @@ function InboxContent() {
     }
   };
 
-  const useAiSuggestion = (suggestion: string) => {
+  const applyAiSuggestion = (suggestion: string) => {
     setMessageInput(suggestion);
     inputRef.current?.focus();
   };
@@ -408,7 +408,7 @@ function InboxContent() {
     return tags.find((t) => t.id === tagId);
   };
 
-  const useQuickReply = async (reply: QuickReply) => {
+  const applyQuickReply = async (reply: QuickReply) => {
     setMessageInput(reply.content);
     setShowQuickReplies(false);
     inputRef.current?.focus();
@@ -843,7 +843,7 @@ function InboxContent() {
                 {displayedReplies.slice(0, 9).map((reply, index) => (
                   <button
                     key={reply.id}
-                    onClick={() => useQuickReply(reply)}
+                    onClick={() => applyQuickReply(reply)}
                     style={{
                       ...styles.quickReplyButton,
                       borderLeft: `4px solid ${getCategoryColor(reply.category)}`,
@@ -875,7 +875,7 @@ function InboxContent() {
                     {aiSuggestions.map((suggestion, index) => (
                       <button
                         key={index}
-                        onClick={() => useAiSuggestion(suggestion)}
+                        onClick={() => applyAiSuggestion(suggestion)}
                         style={styles.aiSuggestionBtn}
                       >
                         {suggestion}
@@ -892,7 +892,7 @@ function InboxContent() {
                 {filteredReplies.map((reply) => (
                   <div
                     key={reply.id}
-                    onClick={() => useQuickReply(reply)}
+                    onClick={() => applyQuickReply(reply)}
                     style={styles.suggestionItem}
                   >
                     <span style={{ fontSize: '20px' }}>{reply.emoji}</span>
