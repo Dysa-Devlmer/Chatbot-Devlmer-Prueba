@@ -67,3 +67,38 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+
+# ChromaDB runtime data
+embeddings-service/chroma_db/
+
+# Audio/media test files
+*.mp3
+*.wav
+test_*.mp3
+test_*.wav
+tts-output-*.mp3
+response-audio-*.mp3
+
+# Windows installer/scripts
+*.exe
+*.bat
+*.nsi
+*.iss
+*.bmp
+WizModern*.bmp
+
+# Session and agent docs (auto-generated)
+RESUMEN_SESION_*.md
+RESUMEN-SESION-*.md
+STATUS_*.md
+STATUS_*.txt
+INSTRUCCION_*.md
+COMIENZA_AQUI_*.md
+ANALISIS_*.md
+REPORTE_*.md
+INDICE_*.md
+
+# Misc temp files
+cookies.txt
+*.bak
+dev.db
