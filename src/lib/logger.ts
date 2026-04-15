@@ -163,6 +163,11 @@ export const ttsLogger = createLogger('tts')
 export const apiLogger = createLogger('api')
 
 /**
+ * Logger para Ollama (fallback local)
+ */
+export const ollamaLogger = createLogger('ollama')
+
+/**
  * Wrapper para capturar errores con contexto
  */
 export function logError(

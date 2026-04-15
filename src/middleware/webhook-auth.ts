@@ -11,6 +11,7 @@ import { whatsappLogger } from '@/lib/logger'
 export interface WebhookAuthResult {
   valid: boolean
   error?: string
+  body?: any
   rateLimitInfo?: {
     allowed: boolean
     remaining: number
@@ -118,8 +119,16 @@ export async function webhookAuthMiddleware(
       remaining: rateLimitResult.remaining,
     })
 
+    let parsedBody
+    try {
+      parsedBody = JSON.parse(body)
+    } catch {
+      parsedBody = body
+    }
+
     return {
       valid: true,
+      body: parsedBody,
       rateLimitInfo: {
         allowed: true,
         remaining: rateLimitResult.remaining,

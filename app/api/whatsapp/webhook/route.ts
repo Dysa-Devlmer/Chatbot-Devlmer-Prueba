@@ -42,7 +42,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    // Body ya fue leído por el middleware, usar ese body en lugar de leer de nuevo
+    const body = authResult.body;
+    if (!body) {
+      whatsappLogger.warn('Empty body after auth');
+      return NextResponse.json(
+        { success: false, error: 'Empty request body' },
+        { status: 400 }
+      );
+    }
+
     const result = await whatsAppService.processWebhookPayload(body);
 
     whatsappLogger.info('Webhook processed successfully', {

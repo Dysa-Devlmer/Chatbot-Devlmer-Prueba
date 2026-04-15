@@ -405,6 +405,7 @@ export default function ScheduledMessagesPage() {
                   onChange={(e) => setFormDate(e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
                   style={pageStyles.input}
+                  placeholder="dd-mm-aaaa"
                 />
               </div>
 
@@ -415,6 +416,7 @@ export default function ScheduledMessagesPage() {
                   value={formTime}
                   onChange={(e) => setFormTime(e.target.value)}
                   style={pageStyles.input}
+                  placeholder="hh:mm"
                 />
               </div>
             </div>

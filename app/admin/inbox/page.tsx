@@ -60,6 +60,7 @@ function InboxContent() {
   const [messageInput, setMessageInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [isChangingMode, setIsChangingMode] = useState(false);
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [filteredReplies, setFilteredReplies] = useState<QuickReply[]>([]);
@@ -333,6 +334,7 @@ function InboxContent() {
 
   const toggleBotMode = async (conversationId: string, currentMode: string) => {
     const newMode = currentMode === 'auto' ? 'manual' : 'auto';
+    setIsChangingMode(true);
 
     try {
       await fetch('/api/admin/conversations', {
@@ -353,6 +355,8 @@ function InboxContent() {
       );
     } catch (error) {
       console.error('Error toggling bot mode:', error);
+    } finally {
+      setIsChangingMode(false);
     }
   };
 
@@ -484,19 +488,35 @@ function InboxContent() {
   const getCategoryEmoji = (category: string): string => {
     const emojis: Record<string, string> = {
       general: '💬',
+      greeting: '💬',
       info: 'ℹ️',
       ventas: '💰',
       soporte: '🔧',
+      farewell: '👋',
+      error: '❌',
+      media_received: '📎',
     };
     return emojis[category] || '📝';
+  };
+
+  const getCategoryLabel = (category: string): string => {
+    const labels: Record<string, string> = {
+      general: 'General',
+      greeting: 'Saludos',
+      farewell: 'Despedidas',
+      info: 'Información',
+      ventas: 'Ventas',
+      soporte: 'Soporte',
+      error: 'Errores',
+      media_received: 'Medios',
+    };
+    return labels[category] || category;
   };
 
   if (loading) {
     return (
       <div style={styles.loadingContainer} suppressHydrationWarning>
-        <div style={{ fontSize: '20px', color: '#666' }} suppressHydrationWarning>
-          ⏳ Cargando conversaciones...
-        </div>
+        <div style={{ fontSize: '20px', color: '#666' }} suppressHydrationWarning>⏳ Cargando conversaciones...</div>
       </div>
     );
   }
@@ -736,12 +756,24 @@ function InboxContent() {
 
                 <button
                   onClick={() => toggleBotMode(selectedConversation.id, selectedConversation.botMode)}
+                  disabled={isChangingMode}
                   style={{
                     ...styles.modeButton,
                     background: selectedConversation.botMode === 'auto' ? '#4ECDC4' : '#FF6B6B',
+                    opacity: isChangingMode ? 0.5 : 1,
+                    cursor: isChangingMode ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {selectedConversation.botMode === 'auto' ? '🤖 Modo Automático' : '👤 Modo Manual'}
+                  {isChangingMode ? (
+                    <>
+                      <span style={{ marginRight: '8px' }}>⏳</span>
+                      Cambiando...
+                    </>
+                  ) : (
+                    <>
+                      {selectedConversation.botMode === 'auto' ? '🤖 Modo Automático' : '👤 Modo Manual'}
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -802,7 +834,7 @@ function InboxContent() {
                         color: selectedCategory === cat ? 'white' : '#666',
                       }}
                     >
-                      {getCategoryEmoji(cat)} {cat}
+                      {getCategoryEmoji(cat)} {getCategoryLabel(cat)}
                     </button>
                   ))}
                 </div>
@@ -919,8 +951,8 @@ export default function InboxPage() {
   return (
     <Suspense
       fallback={
-        <div style={styles.loadingContainer}>
-          <div style={{ fontSize: '20px', color: '#666' }}>⏳ Cargando...</div>
+        <div style={styles.loadingContainer} suppressHydrationWarning>
+          <div style={{ fontSize: '20px', color: '#666' }} suppressHydrationWarning>⏳ Cargando...</div>
         </div>
       }
     >
