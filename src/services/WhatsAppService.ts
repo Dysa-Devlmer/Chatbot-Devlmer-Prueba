@@ -13,6 +13,8 @@ import {
   sendWhatsAppMessage,
 } from '@/lib/whatsapp'
 import { whatsappLogger, logError } from '@/lib/logger'
+import { prisma } from '@/lib/prisma'
+import { InteractiveMenuService } from '@/services/InteractiveMenuService'
 import {
   WhatsAppMessagePayload,
   WhatsAppProcessResult,
@@ -206,6 +208,46 @@ export class WhatsAppService {
       }
     }
 
+    // Manejo de Interacciones de Menú Nativo (Listas y Botones estilo Movistar)
+    const content = extracted.content.trim();
+    if (content.startsWith('[INTERACTIVE_LIST_ID:cat_')) {
+      const categoryId = content.replace('[INTERACTIVE_LIST_ID:cat_', '').split(']')[0];
+      const sent = await InteractiveMenuService.sendProductsByCategory(phoneNumber, categoryId);
+      if (sent) {
+        return {
+          success: true,
+          type: 'interactive',
+          message: 'Categoría desplegada',
+          details: { userId: userResult.user.id, conversationId: conversation.id, processingTime: Date.now() - startedAt },
+        };
+      }
+    } else if (content.startsWith('[INTERACTIVE_LIST_ID:prod_')) {
+      const productId = content.replace('[INTERACTIVE_LIST_ID:prod_', '').split(']')[0];
+      const sent = await InteractiveMenuService.sendProductDetail(phoneNumber, productId);
+      if (sent) {
+        return {
+          success: true,
+          type: 'interactive',
+          message: 'Ficha de plato enviada',
+          details: { userId: userResult.user.id, conversationId: conversation.id, processingTime: Date.now() - startedAt },
+        };
+      }
+    } else if (content.startsWith('[INTERACTIVE_BTN_ID:menu_principal]') || content.toLowerCase() === 'menu' || content.toLowerCase() === 'carta') {
+      await InteractiveMenuService.sendCategoriesMenu(phoneNumber, contactName);
+      return {
+        success: true,
+        type: 'interactive',
+        message: 'Menú principal interactivo enviado',
+        details: { userId: userResult.user.id, conversationId: conversation.id, processingTime: Date.now() - startedAt },
+      };
+    } else if (content.startsWith('[INTERACTIVE_BTN_ID:order_')) {
+      const prodId = content.replace('[INTERACTIVE_BTN_ID:order_', '').split(']')[0];
+      const prod = await prisma.product.findUnique({ where: { id: prodId } });
+      if (prod) {
+        extracted.content = `Quiero pedir 1 ${prod.name}`;
+      }
+    }
+
     const commandResult = await this.handleCommand(extracted.content, userResult.user.id)
     if (commandResult.handled && commandResult.response) {
       await this.sendResponse(phoneNumber, { text: commandResult.response })
@@ -320,7 +362,7 @@ export class WhatsAppService {
       return { valid: false, error: 'Mensaje incompleto', type: 'invalid' }
     }
 
-    const supported = ['text', 'audio', 'image', 'video', 'document', 'location']
+    const supported = ['text', 'audio', 'image', 'video', 'document', 'location', 'interactive']
     if (!supported.includes(message.type)) {
       return { valid: false, error: 'Tipo de mensaje no soportado', type: 'invalid' }
     }
@@ -428,6 +470,24 @@ export class WhatsAppService {
           content: `[Ubicacion: ${message.location?.latitude}, ${message.location?.longitude}]`,
           type: 'location',
         }
+      case 'interactive': {
+        const interactive = message.interactive;
+        if (interactive?.type === 'list_reply') {
+          const reply = interactive.list_reply;
+          return {
+            content: reply?.id ? `[INTERACTIVE_LIST_ID:${reply.id}] ${reply.title || ''}` : (reply?.title || '[Selección de lista]'),
+            type: 'text',
+          };
+        }
+        if (interactive?.type === 'button_reply') {
+          const reply = interactive.button_reply;
+          return {
+            content: reply?.id ? `[INTERACTIVE_BTN_ID:${reply.id}] ${reply.title || ''}` : (reply?.title || '[Botón presionado]'),
+            type: 'text',
+          };
+        }
+        return { content: '[Interactivo]', type: 'text' };
+      }
       default:
         return { content: '[Tipo no soportado]', type: 'unknown' }
     }

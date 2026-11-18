@@ -286,3 +286,176 @@ function convertToOggOpus(inputPath: string): Promise<string> {
     });
   });
 }
+
+/**
+ * Interfaz para filas de lista interactiva
+ */
+export interface WhatsAppListRow {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+/**
+ * Interfaz para secciones de lista interactiva
+ */
+export interface WhatsAppListSection {
+  title: string;
+  rows: WhatsAppListRow[];
+}
+
+/**
+ * Envía un mensaje interactivo de tipo Lista (menú desplegable estilo Movistar)
+ */
+export async function sendWhatsAppList(
+  phoneNumber: string,
+  bodyText: string,
+  buttonText: string,
+  sections: WhatsAppListSection[],
+  title?: string,
+  footerText?: string
+) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneNumberId) {
+    throw new Error('Variables de entorno de WhatsApp no configuradas');
+  }
+
+  const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phoneNumber.replace(/\D/g, ''),
+      type: 'interactive',
+      interactive: {
+        type: 'list',
+        header: title ? { type: 'text', text: title } : undefined,
+        body: { text: bodyText },
+        footer: footerText ? { text: footerText } : undefined,
+        action: {
+          button: buttonText.slice(0, 20), // Máximo 20 caracteres exigido por Meta
+          sections: sections.map(s => ({
+            title: s.title.slice(0, 24),
+            rows: s.rows.slice(0, 10).map(r => ({
+              id: r.id.slice(0, 200),
+              title: r.title.slice(0, 24),
+              description: r.description ? r.description.slice(0, 72) : undefined
+            }))
+          }))
+        }
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Error enviando lista interactiva:', errorText);
+    throw new Error(`WhatsApp API error: ${response.statusText} - ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Envía un mensaje con botones de respuesta rápida (hasta 3 botones)
+ */
+export async function sendWhatsAppButtons(
+  phoneNumber: string,
+  bodyText: string,
+  buttons: { id: string; title: string }[],
+  footerText?: string
+) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneNumberId) {
+    throw new Error('Variables de entorno de WhatsApp no configuradas');
+  }
+
+  const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phoneNumber.replace(/\D/g, ''),
+      type: 'interactive',
+      interactive: {
+        type: 'button',
+        body: { text: bodyText },
+        footer: footerText ? { text: footerText } : undefined,
+        action: {
+          buttons: buttons.slice(0, 3).map(b => ({
+            type: 'reply',
+            reply: {
+              id: b.id.slice(0, 256),
+              title: b.title.slice(0, 20)
+            }
+          }))
+        }
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Error enviando botones interactivos:', errorText);
+    throw new Error(`WhatsApp API error: ${response.statusText} - ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Envía una imagen con texto/pie opcional a WhatsApp
+ */
+export async function sendWhatsAppImage(
+  phoneNumber: string,
+  imageUrl: string,
+  caption?: string
+) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneNumberId) {
+    throw new Error('Variables de entorno de WhatsApp no configuradas');
+  }
+
+  const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phoneNumber.replace(/\D/g, ''),
+      type: 'image',
+      image: {
+        link: imageUrl,
+        caption: caption
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Error enviando imagen de WhatsApp:', errorText);
+    throw new Error(`WhatsApp API error: ${response.statusText} - ${errorText}`);
+  }
+
+  return await response.json();
+}
