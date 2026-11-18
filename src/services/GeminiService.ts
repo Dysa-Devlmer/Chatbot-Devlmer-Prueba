@@ -31,7 +31,7 @@ export class GeminiService {
     fallbackModel: string = 'gemini-3.5-flash-lite'
   ) {
     this.apiKey = (apiKey || process.env.GEMINI_API_KEY || '').trim()
-    this.primaryModel = process.env.GEMINI_MODEL || primaryModel
+    this.primaryModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
     this.fallbackModel = fallbackModel
 
     if (!this.apiKey) {
@@ -222,7 +222,7 @@ REGLAS DE ATENCIÓN:
       }
 
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 20000)
+      const timeout = setTimeout(() => controller.abort(), 8000)
 
       try {
         const response = await fetch(url, {
@@ -233,6 +233,7 @@ REGLAS DE ATENCIÓN:
           body: JSON.stringify(payload),
           signal: controller.signal,
         })
+        clearTimeout(timeout)
 
         if (!response.ok) {
           const errorText = await response.text()

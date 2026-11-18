@@ -16,7 +16,7 @@ import {
   ProcessingOptions,
 } from '@/types/schemas'
 
-const DEFAULT_TIMEOUT_MS = 30000
+const DEFAULT_TIMEOUT_MS = 25000
 const DEFAULT_MAX_TEXT_LENGTH = 2000
 const MAX_TTS_LENGTH = 300
 
