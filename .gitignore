@@ -102,3 +102,7 @@ INDICE_*.md
 cookies.txt
 *.bak
 dev.db
+
+# Documentación interna / Obsidian (solo local)
+docs/
+.obsidian/
