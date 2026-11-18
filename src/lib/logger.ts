@@ -40,7 +40,7 @@ const devFormat = printf(({ level, message, timestamp, module, ...metadata }) =>
 const redactFormat = format((info) => {
   const sensitiveKeys = [
     'password', 'token', 'secret', 'apiKey', 'authorization',
-    'WHATSAPP_TOKEN', 'NEXTAUTH_SECRET', 'cookie', 'jwt'
+    'WHATSAPP_TOKEN', 'NEXTAUTH_SECRET', 'GEMINI_API_KEY', 'cookie', 'jwt'
   ]
 
   const redact = (obj: any): any => {
@@ -131,6 +131,11 @@ export const aiLogger = createLogger('ai')
  * Logger para Perplexity
  */
 export const perplexityLogger = createLogger('perplexity')
+
+/**
+ * Logger para Gemini
+ */
+export const geminiLogger = createLogger('gemini')
 
 /**
  * Logger para Message Processor

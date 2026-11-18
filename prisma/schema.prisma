@@ -394,3 +394,97 @@ model AdminProfile {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
+
+// ==========================================
+// MÓDULO SAAS: NEGOCIO, PRODUCTOS Y RESERVAS
+// ==========================================
+
+// Configuración general del negocio/rubro para el inquilino (tenant)
+model BusinessProfile {
+  id              String   @id @default(uuid())
+  name            String   @default("Mi Negocio")
+  industry        String   @default("technology") // technology, clothing, restaurant, fast_food, pharmacy, services, other
+  description     String?
+  currency        String   @default("CLP") // CLP, USD, EUR, etc.
+  currencySymbol  String   @default("$")
+  address         String?
+  phone           String?
+  email           String?
+  allowReservations Boolean @default(true)
+  policies        String?  // Políticas de despacho, reservas o términos
+  customPrompt    String?  // Instrucciones adicionales para la IA sobre el negocio
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Categorías de productos del catálogo
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  products    Product[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Productos o servicios ofrecidos por la empresa
+model Product {
+  id            String    @id @default(uuid())
+  name          String
+  description   String?
+  price         Float
+  stock         Int       @default(0)
+  sku           String?   @unique
+  imageUrl      String?
+  isActive      Boolean   @default(true)
+  allowBackorder Boolean  @default(false) // Si se permite reservar cuando no hay stock
+
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  orderItems    OrderItem[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([name])
+  @@index([isActive])
+}
+
+// Pedidos y Reservas solicitados por clientes vía WhatsApp o Panel
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique // ej: ORD-1001
+  customerPhone   String
+  customerName    String?
+  status          String      @default("pending") // pending, confirmed, ready, delivered, cancelled
+  totalAmount     Float       @default(0)
+  notes           String?
+  channel         String      @default("whatsapp") // whatsapp, web, manual
+
+  items           OrderItem[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([customerPhone])
+  @@index([status])
+}
+
+// Items de cada orden/reserva
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+
+  quantity    Int      @default(1)
+  unitPrice   Float
+
+  createdAt   DateTime @default(now())
+}

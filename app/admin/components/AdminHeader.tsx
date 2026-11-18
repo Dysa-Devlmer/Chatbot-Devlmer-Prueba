@@ -155,10 +155,11 @@ export function AdminHeader() {
   const navItems = [
     { href: '/admin', label: 'Dashboard', icon: '📊' },
     { href: '/admin/inbox', label: 'Inbox', icon: '💬' },
+    { href: '/admin/products', label: 'Catálogo', icon: '📦' },
+    { href: '/admin/business', label: 'Mi Empresa', icon: '🏢' },
     { href: '/admin/analytics', label: 'Analytics', icon: '📈' },
     { href: '/admin/ai', label: 'IA Config', icon: '🤖' },
     { href: '/admin/tags', label: 'Tags', icon: '🏷️' },
-    { href: '/admin/scheduled', label: 'Programados', icon: '⏰' },
   ];
 
   const userMenuItems = [

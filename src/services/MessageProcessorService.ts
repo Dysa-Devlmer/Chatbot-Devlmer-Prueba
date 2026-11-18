@@ -7,6 +7,7 @@ import { AIService } from '@/lib/ai'
 import { ConversationService } from '@/lib/conversation'
 import { downloadWhatsAppMedia, sendWhatsAppAudio } from '@/lib/whatsapp'
 import { messageProcessorLogger, logError } from '@/lib/logger'
+import { geminiService } from '@/services/GeminiService'
 import { perplexityService } from '@/services/PerplexityService'
 import {
   ConversationContext,
@@ -145,7 +146,7 @@ export class MessageProcessorService {
       })
 
       responseResult = (await Promise.race([
-        this.generateResponse(messageContent, input.userId, input.conversationId),
+        this.generateResponse(messageContent, input.userId, input.conversationId, input.phoneNumber),
         timeoutPromise,
       ])) as {
         success: boolean
@@ -307,7 +308,8 @@ export class MessageProcessorService {
   private async generateResponse(
     messageContent: string,
     userId: string,
-    conversationId: string
+    conversationId: string,
+    phoneNumber?: string
   ): Promise<{
     success: boolean
     response: string
@@ -323,7 +325,9 @@ export class MessageProcessorService {
         contextMessages: context.recentMessages.length,
       })
 
-      const aiResponse = await perplexityService.generateResponse(messageContent, context)
+      const aiResponse = geminiService.isConfigured()
+        ? await geminiService.generateResponse(messageContent, context, phoneNumber)
+        : await perplexityService.generateResponse(messageContent, context)
 
       return {
         success: true,
@@ -456,11 +460,11 @@ export class MessageProcessorService {
    */
   async isConfigured(): Promise<boolean> {
     try {
-      const isPerplexityReady = perplexityService.isConfigured()
+      const isAiReady = geminiService.isConfigured() || perplexityService.isConfigured()
       const whisperStatus = await AIService.checkWhisperStatus()
       const ttsStatus = await AIService.checkTTSStatus()
 
-      return isPerplexityReady && whisperStatus.available && ttsStatus.available
+      return isAiReady && whisperStatus.available && ttsStatus.available
     } catch (error) {
       logError(messageProcessorLogger, error, { stage: 'config-check' })
       return false
