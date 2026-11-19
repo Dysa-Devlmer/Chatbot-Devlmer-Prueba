@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { hashPassword, verifyPassword } from '@/utils/security';
+import { authLogger, logError } from '@/lib/logger';
 
 // PUT - Change password
 export async function PUT(request: NextRequest) {
@@ -20,6 +20,13 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { currentPassword, newPassword } = body;
 
+    if (!currentPassword || !newPassword) {
+      return NextResponse.json(
+        { error: 'Contraseña actual y nueva contraseña requeridas' },
+        { status: 400 }
+      );
+    }
+
     // Get admin profile
     const profile = await prisma.adminProfile.findFirst();
 
@@ -30,38 +37,53 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verify current password
-    if (currentPassword !== profile.password) {
+    // Verify current password with bcrypt or legacy fallback
+    let isMatch = false;
+    if (profile.password.startsWith('$2')) {
+      isMatch = await verifyPassword(currentPassword, profile.password);
+    } else {
+      isMatch = (currentPassword === profile.password);
+    }
+
+    if (!isMatch) {
+      authLogger.warn('Intento fallido de cambio de contraseña: credencial actual errónea', {
+        user: session.user?.name,
+      });
       return NextResponse.json(
         { error: 'La contraseña actual es incorrecta' },
         { status: 400 }
       );
     }
 
-    // Validate new password
-    if (!newPassword || newPassword.length < 8) {
+    // Validate new password strength
+    if (newPassword.length < 8) {
       return NextResponse.json(
         { error: 'La nueva contraseña debe tener al menos 8 caracteres' },
         { status: 400 }
       );
     }
 
+    // Securely hash new password
+    const hashedPassword = await hashPassword(newPassword);
+
     // Update password in database
     await prisma.adminProfile.update({
       where: { id: profile.id },
-      data: { password: newPassword },
+      data: { password: hashedPassword },
     });
 
-    console.log('Password changed successfully for user:', session.user?.name);
+    authLogger.info('Contraseña de administrador actualizada con hash bcrypt seguro', {
+      user: session.user?.name,
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Contraseña actualizada correctamente',
+      message: 'Contraseña actualizada correctamente y protegida con cifrado bcrypt',
     });
   } catch (error) {
-    console.error('Error changing password:', error);
+    logError(authLogger, error, { action: 'change-password' });
     return NextResponse.json(
-      { error: 'Error al cambiar la contraseña' },
+      { error: 'Error interno al actualizar la contraseña' },
       { status: 500 }
     );
   }

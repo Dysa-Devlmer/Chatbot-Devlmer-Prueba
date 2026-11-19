@@ -80,6 +80,10 @@ export class ReservationService {
       const orderItemsData = []
       const summaryParts: string[] = []
 
+      // Obtener símbolo de moneda del negocio si existe
+      const business = await prisma.businessProfile.findFirst()
+      const symbol = business?.currencySymbol || 'S/.'
+
       for (const prod of matchedProducts) {
         totalAmount += prod.price
         orderItemsData.push({
@@ -87,7 +91,7 @@ export class ReservationService {
           quantity: 1,
           unitPrice: prod.price,
         })
-        summaryParts.push(`• ${prod.name} ($${prod.price.toLocaleString('es-CL')})`)
+        summaryParts.push(`• ${prod.name} (${symbol} ${prod.price.toFixed(2)})`)
 
         // Descontar stock si tiene stock disponible
         if (prod.stock > 0) {

@@ -52,7 +52,7 @@ export function MobileBottomNav() {
     },
     {
       href: '/admin/inbox',
-      label: 'WhatsApp',
+      label: 'Chats',
       icon: MessageSquare,
       badge: null,
     },

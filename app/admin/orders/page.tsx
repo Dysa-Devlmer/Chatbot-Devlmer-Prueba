@@ -295,7 +295,7 @@ export default function LiveOrdersPage() {
           </div>
 
           {/* Status Tabs for Mobile / Quick Filter */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
             <button
               onClick={() => setActiveTab('all')}
               className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${

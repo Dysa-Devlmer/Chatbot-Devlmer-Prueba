@@ -32,6 +32,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   reactCompiler: true,
   poweredByHeader: false, // Ocultar que es Next.js por seguridad
 

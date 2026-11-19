@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { hashPassword } from '@/utils/security';
 
 // Helper to get or create admin profile
 async function getOrCreateAdminProfile() {
   let profile = await prisma.adminProfile.findFirst();
 
   if (!profile) {
+    const hashedPassword = await hashPassword('pithy2024');
     profile = await prisma.adminProfile.create({
       data: {
         username: 'admin',
-        password: 'pithy2024',
+        password: hashedPassword,
         name: 'Pierre Benites (Devlmer)',
         email: 'bpier@zgamersa.com',
         company: 'zgamersa.com',

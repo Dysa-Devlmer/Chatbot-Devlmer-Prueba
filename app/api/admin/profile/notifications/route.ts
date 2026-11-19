@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
+import { hashPassword } from '@/utils/security';
 
 // GET - Get notification preferences
 export async function GET(request: NextRequest) {
@@ -77,10 +76,11 @@ export async function PUT(request: NextRequest) {
     let profile = await prisma.adminProfile.findFirst();
 
     if (!profile) {
+      const defaultPassword = await hashPassword('pithy2024');
       profile = await prisma.adminProfile.create({
         data: {
           username: 'admin',
-          password: 'pithy2024',
+          password: defaultPassword,
         },
       });
     }

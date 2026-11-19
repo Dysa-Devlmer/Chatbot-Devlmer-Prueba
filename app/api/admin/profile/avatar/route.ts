@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { hashPassword } from '@/utils/security';
+import { authLogger, logError } from '@/lib/logger';
 
-const prisma = new PrismaClient();
+// Allowed MIME types for avatar uploads
+const ALLOWED_MIME_TYPES = ['data:image/jpeg;base64,', 'data:image/png;base64,', 'data:image/webp;base64,'];
+const MAX_BASE64_LENGTH = 2800000; // ~2MB raw image
 
 // POST - Upload avatar (base64)
 export async function POST(request: NextRequest) {
@@ -20,25 +24,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { avatar } = body;
 
-    if (!avatar) {
+    if (!avatar || typeof avatar !== 'string') {
       return NextResponse.json(
-        { error: 'No se proporcionó imagen' },
+        { error: 'No se proporcionó imagen válida' },
         { status: 400 }
       );
     }
 
-    // Validate base64 image
-    if (!avatar.startsWith('data:image/')) {
+    // Validate allowed image types (strict whitelist against XSS/SVG injection)
+    const isAllowedType = ALLOWED_MIME_TYPES.some(prefix => avatar.startsWith(prefix));
+    if (!isAllowedType) {
       return NextResponse.json(
-        { error: 'Formato de imagen no válido' },
+        { error: 'Formato de imagen no permitido. Solo se aceptan JPEG, PNG o WebP.' },
         { status: 400 }
       );
     }
 
-    // Check size (max 2MB in base64 is roughly 2.7MB)
-    if (avatar.length > 2700000) {
+    // Check size limit (max 2MB)
+    if (avatar.length > MAX_BASE64_LENGTH) {
       return NextResponse.json(
-        { error: 'La imagen es demasiado grande. Máximo 2MB.' },
+        { error: 'La imagen excede el tamaño máximo permitido de 2MB.' },
         { status: 400 }
       );
     }
@@ -47,10 +52,11 @@ export async function POST(request: NextRequest) {
     let profile = await prisma.adminProfile.findFirst();
 
     if (!profile) {
+      const defaultHashedPassword = await hashPassword('pithy2024');
       profile = await prisma.adminProfile.create({
         data: {
           username: 'admin',
-          password: 'pithy2024',
+          password: defaultHashedPassword,
           avatar,
         },
       });
@@ -61,13 +67,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    authLogger.info('Avatar actualizado correctamente', { user: session.user?.name });
+
     return NextResponse.json({
       success: true,
       avatar: profile.avatar,
       message: 'Avatar actualizado correctamente',
     });
   } catch (error) {
-    console.error('Error uploading avatar:', error);
+    logError(authLogger, error, { action: 'upload-avatar' });
     return NextResponse.json(
       { error: 'Error al subir el avatar' },
       { status: 500 }
