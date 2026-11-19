@@ -1,0 +1,136 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e2]:
+    - banner [ref=f6e3]:
+      - generic [ref=f6e4]:
+        - link "PITHY Admin Panel" [ref=f6e6] [cursor=pointer]:
+          - /url: /admin
+          - generic [ref=f6e14]:
+            - generic [ref=f6e15]: PITHY
+            - generic [ref=f6e16]: Admin Panel
+        - navigation [ref=f6e17]:
+          - link "📊 Dashboard" [ref=f6e18] [cursor=pointer]:
+            - /url: /admin
+            - generic [ref=f6e19]: 📊
+            - generic [ref=f6e20]: Dashboard
+          - link "🔔 Pedidos en Vivo" [ref=f6e22] [cursor=pointer]:
+            - /url: /admin/orders
+            - generic [ref=f6e23]: 🔔
+            - generic [ref=f6e24]: Pedidos en Vivo
+          - link "💬 Inbox" [ref=f6e25] [cursor=pointer]:
+            - /url: /admin/inbox
+            - generic [ref=f6e26]: 💬
+            - generic [ref=f6e27]: Inbox
+          - link "🍔 Menú & Catálogo" [ref=f6e28] [cursor=pointer]:
+            - /url: /admin/products
+            - generic [ref=f6e29]: 🍔
+            - generic [ref=f6e30]: Menú & Catálogo
+          - link "🏢 Mi Local" [ref=f6e31] [cursor=pointer]:
+            - /url: /admin/business
+            - generic [ref=f6e32]: 🏢
+            - generic [ref=f6e33]: Mi Local
+          - link "📈 Analytics" [ref=f6e34] [cursor=pointer]:
+            - /url: /admin/analytics
+            - generic [ref=f6e35]: 📈
+            - generic [ref=f6e36]: Analytics
+          - link "🤖 IA Config" [ref=f6e37] [cursor=pointer]:
+            - /url: /admin/ai
+            - generic [ref=f6e38]: 🤖
+            - generic [ref=f6e39]: IA Config
+          - link "🏷️ Tags" [ref=f6e40] [cursor=pointer]:
+            - /url: /admin/tags
+            - generic [ref=f6e41]: 🏷️
+            - generic [ref=f6e42]: Tags
+        - generic [ref=f6e43]:
+          - generic [ref=f6e44]: Fallback
+          - generic [ref=f6e47]:
+            - button "Buscar (Ctrl+K)" [ref=f6e48] [cursor=pointer]
+            - button "Notificaciones" [ref=f6e53] [cursor=pointer]
+          - button "A Admin Administrador" [ref=f6e58] [cursor=pointer]:
+            - generic [ref=f6e59]: A
+            - generic [ref=f6e62]:
+              - generic [ref=f6e63]: Admin
+              - generic [ref=f6e64]: Administrador
+    - main [ref=f6e67]:
+      - generic [ref=f6e68]:
+        - generic [ref=f6e70]:
+          - generic [ref=f6e71]:
+            - generic [ref=f6e72]:
+              - generic [ref=f6e73]: Local Activo
+              - generic [ref=f6e75]: WhatsApp Business SaaS
+            - heading "Churu's Comida Rápida" [level=1] [ref=f6e76]
+            - paragraph [ref=f6e77]: Panel de control táctil para recepción de pedidos, catálogo en S/. y atención automática.
+          - link "Ver Pedidos en Vivo" [ref=f6e78] [cursor=pointer]:
+            - /url: /admin/orders
+        - generic [ref=f6e83]:
+          - link "Pendientes 0 Por confirmar" [ref=f6e84] [cursor=pointer]:
+            - /url: /admin/orders
+            - generic [ref=f6e85]: Pendientes
+            - generic [ref=f6e91]:
+              - generic [ref=f6e92]: "0"
+              - paragraph [ref=f6e93]:
+                - generic [ref=f6e94]: Por confirmar
+          - link "En Cocina 0 Preparación & Despacho" [ref=f6e97] [cursor=pointer]:
+            - /url: /admin/orders
+            - generic [ref=f6e98]: En Cocina
+            - generic [ref=f6e103]:
+              - generic [ref=f6e104]: "0"
+              - paragraph [ref=f6e105]:
+                - generic [ref=f6e106]: Preparación & Despacho
+          - link "Entregados 0 Pedidos completados" [ref=f6e109] [cursor=pointer]:
+            - /url: /admin/orders
+            - generic [ref=f6e110]: Entregados
+            - generic [ref=f6e116]:
+              - generic [ref=f6e117]: "0"
+              - paragraph [ref=f6e118]:
+                - generic [ref=f6e119]: Pedidos completados
+          - link "Chats WhatsApp 0 0 mensajes sin leer" [ref=f6e122] [cursor=pointer]:
+            - /url: /admin/inbox
+            - generic [ref=f6e123]: Chats WhatsApp
+            - generic [ref=f6e128]:
+              - generic [ref=f6e129]: "0"
+              - paragraph [ref=f6e130]:
+                - generic [ref=f6e131]: 0 mensajes sin leer
+        - generic [ref=f6e134]:
+          - 'link "Tablero Kanban en Vivo Control de comandas en tiempo real: acepta pedidos, envía a cocina y despacha con un toque. Abrir Comandas" [ref=f6e135] [cursor=pointer]':
+            - /url: /admin/orders
+            - generic [ref=f6e141]:
+              - heading "Tablero Kanban en Vivo" [level=3] [ref=f6e142]
+              - paragraph [ref=f6e143]: "Control de comandas en tiempo real: acepta pedidos, envía a cocina y despacha con un toque."
+            - generic [ref=f6e144]: Abrir Comandas
+          - link "Menú & Control de Platos Modifica precios en S/., sube o baja stock en 1 toque y pausa platos agotados al instante. Gestionar Menú" [ref=f6e148] [cursor=pointer]:
+            - /url: /admin/products
+            - generic [ref=f6e156]:
+              - heading "Menú & Control de Platos" [level=3] [ref=f6e157]
+              - paragraph [ref=f6e158]: Modifica precios en S/., sube o baja stock en 1 toque y pausa platos agotados al instante.
+            - generic [ref=f6e159]: Gestionar Menú
+          - link "Bandeja WhatsApp en Vivo Conversaciones directas con los clientes, modo automático con IA o intervención humana manual. Ir a Mensajes" [ref=f6e163] [cursor=pointer]:
+            - /url: /admin/inbox
+            - generic [ref=f6e168]:
+              - heading "Bandeja WhatsApp en Vivo" [level=3] [ref=f6e169]
+              - paragraph [ref=f6e170]: Conversaciones directas con los clientes, modo automático con IA o intervención humana manual.
+            - generic [ref=f6e171]: Ir a Mensajes
+        - generic [ref=f6e175]:
+          - heading "Estado del Asistente Virtual WhatsApp" [level=3] [ref=f6e176]
+          - generic [ref=f6e181]:
+            - generic [ref=f6e182]:
+              - generic [ref=f6e183]: "Modo IA Automático:"
+              - generic [ref=f6e184]: 0 chats
+            - generic [ref=f6e185]:
+              - generic [ref=f6e186]: "Atención Manual (Humana):"
+              - generic [ref=f6e187]: 0 chats
+            - generic [ref=f6e188]:
+              - generic [ref=f6e189]: "Mensajes Totales Hoy:"
+              - generic [ref=f6e190]: 0 msgs
+    - navigation "Navegación móvil" [ref=f6e191]:
+      - generic [ref=f6e192]:
+        - link "Pedidos" [ref=f6e193] [cursor=pointer]:
+          - /url: /admin/orders
+        - link "Menú" [ref=f6e199] [cursor=pointer]:
+          - /url: /admin/products
+        - link "WhatsApp" [ref=f6e207] [cursor=pointer]:
+          - /url: /admin/inbox
+        - link "Resumen" [ref=f6e212] [cursor=pointer]:
+          - /url: /admin
+        - link "Mi Local" [ref=f6e221] [cursor=pointer]:
+          - /url: /admin/business
+  - button "Open Next.js Dev Tools" [ref=f6e233] [cursor=pointer]

@@ -154,9 +154,10 @@ export function AdminHeader() {
 
   const navItems = [
     { href: '/admin', label: 'Dashboard', icon: '📊' },
+    { href: '/admin/orders', label: 'Pedidos en Vivo', icon: '🔔' },
     { href: '/admin/inbox', label: 'Inbox', icon: '💬' },
-    { href: '/admin/products', label: 'Catálogo', icon: '📦' },
-    { href: '/admin/business', label: 'Mi Empresa', icon: '🏢' },
+    { href: '/admin/products', label: 'Menú & Catálogo', icon: '🍔' },
+    { href: '/admin/business', label: 'Mi Local', icon: '🏢' },
     { href: '/admin/analytics', label: 'Analytics', icon: '📈' },
     { href: '/admin/ai', label: 'IA Config', icon: '🤖' },
     { href: '/admin/tags', label: 'Tags', icon: '🏷️' },
@@ -197,8 +198,8 @@ export function AdminHeader() {
           </Link>
         </div>
 
-        {/* Navigation */}
-        <nav style={styles.nav}>
+        {/* Navigation - Hidden on mobile, visible on desktop */}
+        <nav style={styles.nav} className="hidden md:flex">
           {navItems.map((item) => {
             const isActive = pathname === item.href ||
               (item.href !== '/admin' && pathname?.startsWith(item.href));
@@ -225,7 +226,7 @@ export function AdminHeader() {
           <AIIndicator />
 
           {/* Quick Actions */}
-          <div style={styles.quickActions}>
+          <div style={styles.quickActions} className="hidden sm:flex">
             <button
               style={styles.iconButton}
               title="Buscar (Ctrl+K)"
@@ -472,19 +473,22 @@ const styles: { [key: string]: React.CSSProperties } = {
   header: {
     background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
     borderBottom: '1px solid rgba(148, 163, 184, 0.1)',
-    padding: '0 24px',
+    padding: '0 16px',
     position: 'sticky',
     top: 0,
     zIndex: 1000,
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    width: '100%',
+    overflowX: 'clip',
   },
   container: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: '70px',
+    height: '60px',
     maxWidth: '1600px',
     margin: '0 auto',
+    width: '100%',
   },
   logoSection: {
     display: 'flex',

@@ -1,0 +1,15 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - heading "PITHY Admin" [level=1] [ref=e5]
+      - paragraph [ref=e6]: Panel de Administración
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Usuario
+        - textbox "admin" [ref=e10]
+      - generic [ref=e11]:
+        - generic [ref=e12]: Contraseña
+        - textbox "••••••••" [ref=e13]
+      - button "Iniciar Sesión" [ref=e14] [cursor=pointer]
+    - paragraph [ref=e15]: PITHY Chatbot - Devlmer Project
+  - alert [ref=e16]
