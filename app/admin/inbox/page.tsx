@@ -9,10 +9,19 @@ import {
   UserCheck, 
   ArrowLeft, 
   CheckCheck, 
+  Check,
+  Clock, 
   Sparkles, 
   Zap, 
   X, 
   Phone, 
+  Video,
+  MoreVertical,
+  Paperclip,
+  Smile,
+  Mic,
+  Pin,
+  Plus,
   Volume2, 
   VolumeX, 
   RefreshCw,
@@ -36,6 +45,10 @@ interface Message {
   timestamp: string;
   type: string;
   user: User;
+  quotedMessage?: {
+    content: string;
+    sender: string;
+  };
 }
 
 interface Conversation {
@@ -43,6 +56,7 @@ interface Conversation {
   status: string;
   botMode: string;
   isUnread: boolean;
+  isPinned?: boolean;
   startedAt: string;
   user: User;
   messages: Message[];
@@ -69,11 +83,14 @@ function InboxInner() {
   const [sending, setSending] = useState(false);
   const [isChangingMode, setIsChangingMode] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'vip'>('all');
+  const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'favorites'>('all');
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatPhone, setNewChatPhone] = useState('');
+  const [newChatName, setNewChatName] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -313,6 +330,32 @@ function InboxInner() {
     }
   };
 
+  const handleCreateNewChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChatPhone.trim()) return;
+
+    try {
+      const cleanPhone = newChatPhone.replace(/\D/g, '');
+      const res = await fetch('/api/admin/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: cleanPhone,
+          name: newChatName.trim() || null,
+        }),
+      });
+
+      if (res.ok) {
+        setShowNewChatModal(false);
+        setNewChatPhone('');
+        setNewChatName('');
+        await fetchConversations();
+      }
+    } catch (err) {
+      console.error('Error creating chat:', err);
+    }
+  };
+
   const formatMessageTime = (ts: string) => {
     try {
       const d = new Date(ts);
@@ -336,9 +379,7 @@ function InboxInner() {
     }
   };
 
-  // Helper to render formatted text with bold highlights like WhatsApp
   const renderMessageContent = (text: string) => {
-    // Process **text** or *text* into strong
     const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
     return parts.map((part, index) => {
       if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('*') && part.endsWith('*'))) {
@@ -357,7 +398,7 @@ function InboxInner() {
 
     if (!matchesSearch) return false;
     if (filterTab === 'unread') return c.isUnread;
-    if (filterTab === 'vip') return c.user.isVIP;
+    if (filterTab === 'favorites') return c.user.isVIP;
     return true;
   });
 
@@ -365,16 +406,16 @@ function InboxInner() {
     <div className="w-full h-[calc(100dvh-5.5rem)] md:h-[calc(100vh-6.5rem)] flex overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111b21] shadow-xl relative">
       
       {/* =========================================================================
-          MASTER VIEW: CHAT LIST
-          On Mobile (< md): Visible when selectedConversation === null
-          On Desktop (>= md): Always visible (360px-380px fixed width)
+          COLUMNA IZQUIERDA: LISTA DE CHATS (320px - 380px)
+          Desktop: Visible siempre (WhatsApp Web 2 columnas)
+          Móvil: Visible cuando selectedConversation === null
          ========================================================================= */}
       <aside 
         className={`w-full md:w-80 lg:w-[380px] shrink-0 flex flex-col h-full border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111b21] ${
           selectedConversation !== null ? 'hidden md:flex' : 'flex'
         }`}
       >
-        {/* Top Header: WhatsApp Style Title & Quick Actions */}
+        {/* Header Superior: Título Chats, Menú (3 puntos) y Botón + Nuevo Chat */}
         <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/80 dark:bg-[#111b21]">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
@@ -387,7 +428,8 @@ function InboxInner() {
             )}
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            {/* Audio Toggle */}
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               title={soundEnabled ? 'Silenciar alertas' : 'Activar sonido'}
@@ -396,36 +438,36 @@ function InboxInner() {
               {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4" />}
             </button>
 
-            {totalUnreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                title="Marcar todos como leídos"
-                className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100 transition-colors"
-              >
-                ✓ Todo leído
-              </button>
-            )}
-
+            {/* Botón "+ Nuevo chat" con estilo propio PITHY */}
             <button
-              onClick={() => fetchConversations()}
-              title="Refrescar chats"
+              onClick={() => setShowNewChatModal(true)}
+              title="Iniciar nuevo chat"
+              className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-sm transition-all flex items-center justify-center"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+            </button>
+
+            {/* Menú de 3 puntos */}
+            <button
+              onClick={markAllAsRead}
+              title="Marcar todos como leídos"
               className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
-              <RefreshCw className="w-4 h-4" />
+              <MoreVertical className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Barra de búsqueda con estilo PITHY */}
         <div className="p-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Buscar un chat o mensaje..."
+              placeholder="Buscar un chat o iniciar uno nuevo"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-100 dark:bg-[#202c33] text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00a884]/30 border-none transition-all"
+              className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 border-none transition-all"
             />
             {search && (
               <button 
@@ -437,60 +479,60 @@ function InboxInner() {
             )}
           </div>
 
-          {/* Filter Pills */}
+          {/* Filtros de píldora deslizables */}
           <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setFilterTab('all')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                 filterTab === 'all'
-                  ? 'bg-[#00a884] text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-[#202c33] text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               Todos ({conversations.length})
             </button>
             <button
               onClick={() => setFilterTab('unread')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap flex items-center gap-1 transition-all ${
                 filterTab === 'unread'
-                  ? 'bg-[#00a884] text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-[#202c33] text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               <span>No leídos</span>
               {totalUnreadCount > 0 && (
                 <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                  filterTab === 'unread' ? 'bg-white text-[#00a884]' : 'bg-[#25d366] text-white'
+                  filterTab === 'unread' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white'
                 }`}>
                   {totalUnreadCount}
                 </span>
               )}
             </button>
             <button
-              onClick={() => setFilterTab('vip')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                filterTab === 'vip'
-                  ? 'bg-[#00a884] text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-[#202c33] text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+              onClick={() => setFilterTab('favorites')}
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                filterTab === 'favorites'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              ⭐ VIP
+              ⭐ Favoritos
             </button>
           </div>
         </div>
 
-        {/* Scrollable Chat List */}
+        {/* Tarjetas de conversación */}
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 scrollbar-thin">
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center text-slate-400 space-y-2">
-              <div className="w-8 h-8 border-3 border-[#00a884] border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
               <span className="text-xs">Cargando conversaciones...</span>
             </div>
           ) : filteredConversations.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-xs">
               <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-30" />
               <p className="font-semibold text-slate-700 dark:text-slate-300">No hay chats en esta vista</p>
-              <p className="text-[11px] text-slate-400 mt-1">Los mensajes entrantes de WhatsApp aparecerán aquí automáticamente.</p>
+              <p className="text-[11px] text-slate-400 mt-1">Los mensajes entrantes de clientes aparecerán aquí automáticamente en tiempo real.</p>
             </div>
           ) : (
             filteredConversations.map((conv) => {
@@ -504,15 +546,15 @@ function InboxInner() {
                 <div
                   key={conv.id}
                   onClick={() => selectConversation(conv)}
-                  className={`w-full p-3 sm:p-3.5 flex items-center gap-3 cursor-pointer transition-colors active:bg-slate-200 dark:active:bg-[#202c33] ${
+                  className={`w-full p-3 sm:p-3.5 flex items-center gap-3 cursor-pointer transition-colors active:bg-slate-200 dark:active:bg-slate-800 ${
                     isSelected
-                      ? 'bg-emerald-50/70 dark:bg-[#202c33]'
-                      : 'hover:bg-slate-50 dark:hover:bg-[#182229]'
+                      ? 'bg-indigo-50/80 dark:bg-slate-800/90 border-l-4 border-indigo-600'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
                 >
-                  {/* Avatar */}
+                  {/* Avatar circular con foto o iniciales */}
                   <div className="relative shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-slate-600 to-slate-400 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-white font-extrabold text-base shadow-sm overflow-hidden">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-extrabold text-base shadow-sm overflow-hidden">
                       {conv.user.profilePicUrl ? (
                         <img src={conv.user.profilePicUrl} alt={displayName} className="w-full h-full object-cover" />
                       ) : (
@@ -529,7 +571,7 @@ function InboxInner() {
                     </div>
                   </div>
 
-                  {/* Chat Info */}
+                  {/* Datos del chat */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-1.5 truncate">
@@ -541,9 +583,12 @@ function InboxInner() {
                         {conv.user.isVIP && (
                           <span className="text-[10px] text-amber-500 shrink-0">⭐</span>
                         )}
+                        {conv.isPinned && (
+                          <Pin className="w-3 h-3 text-slate-400 rotate-45 shrink-0" />
+                        )}
                       </div>
                       <span className={`text-[11px] shrink-0 font-medium ${
-                        conv.isUnread ? 'text-[#00a884] font-bold' : 'text-slate-400'
+                        conv.isUnread ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-400'
                       }`}>
                         {lastMsg ? formatChatListTime(lastMsg.timestamp) : ''}
                       </span>
@@ -552,15 +597,16 @@ function InboxInner() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 truncate">
                         {isOutbound && (
-                          <CheckCheck className="w-3.5 h-3.5 text-blue-500 shrink-0 stroke-[2.5]" />
+                          <CheckCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0 stroke-[2.5]" />
                         )}
                         <span className={`truncate ${conv.isUnread ? 'font-semibold text-slate-900 dark:text-slate-100' : ''}`}>
                           {lastMsg ? lastMsg.content : 'Sin mensajes'}
                         </span>
                       </div>
 
+                      {/* Badge circular con no leídos */}
                       {conv.isUnread && (
-                        <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[#25d366] text-white text-[11px] font-extrabold flex items-center justify-center shadow-sm">
+                        <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-indigo-600 text-white text-[11px] font-extrabold flex items-center justify-center shadow-sm">
                           1
                         </span>
                       )}
@@ -574,42 +620,42 @@ function InboxInner() {
       </aside>
 
       {/* =========================================================================
-          DETAIL VIEW: CHAT CONVERSATION
-          On Mobile (< md): fixed inset-0 z-[60] h-[100dvh] w-full (covers top and bottom nav)
-          On Desktop (>= md): static flex-1 h-full
+          ÁREA DE CHAT PRINCIPAL (CONVERSACIÓN ACTIVA)
+          Desktop (>= md): Columna derecha tipo WhatsApp Web
+          Móvil (< md): Ocupa la pantalla dejando visible la MobileBottomNav (bottom-16)
          ========================================================================= */}
       <section 
         className={`${
           selectedConversation === null
             ? 'hidden md:flex md:flex-1 md:flex-col md:h-full bg-slate-50 dark:bg-[#111b21]'
-            : 'fixed inset-0 z-[60] md:static md:z-auto md:flex-1 flex flex-col h-[100dvh] md:h-full w-full bg-[#efeae2] dark:bg-[#0b141a]'
+            : 'fixed inset-0 bottom-16 z-40 md:static md:bottom-auto md:z-auto md:flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-full w-full bg-slate-100/90 dark:bg-slate-950'
         }`}
       >
         {selectedConversation === null ? (
-          /* Desktop Empty State (WhatsApp Web Style) */
+          /* Desktop Empty State */
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none bg-slate-50 dark:bg-[#111b21]">
-            <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4 shadow-sm">
+            <div className="w-20 h-20 rounded-full bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 shadow-sm">
               <MessageSquare className="w-10 h-10 stroke-[1.8]" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              PITHY WhatsApp Business
+              PITHY Live Inbox
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-sm leading-relaxed">
-              Selecciona una conversación de la lista para leer, responder manualmente o activar el asistente de IA para Churu&apos;s Comida Rápida.
+              Centro inteligente de mensajería para Churu&apos;s Comida Rápida. Responde directamente a tus clientes o activa la atención automática por IA.
             </p>
             <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-slate-400">
               <LockIcon className="w-3.5 h-3.5" />
-              <span>Conexión cifrada de extremo a extremo</span>
+              <span>Canal seguro sincronizado en tiempo real</span>
             </div>
           </div>
         ) : (
           /* Active Chat Conversation View */
           <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
             
-            {/* Conversation Header */}
-            <div className="h-14 sm:h-16 px-2.5 sm:px-4 bg-[#f0f2f5] dark:bg-[#202c33] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-sm z-10 w-full">
+            {/* Header del Chat: Avatar, Nombre, Estado ("en línea"), y botones de acción */}
+            <div className="h-14 sm:h-16 px-2.5 sm:px-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-sm z-10 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                {/* Back button for mobile */}
+                {/* Botón Atrás (←) en móvil para volver a la lista */}
                 <button
                   onClick={() => setSelectedConversation(null)}
                   className="p-2 -ml-1 rounded-full text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-90 transition-all shrink-0 md:hidden"
@@ -618,7 +664,7 @@ function InboxInner() {
                   <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
                 </button>
 
-                {/* Contact Avatar */}
+                {/* Avatar del contacto */}
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-slate-600 to-slate-400 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm overflow-hidden">
                   {selectedConversation.user.profilePicUrl ? (
                     <img 
@@ -631,7 +677,7 @@ function InboxInner() {
                   )}
                 </div>
 
-                {/* Name & Subtitle */}
+                {/* Nombre y Estado ("en línea" / "Bot activo") */}
                 <div className="min-w-0 flex-1 pr-1">
                   <div className="flex items-center gap-1 truncate">
                     <span className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-slate-100 truncate">
@@ -639,25 +685,21 @@ function InboxInner() {
                     </span>
                     {selectedConversation.user.isVIP && <span className="text-xs">⭐</span>}
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                    <span>+{selectedConversation.user.phoneNumber}</span>
+                  <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">en línea</span>
                     <span>•</span>
-                    <span className={`font-semibold ${
-                      selectedConversation.botMode === 'auto' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
-                    }`}>
-                      {selectedConversation.botMode === 'auto' ? '🤖 Bot Auto' : '👤 Manual'}
-                    </span>
+                    <span className="font-mono">+{selectedConversation.user.phoneNumber}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Header Right Actions */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                {/* Bot Mode Switcher */}
+              {/* Botones de acción derecha: Cámara, llamada, búsqueda y menú */}
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                {/* Toggle Bot Mode */}
                 <button
                   onClick={toggleBotMode}
                   disabled={isChangingMode}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all active:scale-95 border shadow-sm ${
+                  className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all active:scale-95 border shadow-sm ${
                     selectedConversation.botMode === 'auto'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
                       : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
@@ -666,31 +708,47 @@ function InboxInner() {
                 >
                   {selectedConversation.botMode === 'auto' ? (
                     <>
-                      <Bot className="w-4 h-4 text-emerald-600" />
-                      <span className="text-[11px] sm:text-xs">Bot</span>
+                      <Bot className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-[11px] hidden sm:inline">Bot</span>
                     </>
                   ) : (
                     <>
-                      <UserCheck className="w-4 h-4 text-amber-600" />
-                      <span className="text-[11px] sm:text-xs">Manual</span>
+                      <UserCheck className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="text-[11px] hidden sm:inline">Manual</span>
                     </>
                   )}
                 </button>
 
-                {/* Direct WhatsApp Call */}
+                {/* Videollamada */}
+                <button
+                  className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors hidden sm:block"
+                  title="Videollamada"
+                >
+                  <Video className="w-4 h-4" />
+                </button>
+
+                {/* Llamada directa */}
                 <a
                   href={`https://wa.me/${selectedConversation.user.phoneNumber.replace(/\+/g, '')}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-2 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
-                  title="Abrir WhatsApp oficial"
+                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl transition-colors"
+                  title="Llamar o chatear por WhatsApp"
                 >
                   <Phone className="w-4 h-4" />
                 </a>
+
+                {/* Menú de opciones */}
+                <button
+                  className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors"
+                  title="Más opciones"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
-            {/* Messages Scroll Area - WITH min-h-0 TO PREVENT OVERFLOWING INPUT BAR */}
+            {/* Fondo con textura sutil y Flujo de Burbujas de Mensaje */}
             <div 
               className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 space-y-3 scrollbar-thin"
               style={{
@@ -698,7 +756,7 @@ function InboxInner() {
                 backgroundSize: '24px 24px',
               }}
             >
-              {/* Date banner */}
+              {/* Separador de fecha flotante redondeado en el centro */}
               <div className="flex justify-center my-1">
                 <span className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/95 dark:bg-[#182229]/95 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200/60 dark:border-slate-700/60">
                   Hoy
@@ -721,37 +779,49 @@ function InboxInner() {
                       <div
                         className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm text-sm relative transition-all ${
                           isOutbound
-                            ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-tr-none border border-emerald-200/60 dark:border-transparent'
-                            : 'bg-white dark:bg-[#202c33] text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200/60 dark:border-transparent'
+                            ? 'bg-indigo-600 dark:bg-indigo-700 text-white rounded-tr-none shadow-md shadow-indigo-600/15'
+                            : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200/80 dark:border-slate-700/60 shadow-sm'
                         }`}
                       >
-                        {/* Sender Label for Outbound */}
+                        {/* Soporte visual para respuestas citadas */}
+                        {msg.quotedMessage && (
+                          <div className={`mb-2 p-2 rounded-lg text-xs ${
+                            isOutbound ? 'bg-indigo-700/60 border-l-4 border-white/60 text-indigo-100' : 'bg-black/5 dark:bg-black/20 border-l-4 border-indigo-500'
+                          }`}>
+                            <span className="font-bold block">{msg.quotedMessage.sender}</span>
+                            <span className="line-clamp-1 opacity-90">{msg.quotedMessage.content}</span>
+                          </div>
+                        )}
+
+                        {/* Etiqueta de remitente para mensajes salientes */}
                         {isOutbound && (
-                          <div className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 mb-1 flex items-center gap-1">
+                          <div className="text-[10px] font-bold text-indigo-200 mb-1 flex items-center gap-1">
                             {msg.sentBy === 'bot' ? (
                               <>
-                                <Bot className="w-3 h-3" />
+                                <Bot className="w-3 h-3 text-emerald-300" />
                                 <span>IA Asistente (Churu&apos;s)</span>
                               </>
                             ) : (
                               <>
-                                <UserCheck className="w-3 h-3" />
+                                <UserCheck className="w-3 h-3 text-indigo-200" />
                                 <span>Administrador</span>
                               </>
                             )}
                           </div>
                         )}
 
-                        {/* Content text formatted */}
+                        {/* Contenido con formato */}
                         <div className="whitespace-pre-wrap break-words leading-relaxed text-[13px] sm:text-sm">
                           {renderMessageContent(msg.content)}
                         </div>
 
-                        {/* Footer: Time & Double Check */}
-                        <div className="flex items-center justify-end gap-1 mt-1.5 text-[10px] text-slate-500 dark:text-slate-300">
+                        {/* Marca de hora y doble check en la esquina inferior derecha */}
+                        <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
+                          isOutbound ? 'text-indigo-200' : 'text-slate-400 dark:text-slate-400'
+                        }`}>
                           <span>{formatMessageTime(msg.timestamp)}</span>
                           {isOutbound && (
-                            <CheckCheck className="w-3.5 h-3.5 text-blue-500 stroke-[2.5]" />
+                            <CheckCheck className="w-3.5 h-3.5 text-indigo-200 stroke-[2.5]" />
                           )}
                         </div>
                       </div>
@@ -762,9 +832,9 @@ function InboxInner() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* AI Response Suggestions Bar (Quick Tap Chips) */}
+            {/* Sugerencias de IA */}
             {aiSuggestions.length > 0 && (
-              <div className="px-3 py-2 bg-slate-100/95 dark:bg-[#182229]/95 border-t border-slate-200/80 dark:border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+              <div className="px-3 py-1.5 bg-slate-100/95 dark:bg-[#182229]/95 border-t border-slate-200/80 dark:border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
                 <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 shrink-0">
                   <Sparkles className="w-3.5 h-3.5" />
                   Sugerencias:
@@ -781,7 +851,7 @@ function InboxInner() {
               </div>
             )}
 
-            {/* Quick Replies Drawer */}
+            {/* Respuestas Rápidas */}
             {showQuickReplies && (
               <div className="p-3 bg-white dark:bg-[#202c33] border-t border-slate-200 dark:border-slate-700 max-h-48 overflow-y-auto space-y-1.5 shadow-lg animate-in slide-in-from-bottom-2 shrink-0">
                 <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500">
@@ -815,25 +885,34 @@ function InboxInner() {
               </div>
             )}
 
-            {/* Fixed Chat Input Bar - ALWAYS PINNED AT THE BOTTOM */}
-            <div className="p-2 sm:p-3 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 shrink-0 pb-[max(0.6rem,env(safe-area-inset-bottom))] w-full">
-              {/* Quick Replies Button */}
+            {/* Barra Inferior de Entrada */}
+            <div className="p-2 sm:p-2.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-1.5 shrink-0 w-full">
+              {/* Botón de emojis */}
               <button
                 type="button"
                 onClick={() => setShowQuickReplies(!showQuickReplies)}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-slate-500 hover:text-amber-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0"
-                title="Respuestas Rápidas"
+                className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                title="Emojis y plantillas"
               >
-                <Zap className="w-5 h-5" />
+                <Smile className="w-5 h-5" />
               </button>
 
-              {/* Text Input Form */}
+              {/* Botón de adjuntos (clip) */}
+              <button
+                type="button"
+                className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                title="Adjuntar archivo o imagen"
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
+
+              {/* Input de texto */}
               <form 
                 onSubmit={(e) => {
                   e.preventDefault();
                   sendMessage();
                 }}
-                className="flex-1 flex items-center gap-2 min-w-0"
+                className="flex-1 flex items-center gap-1.5 min-w-0"
               >
                 <input
                   ref={inputRef}
@@ -845,23 +924,100 @@ function InboxInner() {
                     setMessageInput(val);
                     if (val.startsWith('/')) setShowQuickReplies(true);
                   }}
-                  className="flex-1 px-4 py-2.5 text-xs sm:text-sm rounded-full bg-white dark:bg-[#2a3942] text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none border border-slate-200 dark:border-transparent focus:ring-2 focus:ring-[#00a884]/40 shadow-inner min-w-0"
+                  className="flex-1 px-4 py-2.5 text-xs sm:text-sm rounded-full bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/30 shadow-inner min-w-0"
                 />
 
-                {/* Send Button */}
-                <button
-                  type="submit"
-                  disabled={!messageInput.trim() || sending}
-                  className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-40 text-white shadow-md flex items-center justify-center transition-all active:scale-95 shrink-0"
-                  title="Enviar mensaje"
-                >
-                  <Send className="w-4 h-4 stroke-[2.2] translate-x-0.5" />
-                </button>
+                {/* Botón de micrófono / enviar */}
+                {messageInput.trim() ? (
+                  <button
+                    type="submit"
+                    disabled={sending}
+                    className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-md shadow-indigo-600/20 flex items-center justify-center transition-all shrink-0"
+                    title="Enviar mensaje"
+                  >
+                    <Send className="w-4 h-4 stroke-[2.2] translate-x-0.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-md shadow-indigo-600/20 flex items-center justify-center transition-all shrink-0"
+                    title="Grabar mensaje de voz"
+                  >
+                    <Mic className="w-4 h-4 stroke-[2.2]" />
+                  </button>
+                )}
               </form>
             </div>
           </div>
         )}
       </section>
+
+      {/* Modal: + Nuevo Chat */}
+      {showNewChatModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowNewChatModal(false)}
+        >
+          <div 
+            className="w-full max-w-sm bg-white dark:bg-[#202c33] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                Iniciar nuevo chat de WhatsApp
+              </h3>
+              <button onClick={() => setShowNewChatModal(false)} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewChat} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Número de WhatsApp (con código de país) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ej: 51987654321 o 56912345678"
+                  value={newChatPhone}
+                  onChange={(e) => setNewChatPhone(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-[#111b21] border border-slate-200 dark:border-slate-700 outline-none text-slate-900 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Nombre del Cliente (Opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="ej: Juan Pérez"
+                  value={newChatName}
+                  onChange={(e) => setNewChatName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-100 dark:bg-[#111b21] border border-slate-200 dark:border-slate-700 outline-none text-slate-900 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewChatModal(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                >
+                  Iniciar Chat
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -887,8 +1043,8 @@ export default function InboxPage() {
   return (
     <Suspense fallback={
       <div className="py-20 flex flex-col items-center justify-center text-slate-400 space-y-2">
-        <div className="w-8 h-8 border-3 border-[#00a884] border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs">Cargando bandeja WhatsApp...</span>
+        <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs">Cargando bandeja de entrada...</span>
       </div>
     }>
       <InboxInner />

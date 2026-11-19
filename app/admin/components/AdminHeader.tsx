@@ -14,7 +14,9 @@ import {
   Shield, 
   Sliders, 
   Palette,
-  Store
+  Store,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface AdminProfile {
@@ -45,9 +47,34 @@ export function AdminHeader() {
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isDark, setIsDark] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize and synchronize Theme (Dark / Light)
+  useEffect(() => {
+    const saved = localStorage.getItem('pithy_theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const activeDark = saved !== null ? saved === 'dark' : prefersDark;
+    setIsDark(activeDark);
+    if (activeDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextDark = !isDark;
+    setIsDark(nextDark);
+    localStorage.setItem('pithy_theme', nextDark ? 'dark' : 'light');
+    if (nextDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   // Load profile from database
   useEffect(() => {
@@ -173,6 +200,19 @@ export function AdminHeader() {
           <div className="hidden sm:block">
             <AIIndicator />
           </div>
+
+          {/* Theme Switcher Button (Dark / Light) */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            title={isDark ? 'Cambiar a modo Claro' : 'Cambiar a modo Oscuro'}
+          >
+            {isDark ? (
+              <Sun className="w-5 h-5 text-amber-400 animate-in spin-in-180 duration-200" />
+            ) : (
+              <Moon className="w-5 h-5 text-indigo-400 animate-in spin-in-180 duration-200" />
+            )}
+          </button>
 
           {/* Notifications Button & Dropdown */}
           <div ref={notifRef} className="relative">

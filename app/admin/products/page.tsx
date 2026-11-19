@@ -465,29 +465,32 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Modal: Crear / Editar Plato */}
+      {/* Modal: Crear / Editar Plato con Footer Fijo y z-[100] */}
       {showModal && (
         <div 
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+          className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in"
           onClick={() => setShowModal(false)}
         >
           <div 
-            className="w-full sm:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 space-y-4"
+            className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-h-[85dvh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            {/* Header Fijo */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
                 {editingProduct ? 'Editar Plato' : 'Nuevo Plato para el Menú'}
               </h2>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-4">
+            {/* Formulario con Scroll Interno */}
+            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Nombre del Plato *
@@ -577,20 +580,21 @@ export default function ProductsPage() {
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+              {/* Footer Fijo Siempre Visible Dentro del Modal */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 sticky bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 -mb-4 p-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-orange-600 text-white hover:bg-orange-500 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-orange-600 text-white hover:bg-orange-500 shadow-md shadow-orange-600/20 transition-all active:scale-95 disabled:opacity-50"
                 >
-                  {saving ? 'Guardando...' : editingProduct ? 'Actualizar Plato' : 'Crear Plato'}
+                  {saving ? 'Guardando...' : editingProduct ? 'Guardar Cambios' : 'Crear Plato'}
                 </button>
               </div>
             </form>
