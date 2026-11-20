@@ -523,7 +523,7 @@ function InboxInner() {
   });
 
   return (
-    <div className="w-full h-[calc(100dvh-5.5rem)] md:h-[calc(100vh-6.5rem)] flex overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111b21] shadow-xl relative">
+    <div className="w-full h-full flex overflow-hidden rounded-none md:rounded-2xl border-0 md:border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111b21] md:shadow-xl relative">
       
       {/* =========================================================================
           COLUMNA IZQUIERDA: LISTA DE CHATS (320px - 380px)
