@@ -18,6 +18,7 @@ import {
   Sparkles,
   RefreshCw
 } from 'lucide-react';
+import { ProductModifierDrawer, CustomizedItem } from '../components/ProductModifierDrawer';
 
 interface Category {
   id: string;
@@ -47,6 +48,8 @@ export default function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
+  const [recentCustomizedAlert, setRecentCustomizedAlert] = useState<string | null>(null);
 
   // Form states
   const [formName, setFormName] = useState('');
@@ -378,9 +381,19 @@ export default function ProductsPage() {
                   <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 line-clamp-1 mb-1">
                     {product.name}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[32px] mb-3">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[32px] mb-2">
                     {product.description || 'Plato preparado al momento con los mejores ingredientes de la casa.'}
                   </p>
+
+                  {/* Botón Personalizar Salsas & Extras */}
+                  <button
+                    type="button"
+                    onClick={() => setCustomizingProduct(product)}
+                    className="w-full py-1.5 px-3 rounded-xl bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/40 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-2xs mb-3"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+                    <span>Personalizar Salsas & Extras ✨</span>
+                  </button>
                 </div>
 
                 {/* Bottom Controls: Tactile Stock +/- and Pause/Play Switch */}
@@ -599,6 +612,40 @@ export default function ProductsPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Fast Food Product Modifier Drawer (Bottom-Sheet Stitch Design) */}
+      <ProductModifierDrawer
+        product={customizingProduct}
+        isOpen={customizingProduct !== null}
+        onClose={() => setCustomizingProduct(null)}
+        onAddToCart={(customized) => {
+          setRecentCustomizedAlert(
+            `¡${customized.productName} personalizado! (${customized.baseSauces.join(', ')}${customized.isSalchibroaster ? ' + Salchibroaster' : ''}) • S/. ${customized.totalPrice.toFixed(2)}`
+          );
+          setTimeout(() => setRecentCustomizedAlert(null), 6000);
+        }}
+      />
+
+      {/* Floating Comanda Confirmation Toast */}
+      {recentCustomizedAlert && (
+        <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700 dark:border-slate-300 animate-in slide-in-from-bottom duration-300">
+          <span className="text-xl shrink-0">🍗</span>
+          <div className="flex-1 min-w-0">
+            <span className="font-extrabold text-xs block text-emerald-400 dark:text-emerald-600">
+              Comanda de Cocina Actualizada
+            </span>
+            <span className="text-xs font-medium truncate block opacity-95">
+              {recentCustomizedAlert}
+            </span>
+          </div>
+          <button 
+            onClick={() => setRecentCustomizedAlert(null)}
+            className="text-slate-400 hover:text-white dark:hover:text-slate-900 p-1"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
     </div>
