@@ -106,3 +106,6 @@ dev.db
 # Documentación interna / Obsidian (solo local)
 docs/
 .obsidian/
+.playwright-mcp/
+scripts/*.png
+public/test-screenshots/

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useId } from 'react';
+import { useState } from 'react';
 import { 
   X, 
   Plus, 
@@ -8,10 +8,11 @@ import {
   Flame, 
   Check, 
   Sparkles, 
-  UtensilsCrossed, 
-  HeartHandshake,
+  ShoppingBag,
+  Star,
+  Clock,
   CheckCircle2,
-  ChefHat
+  MessageSquare
 } from 'lucide-react';
 
 export interface BaseProduct {
@@ -43,26 +44,24 @@ export interface CustomizedItem {
 }
 
 const BASE_SAUCES = [
-  { id: 'tartara', name: 'Tártara Casera', emoji: '🥣', desc: 'Receta tradicional con cebollita china' },
-  { id: 'aji', name: 'Ají Pollero Criollo', emoji: '🌶️', desc: 'Picantito con huacatay y rocoto' },
-  { id: 'mayo', name: 'Mayonesa Clásica', emoji: '🥚', desc: 'Cremosa y suave' },
-  { id: 'ketchup', name: 'Kétchup de Tomate', emoji: '🍅', desc: 'Toque dulce y fresco' },
-  { id: 'aceituna', name: 'Crema de Aceituna', emoji: '🫒', desc: 'Elaborada con aceituna botija' },
-  { id: 'golf', name: 'Salsa Golf', emoji: '✨', desc: 'Mezcla cremosa rosada' },
+  { id: 'tartara', name: 'Tártara casera', desc: 'Receta Churu\'s', emoji: '🥣' },
+  { id: 'aji', name: 'Ají pollero', desc: 'Picantito sabroso', emoji: '🌶️' },
+  { id: 'mayo', name: 'Mayonesa', desc: 'Cremosa clásica', emoji: '🥚' },
+  { id: 'ketchup', name: 'Kétchup', desc: 'Tomate dulce', emoji: '🍅' },
+  { id: 'aceituna', name: 'Aceituna botija', desc: 'Toque morado', emoji: '🫒' },
+  { id: 'golf', name: 'Salsa Golf', desc: 'Mayo + kétchup', emoji: '✨' },
 ];
 
 const PREMIUM_SAUCES = [
-  { id: 'acevichada', name: 'Salsa Acevichada', price: 2.00, emoji: '🐟', desc: 'Toque nikkei cítrico y ahumado' },
-  { id: 'bbq', name: 'BBQ Ahumada Artesanal', price: 2.00, emoji: '🔥', desc: 'Salsa dulce caramelizada con leña' },
-  { id: 'maracuya', name: 'Maracuyá Picante', price: 2.00, emoji: '🍯', desc: 'Agridulce con ají limo' },
+  { id: 'acevichada', name: 'Salsa Acevichada', price: 2.00, desc: 'Toque nikkei cítrico', emoji: '🐟' },
+  { id: 'bbq', name: 'BBQ Artesanal', price: 2.00, desc: 'Ahumada a la leña', emoji: '🔥' },
 ];
 
 const EXTRAS_LIST = [
-  { id: 'papas_extra', name: 'Porción Extra de Papas Fritas', price: 6.00, emoji: '🍟' },
+  { id: 'papas', name: 'Porción de papas extra', price: 6.00, emoji: '🍟' },
   { id: 'incakola', name: 'Gaseosa Inca Kola 500ml', price: 4.50, emoji: '🥤' },
-  { id: 'cocacola', name: 'Gaseosa Coca-Cola 500ml', price: 4.50, emoji: '🥤' },
-  { id: 'queso_fundido', name: 'Extra Queso Fundido Caliente', price: 3.00, emoji: '🧀' },
-  { id: 'huevo_frito', name: 'Huevo Frito a la Inglesa', price: 2.50, emoji: '🍳' },
+  { id: 'queso', name: 'Extra Queso derretido', price: 3.00, emoji: '🧀' },
+  { id: 'huevo', name: 'Huevo frito a la inglesa', price: 2.50, emoji: '🍳' },
 ];
 
 export function ProductModifierDrawer({
@@ -77,7 +76,8 @@ export function ProductModifierDrawer({
   const [isSalchibroaster, setIsSalchibroaster] = useState(false);
   const [extrasQuantities, setExtrasQuantities] = useState<Record<string, number>>({});
   const [kitchenNotes, setKitchenNotes] = useState('');
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [animateLimit, setAnimateLimit] = useState(false);
 
   if (!isOpen || !product) return null;
 
@@ -88,6 +88,9 @@ export function ProductModifierDrawer({
     } else {
       if (selectedBaseSauces.length < 3) {
         setSelectedBaseSauces(prev => [...prev, id]);
+      } else {
+        setAnimateLimit(true);
+        setTimeout(() => setAnimateLimit(false), 300);
       }
     }
   };
@@ -103,7 +106,7 @@ export function ProductModifierDrawer({
   const handleExtraDelta = (id: string, delta: number) => {
     setExtrasQuantities(prev => {
       const current = prev[id] || 0;
-      const next = Math.max(0, current + delta);
+      const next = Math.max(0, Math.min(10, current + delta));
       if (next === 0) {
         const copy = { ...prev };
         delete copy[id];
@@ -114,7 +117,7 @@ export function ProductModifierDrawer({
   };
 
   // Price calculations
-  const basePrice = product.price;
+  const basePrice = product.price || 18.50;
   const salchibroasterPrice = isSalchibroaster ? 5.00 : 0;
   const premiumSaucesTotal = selectedPremiumSauces.length * 2.00;
   const extrasTotal = Object.entries(extrasQuantities).reduce((acc, [id, qty]) => {
@@ -150,9 +153,9 @@ export function ProductModifierDrawer({
       onAddToCart(customized);
     }
 
-    setShowSuccessToast(true);
+    setShowToast(true);
     setTimeout(() => {
-      setShowSuccessToast(false);
+      setShowToast(false);
       onClose();
     }, 1200);
   };
@@ -163,129 +166,175 @@ export function ProductModifierDrawer({
       onClick={onClose}
     >
       <div 
-        className="w-full sm:max-w-xl bg-white dark:bg-[#111b21] rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[88vh] overflow-hidden animate-in slide-in-from-bottom duration-300 relative z-10"
+        className="w-full sm:max-w-xl bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 rounded-t-[32px] sm:rounded-[32px] border-t sm:border border-orange-500/20 dark:border-stone-800 shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[88vh] overflow-hidden animate-in slide-in-from-bottom duration-300 relative z-10"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag Pill Handle for Mobile */}
-        <div className="w-full flex justify-center pt-2.5 pb-1 sm:hidden">
-          <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-        </div>
-
-        {/* Header Bar */}
-        <div className="px-4 sm:px-6 py-3 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-[#182229]">
-          <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400 flex items-center justify-center font-bold text-sm">
-              🍗
-            </span>
-            <div>
-              <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-                Personalizar Plato
-              </h2>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                Churu&apos;s Comida Rápida
-              </span>
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
-            title="Cerrar"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-6 scrollbar-thin">
+        {/* Drag Pill Handle & Header */}
+        <div className="pt-3 pb-2 px-5 flex flex-col items-center relative shrink-0">
+          <div className="w-12 h-1.5 bg-stone-300 dark:bg-stone-700 rounded-full mb-2 cursor-grab" />
           
-          {/* 1. Dish Hero Card */}
-          <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-amber-500/10 to-orange-500/10 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/60 dark:border-amber-900/40 p-4 flex gap-4 items-center">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-orange-500/20 shrink-0 flex items-center justify-center text-3xl shadow-md border border-orange-200 dark:border-orange-900">
-              {product.imageUrl ? (
-                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-              ) : (
-                <span>🍗</span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-orange-500 text-white shadow-xs">
-                  Recomendado
-                </span>
-                <span className="text-xs font-semibold text-slate-400">Churu&apos;s Especial</span>
+          <div className="w-full flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-wider uppercase bg-orange-500/10 text-orange-600 dark:text-orange-400 px-3 py-1 rounded-full">
+              <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
+              Más Pedido en Churu&apos;s
+            </span>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 flex items-center justify-center text-stone-500 dark:text-stone-400 transition-colors"
+              title="Cerrar"
+            >
+              <X className="w-4 h-4 stroke-[2.5]" />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Customization Content */}
+        <div className="flex-1 overflow-y-auto px-5 pb-32 space-y-6 pt-1 scrollbar-none">
+          
+          {/* 1. Hero Product Card */}
+          <div className="space-y-3">
+            <div className="relative w-full h-48 sm:h-52 rounded-2xl overflow-hidden bg-stone-800 shadow-md group">
+              <img 
+                src={product.imageUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuDA9Z5_4b9mAxHzlV4kS5yvR1I96PQ4JbVQyyO0_T8wrT4fvKfeqia4jAQj-eOeEzXblgwBAVL4L0qd0AG49bw_Figi97oMlTVFzQCvrf8bi_-X0LimcYeExN_BiHKrWJdM_ORGt9YFU_44wEJg5UlatUtXtbz05Xpgk2orEzZeXr-9cne1GOOB3vjMUKVIJ61Ov8tW-17N2tx2dJ5vF9qIFy5MxTX-MlTJwPCZB6-4"} 
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+              
+              <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="bg-red-600/90 backdrop-blur-md text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-amber-300 fill-amber-300" />
+                    Broaster Crujiente
+                  </span>
+                  <span className="bg-black/60 backdrop-blur-md text-stone-200 text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-stone-300" />
+                    15-20 min
+                  </span>
+                </div>
+                <div className="bg-amber-400 text-stone-950 font-black text-xs px-2.5 py-1 rounded-xl shadow-lg flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />
+                  4.9
+                </div>
               </div>
-              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 truncate">
-                {product.name}
-              </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 mt-0.5">
-                {product.description || 'Crujiente presa marinada con receta secreta, acompañada de papas fritas artesanales y ensalada fresca.'}
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-stone-900 dark:text-white leading-tight">
+                  {product.name}
+                </h2>
+                <div className="text-right shrink-0">
+                  <span className="text-xl font-black text-orange-600 dark:text-orange-400">
+                    S/. {basePrice.toFixed(2)}
+                  </span>
+                  <span className="block text-[10px] text-stone-400 font-semibold">Precio base</span>
+                </div>
+              </div>
+              <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed font-normal">
+                {product.description || 'Crujiente presa de pecho marinada con receta secreta, acompañada de papas fritas artesanales y ensalada fresca.'}
               </p>
-              <div className="mt-2 text-base font-black text-emerald-600 dark:text-emerald-400">
-                S/. {basePrice.toFixed(2)}
+            </div>
+          </div>
+
+          <div className="h-px bg-stone-200 dark:bg-stone-800/80 w-full" />
+
+          {/* 2. Feature Card: CONVIÉRTELO EN SALCHIBROASTER */}
+          <div 
+            onClick={() => setIsSalchibroaster(!isSalchibroaster)}
+            className={`relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border-2 transition-all cursor-pointer select-none active:scale-[0.99] ${
+              isSalchibroaster 
+                ? 'border-orange-500 bg-orange-500/15 shadow-md' 
+                : 'border-orange-500/30 dark:border-orange-500/40 hover:border-orange-500/50'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-xl bg-orange-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-600/30">
+                  <Sparkles className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-sm sm:text-base text-stone-900 dark:text-white leading-snug">
+                      ¿Conviértelo en Salchibroaster?
+                    </span>
+                    <span className="inline-flex items-center text-[9px] font-black uppercase bg-red-500 text-white px-1.5 py-0.5 rounded-md tracking-wider">
+                      PROMO
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5">
+                    Añade abundantes rodajas de salchicha parrillera doradita sobre tus papas.
+                  </p>
+                  <span className="inline-block mt-1 font-black text-xs text-orange-600 dark:text-orange-400">
+                    + S/. 5.00
+                  </span>
+                </div>
+              </div>
+
+              {/* Custom Switch Toggle */}
+              <div className={`w-12 h-7 rounded-full transition-colors relative flex items-center px-1 shrink-0 ${
+                isSalchibroaster ? 'bg-orange-600' : 'bg-stone-300 dark:bg-stone-700'
+              }`}>
+                <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow-md ${
+                  isSalchibroaster ? 'translate-x-5' : 'translate-x-0'
+                }`} />
               </div>
             </div>
           </div>
 
-          {/* 2. Salsas y Cremas Base (Obligatorio, hasta 3 incluidas) */}
-          <div className="space-y-2.5">
+          {/* 3. Salsas y Cremas Base (Obligatorio, elige hasta 3 incluidas) */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wide text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                  <span>🥣 Salsas y Cremas Incluidas</span>
-                  <span className="text-rose-500 font-bold">*</span>
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Elige hasta 3 cremas sin costo adicional
-                </p>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Salsas y Cremas</h3>
+                  <span className="bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                    Obligatorio
+                  </span>
+                </div>
+                <p className="text-xs text-stone-500 dark:text-stone-400">Elige hasta 3 cremas tradicionales incluidas</p>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-black ${
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full transition-all ${
+                animateLimit ? 'scale-110 ring-2 ring-orange-500' : ''
+              } ${
                 selectedBaseSauces.length === 3 
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
-                  : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' 
+                  : 'bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400'
               }`}>
-                {selectedBaseSauces.length} de 3
+                {selectedBaseSauces.length}/3 seleccionadas
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {BASE_SAUCES.map((sauce) => {
                 const isSelected = selectedBaseSauces.includes(sauce.id);
-                const isDisabled = !isSelected && selectedBaseSauces.length >= 3;
-
                 return (
                   <button
                     key={sauce.id}
                     type="button"
-                    disabled={isDisabled}
                     onClick={() => toggleBaseSauce(sauce.id)}
-                    className={`p-2.5 rounded-xl border text-left transition-all flex items-start gap-2 active:scale-98 ${
+                    className={`relative flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left min-h-[54px] active:scale-[0.98] ${
                       isSelected
-                        ? 'border-[#00a884] bg-emerald-50/80 dark:bg-[#00a884]/15 shadow-sm'
-                        : isDisabled
-                        ? 'border-slate-100 dark:border-slate-800/40 opacity-40 cursor-not-allowed bg-slate-50/50 dark:bg-slate-900/40'
-                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-[#182229]'
+                        ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 shadow-xs'
+                        : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 hover:bg-stone-100/70 dark:hover:bg-stone-800/80'
                     }`}
                   >
-                    <span className="text-base shrink-0 mt-0.5">{sauce.emoji}</span>
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
+                      isSelected 
+                        ? 'border-orange-500 bg-orange-500 text-white' 
+                        : 'border-stone-400 dark:border-stone-600'
+                    }`}>
+                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-bold truncate ${
-                          isSelected ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'
-                        }`}>
-                          {sauce.name}
-                        </span>
-                        <div className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] shrink-0 ${
-                          isSelected 
-                            ? 'bg-[#00a884] text-white' 
-                            : 'border border-slate-300 dark:border-slate-600'
-                        }`}>
-                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                        </div>
+                      <div className={`font-bold text-xs truncate ${
+                        isSelected ? 'text-orange-600 dark:text-orange-400' : 'text-stone-800 dark:text-stone-200'
+                      }`}>
+                        {sauce.name}
                       </div>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                        {sauce.desc}
-                      </span>
+                      <div className="text-[10px] text-stone-400 truncate">{sauce.desc}</div>
                     </div>
                   </button>
                 );
@@ -293,153 +342,100 @@ export function ProductModifierDrawer({
             </div>
           </div>
 
-          {/* 3. Salsas Premium / Especiales (+S/. 2.00 opcional) */}
+          {/* 4. Salsas Especiales Gourmet (+S/. 2.00 opcionales) */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wide text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Salsas Gourmet Especiales</span>
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 rounded">
-                    +S/. 2.00 c/u
-                  </span>
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Potencia el sabor de tu broaster con salsas de autor
-                </p>
-              </div>
+              <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Salsas Especiales Gourmet</h3>
+              <span className="text-xs text-stone-400 font-medium">Opcional</span>
             </div>
 
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {PREMIUM_SAUCES.map((sauce) => {
                 const isSelected = selectedPremiumSauces.includes(sauce.id);
-
                 return (
-                  <div
+                  <button
                     key={sauce.id}
+                    type="button"
                     onClick={() => togglePremiumSauce(sauce.id)}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between active:scale-[0.99] ${
-                      isSelected
-                        ? 'border-amber-400 bg-amber-50/70 dark:bg-amber-950/20 shadow-xs'
-                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-[#182229]'
+                    className={`relative flex items-center justify-between p-3 rounded-xl border transition-all text-left min-h-[54px] active:scale-[0.98] ${
+                      isSelected 
+                        ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 shadow-xs' 
+                        : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 hover:bg-stone-100/80 dark:hover:bg-stone-800/80'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-lg">{sauce.emoji}</span>
-                      <div>
-                        <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                          {sauce.name}
-                        </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                          {sauce.desc}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-black text-amber-600 dark:text-amber-400">
-                        +S/. {sauce.price.toFixed(2)}
-                      </span>
-                      <div className={`w-5 h-5 rounded-md flex items-center justify-center text-xs ${
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
                         isSelected 
-                          ? 'bg-amber-500 text-slate-950 font-bold' 
-                          : 'border border-slate-300 dark:border-slate-600'
+                          ? 'border-orange-500 bg-orange-500 text-white' 
+                          : 'border-stone-400 dark:border-stone-600'
                       }`}>
-                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                      </div>
+                      <div className="min-w-0">
+                        <span className={`block font-bold text-xs truncate ${
+                          isSelected ? 'text-orange-600 dark:text-orange-400' : 'text-stone-800 dark:text-stone-200'
+                        }`}>
+                          {sauce.name}
+                        </span>
+                        <span className="text-[11px] font-black text-orange-600 dark:text-orange-400">
+                          + S/. {sauce.price.toFixed(2)}
+                        </span>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          {/* 4. Opción Especial: Salchibroaster (+S/. 5.00) */}
-          <div 
-            onClick={() => setIsSalchibroaster(!isSalchibroaster)}
-            className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between shadow-sm active:scale-[0.99] ${
-              isSalchibroaster
-                ? 'border-orange-500 bg-gradient-to-r from-orange-500/15 to-amber-500/15 dark:from-orange-950/40 dark:to-amber-950/40 ring-2 ring-orange-500/30'
-                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#182229] hover:border-orange-300'
-            }`}
-          >
-            <div className="flex items-center gap-3 min-w-0 pr-2">
-              <div className="w-12 h-12 rounded-xl bg-orange-500 text-white flex items-center justify-center text-2xl shrink-0 shadow-sm">
-                🌭
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-slate-100">
-                    ¡Conviértelo en Salchibroaster!
-                  </span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-orange-500 text-white">
-                    TOP
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 leading-snug">
-                  Agrega rodajas doradas de hot dog frankfurter sobre tus papas fritas.
-                </p>
-              </div>
+          {/* 5. Bebidas y Extras (Steppers) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Bebidas y Acompañamientos</h3>
+              <span className="text-xs text-stone-400 font-medium">Agrega a tu gusto</span>
             </div>
 
-            <div className="flex flex-col items-end shrink-0 gap-1">
-              <span className="text-xs font-black text-orange-600 dark:text-orange-400">
-                +S/. 5.00
-              </span>
-              <div className={`w-11 h-6 rounded-full p-0.5 transition-colors duration-200 ease-in-out ${
-                isSalchibroaster ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-700'
-              }`}>
-                <div className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
-                  isSalchibroaster ? 'translate-x-5' : 'translate-x-0'
-                }`} />
-              </div>
-            </div>
-          </div>
-
-          {/* 5. Acompañamientos y Extras (Steppers) */}
-          <div className="space-y-2.5">
-            <h4 className="text-xs sm:text-sm font-black uppercase tracking-wide text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <span>🍟 Acompañamientos & Bebidas</span>
-            </h4>
-
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-[#182229]">
+            <div className="space-y-2">
               {EXTRAS_LIST.map((extra) => {
                 const qty = extrasQuantities[extra.id] || 0;
-
                 return (
-                  <div key={extra.id} className="p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                      <span className="text-lg">{extra.emoji}</span>
+                  <div 
+                    key={extra.id} 
+                    className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/80 dark:border-stone-800 min-h-[54px]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg">
+                        {extra.emoji}
+                      </div>
                       <div>
-                        <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-stone-100">
                           {extra.name}
-                        </div>
-                        <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                          +S/. {extra.price.toFixed(2)}
-                        </div>
+                        </h4>
+                        <p className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                          + S/. {extra.price.toFixed(2)}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleExtraDelta(extra.id, -1)}
+                    {/* Stepper */}
+                    <div className="flex items-center gap-2 bg-stone-200/80 dark:bg-stone-700/80 rounded-xl p-1 shrink-0">
+                      <button 
+                        type="button" 
+                        onClick={() => handleExtraDelta(extra.id, -1)} 
                         disabled={qty <= 0}
-                        className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 active:scale-90 disabled:opacity-30 disabled:scale-100 transition-all"
+                        className="w-8 h-8 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-100 disabled:opacity-40 flex items-center justify-center text-stone-700 dark:text-stone-200 transition-colors shadow-2xs"
                       >
-                        <Minus className="w-3 h-3" />
+                        <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                       </button>
-
-                      <span className="w-6 text-center font-extrabold text-xs text-slate-900 dark:text-slate-100">
+                      <span className="w-6 text-center font-black text-sm text-stone-900 dark:text-stone-100">
                         {qty}
                       </span>
-
-                      <button
-                        type="button"
-                        onClick={() => handleExtraDelta(extra.id, 1)}
-                        className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 active:scale-90 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                      <button 
+                        type="button" 
+                        onClick={() => handleExtraDelta(extra.id, 1)} 
+                        className="w-8 h-8 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-100 flex items-center justify-center text-stone-700 dark:text-stone-200 transition-colors shadow-2xs"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                       </button>
                     </div>
                   </div>
@@ -448,72 +444,84 @@ export function ProductModifierDrawer({
             </div>
           </div>
 
-          {/* 6. Indicaciones para Cocina */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-black uppercase tracking-wide text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <ChefHat className="w-3.5 h-3.5 text-amber-500" />
-              <span>Indicaciones Especiales para Cocina</span>
+          {/* 6. Indicaciones Especiales de Cocina */}
+          <div className="space-y-2">
+            <label htmlFor="kitchen-notes" className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-stone-900 dark:text-white">
+              <MessageSquare className="w-4 h-4 text-orange-500" />
+              Indicaciones Especiales de Cocina
             </label>
-            <input
-              type="text"
-              placeholder="Ej: papas bien doradas, ají en bolsa aparte, sin ensalada..."
+            <textarea 
+              id="kitchen-notes" 
+              rows={2} 
               value={kitchenNotes}
               onChange={(e) => setKitchenNotes(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#00a884]/40 transition-all"
+              placeholder="Ej: papas bien doradas, ají en bolsa aparte, sin ensalada..."
+              className="w-full rounded-2xl bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all resize-none"
             />
+            <p className="text-[11px] text-stone-400 text-right">Nos esforzamos por cumplir tus preferencias</p>
           </div>
+
         </div>
 
-        {/* 7. Sticky Bottom Action Bar */}
-        <div className="p-3.5 sm:p-4 pb-6 sm:pb-4 bg-white dark:bg-[#182229] border-t border-slate-200 dark:border-slate-800 flex items-center gap-3 shrink-0 shadow-lg relative z-20">
-          {/* Quantity Stepper */}
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shrink-0">
-            <button
-              type="button"
+        {/* 7. STICKY BOTTOM ACTION BAR */}
+        <div className="p-3.5 sm:p-4 pb-6 sm:pb-4 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center gap-3 shrink-0 shadow-2xl relative z-20">
+          
+          {/* Quantity Stepper for Whole Item */}
+          <div className="flex items-center justify-between bg-stone-100 dark:bg-stone-800 rounded-2xl p-1.5 border border-stone-200 dark:border-stone-700 h-[52px]">
+            <button 
+              type="button" 
               onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
               disabled={quantity <= 1}
-              className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center text-slate-800 dark:text-slate-100 active:scale-90 disabled:opacity-40 transition-all shadow-xs"
+              className="w-9 h-9 rounded-xl bg-white dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 disabled:opacity-40 flex items-center justify-center text-stone-800 dark:text-stone-100 font-bold transition-transform active:scale-90 shadow-2xs"
             >
-              <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <Minus className="w-4 h-4 stroke-[2.5]" />
             </button>
-            <span className="w-6 text-center font-black text-sm text-slate-900 dark:text-slate-100">
+            <span className="w-8 text-center font-black text-base text-stone-900 dark:text-white">
               {quantity}
             </span>
-            <button
-              type="button"
+            <button 
+              type="button" 
               onClick={() => setQuantity(prev => prev + 1)}
-              className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center text-slate-800 dark:text-slate-100 active:scale-90 transition-all shadow-xs"
+              className="w-9 h-9 rounded-xl bg-white dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 flex items-center justify-center text-stone-800 dark:text-stone-100 font-bold transition-transform active:scale-90 shadow-2xs"
             >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <Plus className="w-4 h-4 stroke-[2.5]" />
             </button>
           </div>
 
-          {/* Primary Action Button with Dynamic Grand Total */}
-          <button
+          {/* Prominent Primary Action Button with Gradient & Total */}
+          <button 
             type="button"
             onClick={handleConfirm}
-            className="flex-1 py-3 px-4 rounded-2xl bg-[#00a884] hover:bg-[#008f6f] active:scale-[0.98] text-white font-extrabold text-xs sm:text-sm shadow-md flex items-center justify-between transition-all"
+            className="flex-1 h-[52px] bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold rounded-2xl shadow-lg shadow-orange-600/30 flex items-center justify-between px-5 active:scale-[0.98] transition-all"
           >
-            <div className="flex items-center gap-1.5">
-              <UtensilsCrossed className="w-4 h-4" />
-              <span>Agregar al Pedido</span>
-            </div>
-            <span className="text-sm sm:text-base font-black pl-2">
+            <span className="flex items-center gap-2 text-xs sm:text-sm font-black">
+              <ShoppingBag className="w-4 h-4" />
+              Agregar al Pedido
+            </span>
+            <span className="font-black text-xs sm:text-sm bg-black/25 px-2.5 py-1 rounded-xl">
               S/. {grandTotal.toFixed(2)}
             </span>
           </button>
         </div>
 
-        {/* Success Feedback Banner */}
-        {showSuccessToast && (
-          <div className="absolute inset-0 bg-[#00a884] text-white flex flex-col items-center justify-center p-6 space-y-2 animate-in zoom-in-95 duration-200 z-50">
-            <CheckCircle2 className="w-14 h-14 animate-bounce" />
-            <h3 className="text-lg font-black tracking-tight">¡Plato Personalizado!</h3>
-            <p className="text-xs opacity-90 text-center max-w-xs">
-              Se agregaron las salsas y extras con éxito a la orden de cocina.
-            </p>
+        {/* Toast Feedback */}
+        {showToast && (
+          <div className="absolute top-4 inset-x-5 z-50 bg-stone-950 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between border border-orange-500/50 animate-in slide-in-from-top duration-300">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+                <CheckCircle2 className="w-4 h-4 stroke-[3]" />
+              </div>
+              <div>
+                <p className="font-black text-xs">¡Agregado a tu pedido!</p>
+                <p className="text-[10px] text-stone-300">{product.name} listo</p>
+              </div>
+            </div>
+            <span className="text-xs font-black text-orange-400">
+              S/. {grandTotal.toFixed(2)}
+            </span>
           </div>
         )}
+
       </div>
     </div>
   );
