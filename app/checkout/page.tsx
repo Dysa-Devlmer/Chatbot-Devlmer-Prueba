@@ -25,7 +25,10 @@ import {
   HelpCircle,
   Clock,
   Loader2,
-  Share2
+  Share2,
+  Navigation,
+  Copy,
+  Compass
 } from 'lucide-react';
 
 interface CartItem {
@@ -100,9 +103,17 @@ export default function CheckoutPage() {
   const [isCouponApplied, setIsCouponApplied] = useState(true);
   const couponDiscount = isCouponApplied ? 3.00 : 0.00;
 
+  // Address & GPS State
+  const [deliveryAddress, setDeliveryAddress] = useState('Av. Las Palmeras 452, Dpto 302, Los Olivos, Lima');
+  const [deliveryReference, setDeliveryReference] = useState('Fachada blanca, tocar timbre 302');
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [gpsToast, setGpsToast] = useState<string | null>(null);
+
   // Payment Method
   const [paymentMethod, setPaymentMethod] = useState<'yape' | 'card' | 'cash'>('yape');
   const [cashChangeAmount, setCashChangeAmount] = useState('50.00');
+  const [copiedPhone, setCopiedPhone] = useState(false);
 
   // Submit & Order Placed Simulation
   const [orderState, setOrderState] = useState<'idle' | 'processing' | 'confirmed'>('idle');
@@ -112,6 +123,46 @@ export default function CheckoutPage() {
     setUpsells(prev => prev.map(item => 
       item.id === id ? { ...item, added: !item.added } : item
     ));
+  };
+
+  // GPS Geolocation Handler
+  const handleGetGPS = () => {
+    setIsLocating(true);
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(4);
+          const lng = position.coords.longitude.toFixed(4);
+          setDeliveryAddress(`Ubicación GPS: Av. Antúnez de Mayolo c/ Universitaria (${lat}, ${lng}), Los Olivos`);
+          setIsLocating(false);
+          setGpsToast('📍 Ubicación GPS detectada con éxito');
+          setTimeout(() => setGpsToast(null), 3000);
+        },
+        () => {
+          // Fallback geocoding simulation
+          setDeliveryAddress('Ubicación GPS: Av. Carlos Izaguirre 840 (frente a Municipalidad), Los Olivos');
+          setIsLocating(false);
+          setGpsToast('📍 Ubicación aproximada detectada');
+          setTimeout(() => setGpsToast(null), 3000);
+        },
+        { timeout: 5000, enableHighAccuracy: true }
+      );
+    } else {
+      setDeliveryAddress('Ubicación GPS: Av. Antúnez de Mayolo 1240, Los Olivos');
+      setIsLocating(false);
+      setGpsToast('📍 Ubicación detectada');
+      setTimeout(() => setGpsToast(null), 3000);
+    }
+  };
+
+  // Copy Yape/Plin phone handler
+  const handleCopyYapePhone = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText('922931433');
+    }
+    setCopiedPhone(true);
+    setTimeout(() => setCopiedPhone(false), 2500);
   };
 
   // Price Calculations
@@ -209,30 +260,84 @@ export default function CheckoutPage() {
 
           {/* Active Address Card (Shown only on delivery) */}
           {deliveryMode === 'delivery' ? (
-            <div className="p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800/80 flex items-center justify-between gap-3 shadow-md animate-in fade-in duration-200">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-stone-800 text-orange-400 flex items-center justify-center shrink-0">
-                  <MapPin className="w-5 h-5 fill-orange-400 text-stone-900" />
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-stone-900/90 border border-stone-800/80 flex flex-col gap-3 shadow-md animate-in fade-in duration-200">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className="w-9 h-9 rounded-full bg-stone-800 text-orange-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <MapPin className="w-5 h-5 fill-orange-400 text-stone-900" />
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[#94de2d]">
+                        Dirección de Entrega
+                      </span>
+                      {gpsToast && (
+                        <span className="text-[10px] font-bold text-amber-400 animate-pulse truncate">
+                          {gpsToast}
+                        </span>
+                      )}
+                    </div>
+
+                    {isEditingAddress ? (
+                      <input
+                        type="text"
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        placeholder="Ingresa tu dirección exacta..."
+                        className="w-full mt-1 px-3 py-1.5 rounded-lg bg-stone-950 border border-stone-700 text-xs font-bold text-white focus:outline-none focus:border-orange-500"
+                      />
+                    ) : (
+                      <p className="text-xs sm:text-sm font-bold text-white leading-snug mt-0.5">
+                        {deliveryAddress}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[#94de2d]">
-                    Entregar en
-                  </span>
-                  <p className="text-sm font-bold text-white truncate">
-                    Av. Las Palmeras 452
-                  </p>
-                  <span className="text-xs text-stone-400 truncate">
-                    Dpto 302, Los Olivos, Lima
-                  </span>
-                </div>
+
+                <button 
+                  type="button"
+                  onClick={() => setIsEditingAddress(!isEditingAddress)}
+                  className="px-3 py-1.5 rounded-full bg-stone-800 hover:bg-stone-700 text-orange-400 text-xs font-bold active:scale-95 transition-all shrink-0"
+                >
+                  {isEditingAddress ? 'Listo' : 'Editar'}
+                </button>
               </div>
 
-              <button 
-                type="button"
-                className="px-3 py-1.5 rounded-full bg-stone-800 hover:bg-stone-700 text-orange-400 text-xs font-bold active:scale-95 transition-all shrink-0"
-              >
-                Cambiar
-              </button>
+              {/* GPS Fast Location Button */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleGetGPS}
+                  disabled={isLocating}
+                  className="flex-1 py-2 px-3 rounded-xl bg-orange-600/15 hover:bg-orange-600/25 border border-orange-500/40 text-orange-400 hover:text-orange-300 font-bold text-xs flex items-center justify-center gap-2 active:scale-98 transition-all"
+                >
+                  {isLocating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-orange-400" />
+                      <span>Detectando tu ubicación GPS...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Compass className="w-4 h-4 text-orange-400" />
+                      <span>Usar mi ubicación actual (GPS)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Delivery Reference Input */}
+              <div className="pt-2 border-t border-stone-800/80">
+                <label className="block text-[11px] font-bold text-stone-400 mb-1">
+                  Referencia de llegada (Opcional):
+                </label>
+                <input
+                  type="text"
+                  value={deliveryReference}
+                  onChange={(e) => setDeliveryReference(e.target.value)}
+                  placeholder="Ej: Fachada blanca, tocar timbre 302, casa frente al parque..."
+                  className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-800 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 transition-all"
+                />
+              </div>
             </div>
           ) : (
             <div className="p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800/80 flex items-center gap-3 shadow-md animate-in fade-in duration-200">
@@ -473,35 +578,65 @@ export default function CheckoutPage() {
           </div>
 
           {/* Option 1: Yape / Plin */}
-          <label 
+          <div 
             onClick={() => setPaymentMethod('yape')}
-            className={`p-3.5 rounded-2xl flex items-center justify-between cursor-pointer transition-all border ${
+            className={`p-3.5 rounded-2xl flex flex-col gap-2.5 cursor-pointer transition-all border ${
               paymentMethod === 'yape'
                 ? 'bg-stone-900 border-purple-500/80 shadow-md ring-1 ring-purple-500/40'
                 : 'bg-stone-900/60 border-stone-800/80 hover:bg-stone-900'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-950 text-purple-300 flex items-center justify-center font-black text-xs border border-purple-800/60">
-                YP
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-white">Yape / Plin</span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-[#94de2d]/15 text-[#94de2d] text-[10px] font-black">
-                    Sin comisión
-                  </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-950 text-purple-300 flex items-center justify-center font-black text-xs border border-purple-800/60">
+                  YP
                 </div>
-                <span className="text-xs text-stone-400">Código QR o número al repartidor</span>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-white">Yape / Plin</span>
+                    <span className="px-1.5 py-0.5 rounded-md bg-[#94de2d]/15 text-[#94de2d] text-[10px] font-black">
+                      Sin comisión
+                    </span>
+                  </div>
+                  <span className="text-xs text-stone-400">Paga al instante: <strong className="text-purple-300">922 931 433</strong></span>
+                </div>
+              </div>
+
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                paymentMethod === 'yape' ? 'bg-orange-600 text-white' : 'border border-stone-600'
+              }`}>
+                {paymentMethod === 'yape' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
               </div>
             </div>
 
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-              paymentMethod === 'yape' ? 'bg-orange-600 text-white' : 'border border-stone-600'
-            }`}>
-              {paymentMethod === 'yape' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-            </div>
-          </label>
+            {/* Quick Copy Phone Button */}
+            {paymentMethod === 'yape' && (
+              <div className="pt-1 flex items-center justify-between border-t border-purple-900/40 animate-in fade-in duration-200">
+                <span className="text-[11px] text-stone-400">Titular: Churu&apos;s Comida Rápida</span>
+                <button
+                  type="button"
+                  onClick={handleCopyYapePhone}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 ${
+                    copiedPhone 
+                      ? 'bg-[#84cc16] text-stone-950' 
+                      : 'bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/60'
+                  }`}
+                >
+                  {copiedPhone ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>¡Número copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar número (922 931 433)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Option 2: Card POS */}
           <label 
