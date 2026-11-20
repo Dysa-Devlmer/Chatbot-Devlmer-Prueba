@@ -122,6 +122,14 @@ export class ConversationService {
         },
       });
 
+      // Si es un mensaje entrante de un cliente, marcar la conversación como no leída
+      if (data.direction === 'inbound') {
+        await prisma.conversation.update({
+          where: { id: data.conversationId },
+          data: { isUnread: true },
+        }).catch(err => console.error('Error updating isUnread on conversation:', err));
+      }
+
       return message;
     } catch (error: any) {
       // Ignorar error de duplicado (P2002) - webhook duplicado de WhatsApp

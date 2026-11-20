@@ -173,14 +173,14 @@ function InboxInner() {
     fetchTotalUnreadCount();
   }, []);
 
-  // Fetch conversations polling (every 10s)
+  // Fetch conversations polling (cada 4s para tiempo real ágil)
   useEffect(() => {
     fetchConversations();
     fetchTotalUnreadCount();
     const interval = setInterval(() => {
       fetchConversations();
       fetchTotalUnreadCount();
-    }, 10000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [searchParams]);
 

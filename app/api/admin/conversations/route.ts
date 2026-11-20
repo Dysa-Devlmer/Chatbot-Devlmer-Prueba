@@ -44,6 +44,16 @@ export async function GET(request: NextRequest) {
       ],
     });
 
+    // Ordenar con precisión: primero no leídas, y luego por la fecha del último mensaje recibido/enviado
+    conversations.sort((a, b) => {
+      if (a.isUnread !== b.isUnread) {
+        return a.isUnread ? -1 : 1;
+      }
+      const timeA = a.messages[0]?.timestamp ? new Date(a.messages[0].timestamp).getTime() : new Date(a.startedAt).getTime();
+      const timeB = b.messages[0]?.timestamp ? new Date(b.messages[0].timestamp).getTime() : new Date(b.startedAt).getTime();
+      return timeB - timeA;
+    });
+
     return NextResponse.json({ conversations });
   } catch (error) {
     console.error('Error fetching conversations:', error);
