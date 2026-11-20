@@ -269,8 +269,40 @@ export async function GET(request: NextRequest) {
       negative: totalSentiment > 0 ? Math.round((negativeMessages / totalSentiment) * 100) : 33,
     };
 
+    // Consultar métricas de pedidos reales
+    const allOrders = await prisma.order.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const totalOrders = allOrders.length;
+    const totalRevenue = allOrders.reduce((sum, ord) => sum + (ord.totalAmount || 0), 0);
+    const confirmedOrders = allOrders.filter(o => o.status === 'confirmed' || o.status === 'ready').length;
+    const deliveredOrders = allOrders.filter(o => o.status === 'delivered').length;
+    const pendingOrders = allOrders.filter(o => o.status === 'pending').length;
+    const avgTicket = totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0;
+
+    let deliveryCount = 0;
+    let pickupCount = 0;
+    let yapeCount = 0;
+    let plinCount = 0;
+    let cashCount = 0;
+    let cardCount = 0;
+
+    allOrders.forEach(ord => {
+      const notes = (ord.notes || '').toLowerCase();
+      if (notes.includes('delivery')) deliveryCount++;
+      else if (notes.includes('retiro') || notes.includes('local') || notes.includes('tienda')) pickupCount++;
+      else deliveryCount++; // default
+
+      if (notes.includes('yape')) yapeCount++;
+      else if (notes.includes('plin')) plinCount++;
+      else if (notes.includes('tarjeta') || notes.includes('pos')) cardCount++;
+      else if (notes.includes('efectivo') || notes.includes('contraentrega')) cashCount++;
+      else yapeCount++; // default
+    });
+
     // Construir respuesta
-    const analytics: AnalyticsData = {
+    const analytics = {
       overview: {
         totalConversations,
         activeConversations,
@@ -279,6 +311,32 @@ export async function GET(request: NextRequest) {
         unreadConversations,
         avgResponseTime: 45, // TODO: Calcular tiempo real de respuesta
         satisfactionScore: sentimentDistribution.positive,
+      },
+      orders: {
+        totalOrders,
+        totalRevenue,
+        confirmedOrders,
+        deliveredOrders,
+        pendingOrders,
+        avgTicket,
+        deliveryCount,
+        pickupCount,
+        paymentBreakdown: {
+          yape: yapeCount,
+          plin: plinCount,
+          cash: cashCount,
+          card: cardCount,
+        },
+        recentOrders: allOrders.slice(0, 5).map(o => ({
+          id: o.id,
+          orderNumber: o.orderNumber,
+          customerName: o.customerName || 'Cliente WhatsApp',
+          customerPhone: o.customerPhone,
+          status: o.status,
+          totalAmount: o.totalAmount,
+          notes: o.notes,
+          createdAt: o.createdAt,
+        })),
       },
       trends: {
         conversationsChange: calculateChange(currentPeriodConversations, previousConversations),

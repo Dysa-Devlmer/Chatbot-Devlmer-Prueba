@@ -130,7 +130,7 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#141312] text-[#e6e1df] font-sans flex flex-col selection:bg-orange-500 selection:text-white pb-32">
+    <div className="min-h-screen bg-[#141312] text-[#e6e1df] font-sans flex flex-col selection:bg-orange-500 selection:text-white pb-36">
       
       {/* Top Header */}
       <header className="fixed top-0 inset-x-0 z-50 bg-[#141312]/90 backdrop-blur-xl border-b border-stone-800/80 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.65)]">

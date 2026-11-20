@@ -138,16 +138,16 @@ export function AdminHeader() {
     { href: '/admin/orders', label: 'Pedidos', icon: '🔔' },
     { href: '/admin/inbox', label: 'Inbox', icon: '💬' },
     { href: '/admin/products', label: 'Menú', icon: '🍔' },
-    { href: '/admin/business', label: 'Local', icon: '🏢' },
+    { href: '/admin/business', label: 'Mi Local', icon: '🏢' },
     { href: '/admin/analytics', label: 'Analytics', icon: '📈' },
-    { href: '/admin/ai', label: 'IA Config', icon: '🤖' },
   ];
 
   const userMenuItems = [
     { href: '/admin/settings', label: 'Mi Perfil', icon: User },
-    { href: '/admin/settings?tab=security', label: 'Seguridad', icon: Shield },
+    { href: '/admin/settings?tab=roles', label: 'Equipo & Roles', icon: Shield },
+    { href: '/admin/settings?tab=appearance', label: 'Apariencia & Marca', icon: Palette },
+    { href: '/admin/settings?tab=security', label: 'Seguridad', icon: Sliders },
     { href: '/admin/settings?tab=notifications', label: 'Notificaciones', icon: Bell },
-    { href: '/admin/settings?tab=appearance', label: 'Apariencia', icon: Palette },
   ];
 
   return (

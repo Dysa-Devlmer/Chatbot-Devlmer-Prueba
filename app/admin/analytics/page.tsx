@@ -1,7 +1,28 @@
-"use client";
+'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { 
+  BarChart3, 
+  TrendingUp, 
+  TrendingDown, 
+  Users, 
+  MessageSquare, 
+  Clock, 
+  Bot, 
+  ShoppingBag, 
+  Truck, 
+  Store, 
+  DollarSign, 
+  RefreshCw, 
+  Calendar,
+  Sparkles,
+  ArrowUpRight,
+  ShieldCheck,
+  CreditCard,
+  Banknote,
+  Smartphone
+} from 'lucide-react';
 
 interface AnalyticsData {
   overview: {
@@ -13,6 +34,32 @@ interface AnalyticsData {
     avgResponseTime: number;
     satisfactionScore: number;
   };
+  orders?: {
+    totalOrders: number;
+    totalRevenue: number;
+    confirmedOrders: number;
+    deliveredOrders: number;
+    pendingOrders: number;
+    avgTicket: number;
+    deliveryCount: number;
+    pickupCount: number;
+    paymentBreakdown: {
+      yape: number;
+      plin: number;
+      cash: number;
+      card: number;
+    };
+    recentOrders: Array<{
+      id: string;
+      orderNumber: string;
+      customerName: string;
+      customerPhone: string;
+      status: string;
+      totalAmount: number;
+      notes?: string;
+      createdAt: string;
+    }>;
+  };
   trends: {
     conversationsChange: number;
     messagesChange: number;
@@ -21,17 +68,12 @@ interface AnalyticsData {
   };
   messagesByHour: Array<{ hour: number; count: number; label: string }>;
   messagesByDay: Array<{ date: string; count: number; dayName: string }>;
-  sentimentDistribution: {
-    positive: number;
-    neutral: number;
-    negative: number;
-  };
   topUsers: Array<{
     id: string;
     name: string;
     phoneNumber: string;
     messageCount: number;
-    lastContact: Date;
+    lastContact: string;
   }>;
   peakHours: Array<{ hour: number; avgMessages: number }>;
   botPerformance: {
@@ -46,7 +88,6 @@ interface AnalyticsData {
     closed: number;
     pending: number;
   };
-  topIntents: Array<{ intent: string; count: number; percentage: number }>;
 }
 
 type Period = '24h' | '7d' | '30d';
@@ -56,17 +97,22 @@ export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('7d');
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const response = await fetch(`/api/admin/analytics?period=${period}`);
-      const data = await response.json();
-      setAnalytics(data.analytics);
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
+      setIsRefreshing(true);
+      const res = await fetch(`/api/admin/analytics?period=${period}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data.analytics);
+        setLastUpdated(new Date());
+      }
+    } catch (err) {
+      console.error('Error fetching analytics:', err);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, [period]);
 
@@ -76,862 +122,466 @@ export default function AnalyticsDashboard() {
     return () => clearInterval(interval);
   }, [fetchAnalytics]);
 
+  const maxHourCount = Math.max(...(analytics?.messagesByHour.map((h) => h.count) || [1]), 1);
+  const maxDayCount = Math.max(...(analytics?.messagesByDay.map((d) => d.count) || [1]), 1);
+
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.loadingSpinner}>
-          <div style={styles.spinner}></div>
-          <p style={styles.loadingText}>Cargando analytics...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="w-10 h-10 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+        <p className="text-sm font-semibold text-slate-500 dark:text-stone-400">
+          Cargando métricas de negocio en tiempo real...
+        </p>
       </div>
     );
   }
 
-  const maxHourCount = Math.max(...(analytics?.messagesByHour.map(h => h.count) || [1]));
-  const maxDayCount = Math.max(...(analytics?.messagesByDay.map(d => d.count) || [1]));
+  const orders = analytics?.orders || {
+    totalOrders: 0,
+    totalRevenue: 0,
+    confirmedOrders: 0,
+    deliveredOrders: 0,
+    pendingOrders: 0,
+    avgTicket: 0,
+    deliveryCount: 0,
+    pickupCount: 0,
+    paymentBreakdown: { yape: 0, plin: 0, cash: 0, card: 0 },
+    recentOrders: [],
+  };
+
+  const overview = analytics?.overview || {
+    totalConversations: 0,
+    activeConversations: 0,
+    totalUsers: 0,
+    totalMessages: 0,
+    unreadConversations: 0,
+    avgResponseTime: 45,
+    satisfactionScore: 95,
+  };
+
+  const bot = analytics?.botPerformance || {
+    botMessages: 0,
+    humanMessages: 0,
+    botPercentage: 0,
+    avgBotResponseTime: 2,
+    avgHumanResponseTime: 120,
+  };
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <Link href="/admin" style={styles.backLink}>← Volver</Link>
-          <h1 style={styles.title}>📊 Analytics Dashboard</h1>
-          <p style={styles.subtitle}>
-            Última actualización: {lastUpdated.toLocaleTimeString()}
+    <div className="space-y-6 pb-12 animate-in fade-in duration-200">
+      
+      {/* Top Header & Period Selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-stone-800 pb-5">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+              Métricas & Rendimiento
+            </span>
+            <span className="text-xs text-slate-400 dark:text-stone-500">
+              • Actualizado {lastUpdated.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+            Analytics de Negocio & WhatsApp
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-stone-400 mt-0.5">
+            Monitoreo en vivo de ventas, pedidos por delivery/tienda y efectividad del bot IA.
           </p>
         </div>
-        <div style={styles.periodSelector}>
-          {(['24h', '7d', '30d'] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => { setPeriod(p); setLoading(true); }}
-              style={{
-                ...styles.periodButton,
-                ...(period === p ? styles.periodButtonActive : {}),
-              }}
-            >
-              {p === '24h' ? '24 Horas' : p === '7d' ? '7 Días' : '30 Días'}
-            </button>
-          ))}
-        </div>
-      </div>
 
-      {/* KPI Cards */}
-      <div style={styles.kpiGrid}>
-        <KPICard
-          icon="💬"
-          title="Total Conversaciones"
-          value={analytics?.overview.totalConversations || 0}
-          trend={analytics?.trends.conversationsChange || 0}
-          color="#667eea"
-        />
-        <KPICard
-          icon="📨"
-          title="Total Mensajes"
-          value={analytics?.overview.totalMessages || 0}
-          trend={analytics?.trends.messagesChange || 0}
-          color="#764ba2"
-        />
-        <KPICard
-          icon="👥"
-          title="Usuarios"
-          value={analytics?.overview.totalUsers || 0}
-          trend={analytics?.trends.usersChange || 0}
-          color="#25D366"
-        />
-        <KPICard
-          icon="⏱️"
-          title="Tiempo Respuesta"
-          value={`${analytics?.overview.avgResponseTime || 0}s`}
-          trend={analytics?.trends.responseTimeChange || 0}
-          color="#FF6B6B"
-          invertTrend
-        />
-        <KPICard
-          icon="😊"
-          title="Satisfacción"
-          value={`${analytics?.overview.satisfactionScore || 0}%`}
-          color="#4ECDC4"
-        />
-        <KPICard
-          icon="🔴"
-          title="Sin Leer"
-          value={analytics?.overview.unreadConversations || 0}
-          color="#FFA500"
-          highlight
-        />
-      </div>
-
-      {/* Charts Row 1 */}
-      <div style={styles.chartsRow}>
-        {/* Mensajes por Hora */}
-        <div style={styles.chartCard}>
-          <h3 style={styles.chartTitle}>📈 Mensajes por Hora (24h)</h3>
-          <div style={styles.barChart}>
-            {analytics?.messagesByHour.map((item) => (
-              <div key={item.hour} style={styles.barContainer}>
-                <div
-                  style={{
-                    ...styles.bar,
-                    height: `${maxHourCount > 0 ? (item.count / maxHourCount) * 100 : 0}%`,
-                    background: item.count > 0
-                      ? `linear-gradient(180deg, #667eea 0%, #764ba2 100%)`
-                      : '#e0e0e0',
-                  }}
-                >
-                  {item.count > 0 && (
-                    <span style={styles.barValue}>{item.count}</span>
-                  )}
-                </div>
-                <span style={styles.barLabel}>{item.hour}</span>
-              </div>
+        {/* Period Selector & Refresh */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="p-1 rounded-xl bg-slate-100 dark:bg-stone-900 border border-slate-200 dark:border-stone-800 flex items-center shadow-inner">
+            {(['24h', '7d', '30d'] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  period === p
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-stone-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {p === '24h' ? 'Últimas 24h' : p === '7d' ? '7 Días' : '30 Días'}
+              </button>
             ))}
           </div>
-        </div>
 
-        {/* Mensajes por Día */}
-        <div style={styles.chartCard}>
-          <h3 style={styles.chartTitle}>📅 Mensajes por Día (7d)</h3>
-          <div style={styles.dayChart}>
-            {analytics?.messagesByDay.map((item, index) => (
-              <div key={index} style={styles.dayBarContainer}>
-                <div style={styles.dayBarWrapper}>
-                  <span style={styles.dayBarValue}>{item.count}</span>
-                  <div
-                    style={{
-                      ...styles.dayBar,
-                      height: `${maxDayCount > 0 ? (item.count / maxDayCount) * 100 : 0}%`,
-                    }}
-                  />
-                </div>
-                <span style={styles.dayBarLabel}>{item.dayName}</span>
-              </div>
-            ))}
-          </div>
+          <button
+            onClick={fetchAnalytics}
+            disabled={isRefreshing}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-stone-900 border border-slate-200 dark:border-stone-800 text-slate-600 dark:text-stone-400 hover:text-orange-600 dark:hover:text-orange-400 transition-all active:scale-95 disabled:opacity-50"
+            title="Refrescar métricas ahora"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-orange-500' : ''}`} />
+          </button>
         </div>
       </div>
 
-      {/* Charts Row 2 */}
-      <div style={styles.chartsRow}>
-        {/* Distribución de Sentimiento */}
-        <div style={styles.chartCardSmall}>
-          <h3 style={styles.chartTitle}>😊 Sentimiento</h3>
-          <div style={styles.sentimentContainer}>
-            <div style={styles.sentimentRow}>
-              <span style={styles.sentimentLabel}>😊 Positivo</span>
-              <div style={styles.sentimentBarContainer}>
-                <div
-                  style={{
-                    ...styles.sentimentBar,
-                    width: `${analytics?.sentimentDistribution.positive || 0}%`,
-                    background: '#4ECDC4',
-                  }}
-                />
-              </div>
-              <span style={styles.sentimentValue}>
-                {analytics?.sentimentDistribution.positive || 0}%
-              </span>
+      {/* 1. Core KPIs Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Total Revenue */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-stone-400 uppercase tracking-wider">
+              Ventas Estimadas
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-[#94de2d] flex items-center justify-center font-bold">
+              <DollarSign className="w-5 h-5" />
             </div>
-            <div style={styles.sentimentRow}>
-              <span style={styles.sentimentLabel}>😐 Neutral</span>
-              <div style={styles.sentimentBarContainer}>
-                <div
-                  style={{
-                    ...styles.sentimentBar,
-                    width: `${analytics?.sentimentDistribution.neutral || 0}%`,
-                    background: '#FFD93D',
-                  }}
-                />
-              </div>
-              <span style={styles.sentimentValue}>
-                {analytics?.sentimentDistribution.neutral || 0}%
-              </span>
-            </div>
-            <div style={styles.sentimentRow}>
-              <span style={styles.sentimentLabel}>😞 Negativo</span>
-              <div style={styles.sentimentBarContainer}>
-                <div
-                  style={{
-                    ...styles.sentimentBar,
-                    width: `${analytics?.sentimentDistribution.negative || 0}%`,
-                    background: '#FF6B6B',
-                  }}
-                />
-              </div>
-              <span style={styles.sentimentValue}>
-                {analytics?.sentimentDistribution.negative || 0}%
-              </span>
-            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-1">
+            <span className="text-xs font-black text-slate-500 dark:text-stone-400">S/.</span>
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              {orders.totalRevenue.toFixed(2)}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-[#94de2d] font-semibold">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>Ticket prom: S/. {orders.avgTicket.toFixed(2)}</span>
           </div>
         </div>
 
-        {/* Bot vs Human Performance */}
-        <div style={styles.chartCardSmall}>
-          <h3 style={styles.chartTitle}>🤖 Bot vs Humano</h3>
-          <div style={styles.performanceContainer}>
-            <div style={styles.performanceCircle}>
-              <svg width="120" height="120" viewBox="0 0 120 120">
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="50"
-                  fill="none"
-                  stroke="#e0e0e0"
-                  strokeWidth="10"
-                />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="50"
-                  fill="none"
-                  stroke="#667eea"
-                  strokeWidth="10"
-                  strokeDasharray={`${(analytics?.botPerformance.botPercentage || 0) * 3.14} 314`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 60 60)"
-                />
-                <text
-                  x="60"
-                  y="55"
-                  textAnchor="middle"
-                  style={{ fontSize: '24px', fontWeight: 'bold', fill: '#333' }}
-                >
-                  {analytics?.botPerformance.botPercentage || 0}%
-                </text>
-                <text
-                  x="60"
-                  y="75"
-                  textAnchor="middle"
-                  style={{ fontSize: '12px', fill: '#666' }}
-                >
-                  Bot
-                </text>
-              </svg>
+        {/* Total Orders */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-stone-400 uppercase tracking-wider">
+              Pedidos Realizados
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold">
+              <ShoppingBag className="w-5 h-5" />
             </div>
-            <div style={styles.performanceStats}>
-              <div style={styles.performanceStat}>
-                <span style={styles.performanceIcon}>🤖</span>
-                <span>{analytics?.botPerformance.botMessages || 0} msgs</span>
-              </div>
-              <div style={styles.performanceStat}>
-                <span style={styles.performanceIcon}>👤</span>
-                <span>{analytics?.botPerformance.humanMessages || 0} msgs</span>
-              </div>
-            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              {orders.totalOrders}
+            </span>
+            <span className="text-xs text-slate-500 dark:text-stone-400">
+              ({orders.confirmedOrders} en cocina)
+            </span>
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs text-slate-600 dark:text-stone-400">
+            <span className="flex items-center gap-1">
+              <Truck className="w-3 h-3 text-orange-500" />
+              <b>{orders.deliveryCount}</b> Delivery
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <Store className="w-3 h-3 text-purple-500" />
+              <b>{orders.pickupCount}</b> Local
+            </span>
           </div>
         </div>
 
-        {/* Top Intenciones */}
-        <div style={styles.chartCardSmall}>
-          <h3 style={styles.chartTitle}>🎯 Top Intenciones</h3>
-          <div style={styles.intentsList}>
-            {analytics?.topIntents.length ? (
-              analytics.topIntents.map((intent, index) => (
-                <div key={index} style={styles.intentRow}>
-                  <span style={styles.intentName}>
-                    {getIntentEmoji(intent.intent)} {intent.intent}
+        {/* WhatsApp Clients & Conversations */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-stone-400 uppercase tracking-wider">
+              Clientes Atendidos
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              {overview.totalUsers}
+            </span>
+            <span className="text-xs text-slate-500 dark:text-stone-400">
+              ({overview.totalConversations} chats)
+            </span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600 dark:text-stone-400">
+            <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+            <span>{overview.totalMessages} mensajes intercambiados</span>
+          </div>
+        </div>
+
+        {/* Bot IA Automation Rate */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-stone-400 uppercase tracking-wider">
+              Automatización IA
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+              <Bot className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              {bot.botPercentage}%
+            </span>
+            <span className="text-xs text-emerald-600 dark:text-[#94de2d] font-bold">
+              Autónomo
+            </span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600 dark:text-stone-400">
+            <Clock className="w-3.5 h-3.5 text-amber-500" />
+            <span>Respuesta en ~{bot.avgBotResponseTime}s</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 2. Charts Section: Daily Activity & Peak Hours */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Weekly Traffic Bars */}
+        <div className="lg:col-span-2 p-5 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-orange-500" />
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Volumen de Mensajes por Día
+                </h3>
+              </div>
+              <span className="text-xs text-slate-500 dark:text-stone-400">Última semana</span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-stone-400 mt-0.5">
+              Frecuencia de consultas y pedidos entrantes por los clientes en WhatsApp.
+            </p>
+          </div>
+
+          {/* Clean Bar Visualization */}
+          <div className="mt-6 pt-4 flex items-end justify-between gap-2 sm:gap-4 h-44 border-b border-slate-100 dark:border-stone-800/80 px-2">
+            {analytics?.messagesByDay.map((day, idx) => {
+              const heightPct = Math.max(12, Math.round((day.count / maxDayCount) * 100));
+              const isToday = idx === analytics.messagesByDay.length - 1;
+              return (
+                <div key={day.date} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
+                  <span className="text-[10px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {day.count}
                   </span>
-                  <div style={styles.intentBarContainer}>
-                    <div
-                      style={{
-                        ...styles.intentBar,
-                        width: `${intent.percentage}%`,
-                      }}
-                    />
+                  <div
+                    style={{ height: `${heightPct}%` }}
+                    className={`w-full max-w-[36px] rounded-t-xl transition-all duration-300 ${
+                      isToday
+                        ? 'bg-gradient-to-t from-orange-600 to-amber-500 shadow-md shadow-orange-500/20'
+                        : 'bg-slate-200 dark:bg-stone-800 hover:bg-orange-500/60'
+                    }`}
+                  />
+                  <span className={`text-xs font-bold mt-1 ${
+                    isToday ? 'text-orange-600 dark:text-orange-400 font-black' : 'text-slate-500 dark:text-stone-400'
+                  }`}>
+                    {day.dayName}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Payment Methods Breakdown */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-orange-500" />
+              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                Métodos de Pago Preferidos
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-stone-400 mt-0.5">
+              Preferencia de pago de los comensales.
+            </p>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {/* Yape */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-stone-950 border border-slate-200/60 dark:border-stone-800/60 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-purple-900/20 text-purple-600 dark:text-purple-300 flex items-center justify-center font-black text-[10px]">
+                  YP
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">Yape</p>
+                  <p className="text-[10px] text-slate-500 dark:text-stone-400">Transferencia móvil</p>
+                </div>
+              </div>
+              <span className="text-sm font-black text-purple-600 dark:text-purple-400">
+                {orders.paymentBreakdown.yape} pedidos
+              </span>
+            </div>
+
+            {/* Plin */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-stone-950 border border-slate-200/60 dark:border-stone-800/60 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-cyan-900/20 text-cyan-600 dark:text-cyan-300 flex items-center justify-center font-black text-[10px]">
+                  PL
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">Plin</p>
+                  <p className="text-[10px] text-slate-500 dark:text-stone-400">Interbancario</p>
+                </div>
+              </div>
+              <span className="text-sm font-black text-cyan-600 dark:text-cyan-400">
+                {orders.paymentBreakdown.plin} pedidos
+              </span>
+            </div>
+
+            {/* Cash */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-stone-950 border border-slate-200/60 dark:border-stone-800/60 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
+                  <Banknote className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">Efectivo</p>
+                  <p className="text-[10px] text-slate-500 dark:text-stone-400">Contraentrega</p>
+                </div>
+              </div>
+              <span className="text-sm font-black text-emerald-600 dark:text-[#94de2d]">
+                {orders.paymentBreakdown.cash} pedidos
+              </span>
+            </div>
+
+            {/* Card */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-stone-950 border border-slate-200/60 dark:border-stone-800/60 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-blue-900/20 text-blue-600 dark:text-blue-300 flex items-center justify-center">
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">Tarjeta POS</p>
+                  <p className="text-[10px] text-slate-500 dark:text-stone-400">Al repartidor</p>
+                </div>
+              </div>
+              <span className="text-sm font-black text-blue-600 dark:text-blue-400">
+                {orders.paymentBreakdown.card} pedidos
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 3. Hourly Activity & Top Clients */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Peak Hours (24h Distribution) */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-500" />
+              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                Horas Pico de Pedidos & Atención
+              </h3>
+            </div>
+            <span className="text-xs text-slate-500 dark:text-stone-400">24 Horas</span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-stone-400 mt-0.5">
+            Distribución horaria para programar turnos de cocina y motorizados de delivery.
+          </p>
+
+          <div className="mt-5 grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+            {analytics?.messagesByHour.map((h) => {
+              const intensity = h.count > 0 ? Math.min(100, Math.max(20, Math.round((h.count / maxHourCount) * 100))) : 0;
+              return (
+                <div
+                  key={h.hour}
+                  title={`${h.label}: ${h.count} interacciones`}
+                  className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all ${
+                    h.count > 0
+                      ? 'bg-orange-500/20 border border-orange-500/40 text-orange-600 dark:text-orange-400 font-bold'
+                      : 'bg-slate-50 dark:bg-stone-950 border border-slate-100 dark:border-stone-800/40 text-slate-400 dark:text-stone-600'
+                  }`}
+                >
+                  <span className="text-[10px]">{h.label.slice(0, 2)}h</span>
+                  <span className="text-xs font-black">{h.count}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Highlight Top 3 Peak Hours */}
+          {analytics?.peakHours && analytics.peakHours.length > 0 && (
+            <div className="mt-4 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-orange-500" />
+                <span className="text-xs font-bold text-slate-800 dark:text-orange-200">
+                  Horas de Mayor Demanda:
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {analytics.peakHours.map((ph) => (
+                  <span
+                    key={ph.hour}
+                    className="px-2 py-0.5 rounded-md bg-orange-500 text-white text-[10px] font-black"
+                  >
+                    {ph.hour.toString().padStart(2, '0')}:00 ({ph.avgMessages} msgs)
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Top Active Customers */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-500" />
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Clientes Más Frecuentes
+                </h3>
+              </div>
+              <Link
+                href="/admin/inbox"
+                className="text-xs text-orange-600 dark:text-orange-400 font-bold hover:underline flex items-center gap-1"
+              >
+                <span>Ver Inbox</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-stone-400 mt-0.5">
+              Fidelización de comensales que compran o consultan recurrentemente por WhatsApp.
+            </p>
+          </div>
+
+          <div className="mt-4 divide-y divide-slate-100 dark:divide-stone-800/80">
+            {analytics?.topUsers && analytics.topUsers.length > 0 ? (
+              analytics.topUsers.slice(0, 5).map((user) => (
+                <div key={user.id} className="py-2.5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-stone-800 text-slate-700 dark:text-stone-300 flex items-center justify-center font-bold text-xs shrink-0">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                        {user.name}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-stone-400 truncate">
+                        +{user.phoneNumber}
+                      </p>
+                    </div>
                   </div>
-                  <span style={styles.intentValue}>{intent.percentage}%</span>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-[#94de2d] text-xs font-black">
+                      {user.messageCount} msgs
+                    </span>
+                    <Link
+                      href="/admin/inbox"
+                      className="p-1.5 rounded-lg bg-slate-100 dark:bg-stone-800 text-slate-600 dark:text-stone-300 hover:text-orange-500 transition-colors"
+                      title="Abrir chat en WhatsApp Web"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
               ))
             ) : (
-              <p style={styles.noData}>Sin datos aún</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Top Users & Peak Hours */}
-      <div style={styles.chartsRow}>
-        {/* Top Usuarios */}
-        <div style={styles.chartCard}>
-          <h3 style={styles.chartTitle}>👥 Top Usuarios</h3>
-          <div style={styles.usersList}>
-            {analytics?.topUsers.slice(0, 5).map((user, index) => (
-              <div key={user.id} style={styles.userRow}>
-                <div style={styles.userRank}>#{index + 1}</div>
-                <div style={styles.userInfo}>
-                  <span style={styles.userName}>{user.name}</span>
-                  <span style={styles.userPhone}>{formatPhone(user.phoneNumber)}</span>
-                </div>
-                <div style={styles.userStats}>
-                  <span style={styles.userMessages}>💬 {user.messageCount}</span>
-                </div>
-              </div>
-            ))}
-            {!analytics?.topUsers.length && (
-              <p style={styles.noData}>Sin usuarios aún</p>
+              <p className="text-xs text-slate-400 py-6 text-center">
+                Aún no hay interacciones registradas.
+              </p>
             )}
           </div>
         </div>
 
-        {/* Horas Pico */}
-        <div style={styles.chartCardSmall}>
-          <h3 style={styles.chartTitle}>⏰ Horas Pico</h3>
-          <div style={styles.peakHoursList}>
-            {analytics?.peakHours.map((peak, index) => (
-              <div key={index} style={styles.peakHourRow}>
-                <span style={styles.peakHourMedal}>
-                  {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                </span>
-                <span style={styles.peakHourTime}>
-                  {peak.hour.toString().padStart(2, '0')}:00
-                </span>
-                <span style={styles.peakHourCount}>
-                  {peak.avgMessages} msgs
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Estado de Conversaciones */}
-        <div style={styles.chartCardSmall}>
-          <h3 style={styles.chartTitle}>📊 Estado Conversaciones</h3>
-          <div style={styles.statusList}>
-            <div style={styles.statusRow}>
-              <span style={styles.statusDot} data-status="active">🟢</span>
-              <span style={styles.statusLabel}>Activas</span>
-              <span style={styles.statusValue}>
-                {analytics?.conversationsByStatus.active || 0}
-              </span>
-            </div>
-            <div style={styles.statusRow}>
-              <span style={styles.statusDot} data-status="pending">🟡</span>
-              <span style={styles.statusLabel}>Pendientes</span>
-              <span style={styles.statusValue}>
-                {analytics?.conversationsByStatus.pending || 0}
-              </span>
-            </div>
-            <div style={styles.statusRow}>
-              <span style={styles.statusDot} data-status="closed">⚫</span>
-              <span style={styles.statusLabel}>Cerradas</span>
-              <span style={styles.statusValue}>
-                {analytics?.conversationsByStatus.closed || 0}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Footer */}
-      <div style={styles.footer}>
-        <p>📊 Dashboard actualizado automáticamente cada 30 segundos</p>
-        <p>Chatbot PITHY • Devlmer Project CL</p>
-      </div>
     </div>
   );
 }
-
-// Componente KPI Card
-function KPICard({
-  icon,
-  title,
-  value,
-  trend,
-  color,
-  highlight,
-  invertTrend,
-}: {
-  icon: string;
-  title: string;
-  value: number | string;
-  trend?: number;
-  color: string;
-  highlight?: boolean;
-  invertTrend?: boolean;
-}) {
-  const trendColor = trend
-    ? (invertTrend ? trend < 0 : trend > 0)
-      ? '#4ECDC4'
-      : '#FF6B6B'
-    : '#666';
-
-  return (
-    <div
-      style={{
-        ...styles.kpiCard,
-        background: highlight
-          ? `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`
-          : 'white',
-        color: highlight ? 'white' : '#333',
-      }}
-    >
-      <div style={styles.kpiIcon}>{icon}</div>
-      <div style={styles.kpiContent}>
-        <div style={styles.kpiValue}>
-          {typeof value === 'number' ? value.toLocaleString() : value}
-        </div>
-        <div style={{ ...styles.kpiTitle, color: highlight ? 'rgba(255,255,255,0.9)' : '#666' }}>
-          {title}
-        </div>
-        {trend !== undefined && (
-          <div style={{ ...styles.kpiTrend, color: highlight ? 'white' : trendColor }}>
-            {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'} {Math.abs(trend)}%
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Helpers
-function formatPhone(phone: string): string {
-  if (phone.length > 8) {
-    return `...${phone.slice(-4)}`;
-  }
-  return phone;
-}
-
-function getIntentEmoji(intent: string): string {
-  const emojis: Record<string, string> = {
-    consulta: '❓',
-    saludo: '👋',
-    soporte: '🔧',
-    venta: '💰',
-    queja: '😤',
-    despedida: '👋',
-    comando: '⚡',
-    otros: '📝',
-  };
-  return emojis[intent.toLowerCase()] || '📝';
-}
-
-// Styles
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-    padding: '20px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-  },
-  loadingContainer: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-  },
-  loadingSpinner: {
-    textAlign: 'center' as const,
-    color: 'white',
-  },
-  spinner: {
-    width: '50px',
-    height: '50px',
-    border: '4px solid rgba(255,255,255,0.3)',
-    borderTop: '4px solid #667eea',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-    margin: '0 auto 20px',
-  },
-  loadingText: {
-    fontSize: '18px',
-    color: 'rgba(255,255,255,0.8)',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '30px',
-    flexWrap: 'wrap' as const,
-    gap: '20px',
-  },
-  headerLeft: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '5px',
-  },
-  backLink: {
-    color: 'rgba(255,255,255,0.7)',
-    textDecoration: 'none',
-    fontSize: '14px',
-    marginBottom: '10px',
-  },
-  title: {
-    margin: 0,
-    fontSize: '32px',
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  subtitle: {
-    margin: 0,
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: '14px',
-  },
-  periodSelector: {
-    display: 'flex',
-    gap: '10px',
-    background: 'rgba(255,255,255,0.1)',
-    padding: '5px',
-    borderRadius: '10px',
-  },
-  periodButton: {
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '8px',
-    background: 'transparent',
-    color: 'rgba(255,255,255,0.7)',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-  },
-  periodButtonActive: {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-  },
-  kpiGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '20px',
-    marginBottom: '30px',
-  },
-  kpiCard: {
-    borderRadius: '16px',
-    padding: '25px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '15px',
-    transition: 'transform 0.2s',
-  },
-  kpiIcon: {
-    fontSize: '40px',
-  },
-  kpiContent: {
-    flex: 1,
-  },
-  kpiValue: {
-    fontSize: '28px',
-    fontWeight: 'bold',
-    marginBottom: '5px',
-  },
-  kpiTitle: {
-    fontSize: '13px',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.5px',
-  },
-  kpiTrend: {
-    fontSize: '12px',
-    fontWeight: '600',
-    marginTop: '5px',
-  },
-  chartsRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '20px',
-    marginBottom: '20px',
-  },
-  chartCard: {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '25px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-  },
-  chartCardSmall: {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '25px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-    minHeight: '250px',
-  },
-  chartTitle: {
-    margin: '0 0 20px 0',
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#333',
-  },
-  barChart: {
-    display: 'flex',
-    alignItems: 'flex-end',
-    height: '150px',
-    gap: '2px',
-  },
-  barContainer: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    height: '100%',
-  },
-  bar: {
-    width: '100%',
-    minHeight: '2px',
-    borderRadius: '4px 4px 0 0',
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    transition: 'height 0.3s',
-  },
-  barValue: {
-    fontSize: '9px',
-    color: 'white',
-    fontWeight: 'bold',
-    marginTop: '2px',
-  },
-  barLabel: {
-    fontSize: '10px',
-    color: '#999',
-    marginTop: '5px',
-  },
-  dayChart: {
-    display: 'flex',
-    justifyContent: 'space-around',
-    alignItems: 'flex-end',
-    height: '150px',
-  },
-  dayBarContainer: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    flex: 1,
-  },
-  dayBarWrapper: {
-    height: '120px',
-    width: '40px',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  dayBar: {
-    width: '100%',
-    background: 'linear-gradient(180deg, #4ECDC4 0%, #44A08D 100%)',
-    borderRadius: '8px 8px 0 0',
-    minHeight: '4px',
-    transition: 'height 0.3s',
-  },
-  dayBarValue: {
-    fontSize: '14px',
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: '5px',
-  },
-  dayBarLabel: {
-    fontSize: '12px',
-    color: '#666',
-    marginTop: '8px',
-    fontWeight: '500',
-  },
-  sentimentContainer: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '15px',
-  },
-  sentimentRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  sentimentLabel: {
-    width: '90px',
-    fontSize: '13px',
-    color: '#666',
-  },
-  sentimentBarContainer: {
-    flex: 1,
-    height: '12px',
-    background: '#f0f0f0',
-    borderRadius: '6px',
-    overflow: 'hidden',
-  },
-  sentimentBar: {
-    height: '100%',
-    borderRadius: '6px',
-    transition: 'width 0.3s',
-  },
-  sentimentValue: {
-    width: '40px',
-    textAlign: 'right' as const,
-    fontSize: '13px',
-    fontWeight: '600',
-    color: '#333',
-  },
-  performanceContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '30px',
-  },
-  performanceCircle: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  performanceStats: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '15px',
-  },
-  performanceStat: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    fontSize: '14px',
-    color: '#666',
-  },
-  performanceIcon: {
-    fontSize: '20px',
-  },
-  intentsList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '12px',
-  },
-  intentRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  intentName: {
-    width: '100px',
-    fontSize: '13px',
-    color: '#333',
-    whiteSpace: 'nowrap' as const,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  intentBarContainer: {
-    flex: 1,
-    height: '8px',
-    background: '#f0f0f0',
-    borderRadius: '4px',
-    overflow: 'hidden',
-  },
-  intentBar: {
-    height: '100%',
-    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-    borderRadius: '4px',
-    transition: 'width 0.3s',
-  },
-  intentValue: {
-    width: '35px',
-    textAlign: 'right' as const,
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#666',
-  },
-  usersList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '12px',
-  },
-  userRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '15px',
-    padding: '12px',
-    background: '#f8f9fa',
-    borderRadius: '10px',
-  },
-  userRank: {
-    width: '30px',
-    height: '30px',
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '12px',
-    fontWeight: 'bold',
-  },
-  userInfo: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column' as const,
-  },
-  userName: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#333',
-  },
-  userPhone: {
-    fontSize: '12px',
-    color: '#999',
-  },
-  userStats: {
-    display: 'flex',
-    gap: '10px',
-  },
-  userMessages: {
-    fontSize: '13px',
-    color: '#667eea',
-    fontWeight: '600',
-  },
-  peakHoursList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '15px',
-  },
-  peakHourRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '15px',
-    padding: '12px 15px',
-    background: '#f8f9fa',
-    borderRadius: '10px',
-  },
-  peakHourMedal: {
-    fontSize: '24px',
-  },
-  peakHourTime: {
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#333',
-    flex: 1,
-  },
-  peakHourCount: {
-    fontSize: '14px',
-    color: '#667eea',
-    fontWeight: '600',
-  },
-  statusList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '15px',
-  },
-  statusRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px 15px',
-    background: '#f8f9fa',
-    borderRadius: '10px',
-  },
-  statusDot: {
-    fontSize: '16px',
-  },
-  statusLabel: {
-    flex: 1,
-    fontSize: '14px',
-    color: '#333',
-  },
-  statusValue: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    color: '#667eea',
-  },
-  noData: {
-    textAlign: 'center' as const,
-    color: '#999',
-    fontSize: '14px',
-    padding: '20px',
-  },
-  footer: {
-    textAlign: 'center' as const,
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: '30px',
-    fontSize: '13px',
-  },
-};
