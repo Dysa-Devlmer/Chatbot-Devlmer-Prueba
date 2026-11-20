@@ -16,6 +16,9 @@ export interface CreateReservationInput {
   productNames: string[]
   notes?: string
   channel?: 'whatsapp' | 'web' | 'manual'
+  deliveryType?: 'delivery' | 'pickup'
+  deliveryAddress?: string
+  paymentMethod?: string
 }
 
 export interface ReservationResult {
@@ -24,6 +27,7 @@ export interface ReservationResult {
   totalAmount?: number
   itemsSummary?: string
   error?: string
+  isExisting?: boolean
 }
 
 export class ReservationService {
@@ -47,6 +51,32 @@ export class ReservationService {
 
       if (!input.productNames || input.productNames.length === 0) {
         return { success: false, error: 'No se especificaron productos para reservar' }
+      }
+
+      // Verificación estricta anti-duplicados: Si el cliente ya tiene una orden activa
+      // en estado 'pending' o 'confirmed' generada en los últimos 15 minutos, NO duplicar
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000)
+      const existingActiveOrder = await prisma.order.findFirst({
+        where: {
+          customerPhone: input.customerPhone,
+          createdAt: { gte: fifteenMinutesAgo },
+          status: { in: ['pending', 'confirmed'] },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      if (existingActiveOrder) {
+        apiLogger.info('Duplicado prevenido: Orden activa existente encontrada', {
+          customerPhone: input.customerPhone,
+          orderNumber: existingActiveOrder.orderNumber,
+          status: existingActiveOrder.status,
+        })
+        return {
+          success: true,
+          orderNumber: existingActiveOrder.orderNumber,
+          totalAmount: existingActiveOrder.totalAmount,
+          isExisting: true,
+        }
       }
 
       // Buscar los productos en la base de datos (coincidencia flexible)
@@ -102,6 +132,17 @@ export class ReservationService {
         }
       }
 
+      // Construir notas claras para cocina y despacho
+      let formattedNotes = input.notes || ''
+      if (input.deliveryType === 'delivery') {
+        formattedNotes = `🛵 Delivery a: ${input.deliveryAddress || 'Dirección acordada'}${input.paymentMethod ? ` | Pago: ${input.paymentMethod}` : ''}${input.notes ? ` (${input.notes})` : ''}`
+      } else if (input.deliveryType === 'pickup') {
+        formattedNotes = `🏬 Retiro en Local: Av. Los Próceres 458${input.paymentMethod ? ` | Pago: ${input.paymentMethod}` : ''}${input.notes ? ` (${input.notes})` : ''}`
+      }
+      if (!formattedNotes) {
+        formattedNotes = 'Pedido confirmado por WhatsApp'
+      }
+
       // Crear la orden en la base de datos
       const order = await prisma.order.create({
         data: {
@@ -110,7 +151,7 @@ export class ReservationService {
           customerName: input.customerName || 'Cliente WhatsApp',
           status: 'pending',
           totalAmount,
-          notes: input.notes || 'Reserva automática generada por WhatsApp',
+          notes: formattedNotes,
           channel: input.channel || 'whatsapp',
           items: {
             create: orderItemsData,

@@ -60,25 +60,25 @@ const COLUMNS: {
     emoji: '🟡',
     color: 'border-amber-400 bg-amber-50/50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400',
     badgeBg: 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300',
-    btnLabel: 'Confirmar',
+    btnLabel: 'A Cocina 👨‍🍳🔥',
     nextStatus: 'confirmed',
   },
   {
     id: 'confirmed',
-    label: 'Confirmado',
+    label: 'En Preparación',
     emoji: '🔵',
     color: 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400',
     badgeBg: 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300',
-    btnLabel: 'A Cocina 🔥',
+    btnLabel: 'Listo / En Camino 🛵',
     nextStatus: 'ready',
   },
   {
     id: 'ready',
-    label: 'En Cocina / Listo',
+    label: 'Listo / En Camino',
     emoji: '🟠',
     color: 'border-orange-400 bg-orange-50/50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400',
     badgeBg: 'bg-orange-100 dark:bg-orange-900/60 text-orange-800 dark:text-orange-300',
-    btnLabel: 'Entregado 🛵',
+    btnLabel: 'Marcar Entregado 🟢',
     nextStatus: 'delivered',
   },
   {
@@ -625,27 +625,27 @@ export default function LiveOrdersPage() {
                 {selectedOrder.status === 'pending' && (
                   <button
                     onClick={() => updateOrderStatus(selectedOrder.id, 'confirmed')}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-500 transition-all shadow-sm"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-500 transition-all shadow-sm flex items-center gap-1.5"
                   >
-                    Confirmar Pedido
+                    <Flame className="w-4 h-4" /> A Cocina (Preparar)
                   </button>
                 )}
 
                 {selectedOrder.status === 'confirmed' && (
                   <button
                     onClick={() => updateOrderStatus(selectedOrder.id, 'ready')}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 text-white hover:bg-orange-500 transition-all shadow-sm flex items-center gap-1"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 text-white hover:bg-orange-500 transition-all shadow-sm flex items-center gap-1.5"
                   >
-                    <Flame className="w-4 h-4" /> En Cocina
+                    <Truck className="w-4 h-4" /> Listo / Despachar 🛵
                   </button>
                 )}
 
                 {selectedOrder.status === 'ready' && (
                   <button
                     onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition-all shadow-sm flex items-center gap-1"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition-all shadow-sm flex items-center gap-1.5"
                   >
-                    <CheckCircle2 className="w-4 h-4" /> Marcar Entregado
+                    <CheckCircle2 className="w-4 h-4" /> Marcar Entregado 🟢
                   </button>
                 )}
               </div>
