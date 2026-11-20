@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
   Bike, 
@@ -52,6 +53,7 @@ interface UpsellItem {
 }
 
 export default function CheckoutPage() {
+  const router = useRouter();
   // Delivery Mode
   const [deliveryMode, setDeliveryMode] = useState<'delivery' | 'pickup'>('delivery');
   
@@ -126,6 +128,9 @@ export default function CheckoutPage() {
     setOrderState('processing');
     setTimeout(() => {
       setOrderState('confirmed');
+      setTimeout(() => {
+        router.push('/tracking?order=CR-8492');
+      }, 900);
     }, 1400);
   };
 
