@@ -17,7 +17,8 @@ import {
   Truck,
   MessageCircle,
   Store,
-  DollarSign
+  DollarSign,
+  MapPin
 } from 'lucide-react';
 
 interface OrderItem {
@@ -43,6 +44,97 @@ interface Order {
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
+}
+
+interface ParsedOrderMetadata {
+  isDelivery: boolean;
+  address?: string;
+  paymentMethod: string;
+  paymentType: 'yape' | 'plin' | 'cash' | 'card' | 'other';
+  kitchenNotes?: string;
+}
+
+function parseOrderMetadata(notes: string | null): ParsedOrderMetadata {
+  if (!notes) {
+    return {
+      isDelivery: true,
+      address: 'Dirección por WhatsApp',
+      paymentMethod: 'Por confirmar',
+      paymentType: 'other',
+    };
+  }
+
+  const lower = notes.toLowerCase();
+  
+  // Delivery vs Retiro en local
+  const isPickup = lower.includes('retiro') || lower.includes('recojo') || lower.includes('en local') || lower.includes('para llevar');
+  const isDelivery = !isPickup;
+
+  // Extracción limpia y precisa de dirección de entrega
+  let address: string | undefined = undefined;
+  if (isDelivery) {
+    const parts = notes.split(/[-–|•\n]/).map(p => p.trim());
+    for (const p of parts) {
+      if (/^delivery/i.test(p)) {
+        let addr = p.replace(/^delivery\s*:?\s*/i, '').trim();
+        addr = addr.replace(/^(?:a|en|para)\s*:\s*/i, '').replace(/^(?:a|en|para)\s+/i, '').trim();
+        if (addr) {
+          address = addr;
+          break;
+        }
+      }
+    }
+    if (!address) {
+      const addrPart = parts.find(p => /san genaro|chorrillos|av\.|calle|jr\.|psje\.|mz\.|lt\.|urb\.|dpto|distrito/i.test(p));
+      if (addrPart) {
+        address = addrPart.replace(/^delivery\s*:?\s*/i, '').trim();
+        address = address.replace(/^(?:a|en|para)\s*:\s*/i, '').replace(/^(?:a|en|para)\s+/i, '').trim();
+      }
+    }
+  }
+
+  // Método de pago
+  let paymentMethod = 'Efectivo';
+  let paymentType: 'yape' | 'plin' | 'cash' | 'card' | 'other' = 'cash';
+
+  if (lower.includes('yape')) {
+    paymentMethod = 'Yape';
+    paymentType = 'yape';
+  } else if (lower.includes('plin')) {
+    paymentMethod = 'Plin';
+    paymentType = 'plin';
+  } else if (lower.includes('tarjeta') || lower.includes('pos') || lower.includes('visa') || lower.includes('mastercard')) {
+    paymentMethod = 'Tarjeta POS';
+    paymentType = 'card';
+  } else if (lower.includes('efectivo') || lower.includes('contraentrega')) {
+    paymentMethod = 'Efectivo (Contraentrega)';
+    paymentType = 'cash';
+  } else if (lower.includes('pago')) {
+    const paymentMatch = notes.match(/pago\s*(?:contraentrega)?\s*(?:en)?\s*:?\s*([^,-–\n|]+)/i);
+    paymentMethod = paymentMatch ? paymentMatch[1].trim() : 'Por confirmar';
+    paymentType = 'other';
+  }
+
+  // Notas de cocina (customizaciones de plato)
+  let kitchenNotes: string | undefined = undefined;
+  const rawParts = notes.split(/[-–|•\n]/).map(p => p.trim()).filter(Boolean);
+  const noteParts = rawParts.filter(p => 
+    !/^(delivery|retiro|recojo|para llevar|en local)/i.test(p) && 
+    !/^(pago|yape|plin|efectivo|tarjeta|pos|contraentrega)/i.test(p) &&
+    !p.toLowerCase().includes('contraentrega') &&
+    !(address && p.includes(address))
+  );
+  if (noteParts.length > 0) {
+    kitchenNotes = noteParts.join(', ');
+  }
+
+  return {
+    isDelivery,
+    address,
+    paymentMethod,
+    paymentType,
+    kitchenNotes,
+  };
 }
 
 const COLUMNS: {
@@ -384,120 +476,171 @@ export default function LiveOrdersPage() {
                       Sin pedidos
                     </div>
                   ) : (
-                    colOrders.map((order) => (
-                      <div
-                        key={order.id}
-                        className="group bg-white dark:bg-slate-800/90 hover:shadow-md border border-slate-200 dark:border-slate-700/80 rounded-xl p-3.5 transition-all duration-200 relative overflow-hidden active:scale-[0.99]"
-                      >
-                        {/* Status side indicator */}
-                        <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${
-                          order.status === 'pending' ? 'bg-amber-500' :
-                          order.status === 'confirmed' ? 'bg-blue-500' :
-                          order.status === 'ready' ? 'bg-orange-500' : 'bg-emerald-500'
-                        }`} />
+                    colOrders.map((order) => {
+                      const meta = parseOrderMetadata(order.notes);
 
-                        {/* Top row: Order Number & Time */}
-                        <div className="flex items-center justify-between mb-2 pl-1.5">
-                          <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-slate-100">
-                            {order.orderNumber}
-                          </span>
-                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatRelativeTime(order.createdAt)}
-                          </span>
-                        </div>
+                      return (
+                        <div
+                          key={order.id}
+                          className="group bg-white dark:bg-slate-800/90 hover:shadow-md border border-slate-200 dark:border-slate-700/80 rounded-xl p-3.5 transition-all duration-200 relative overflow-hidden active:scale-[0.99]"
+                        >
+                          {/* Status side indicator */}
+                          <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${
+                            order.status === 'pending' ? 'bg-amber-500' :
+                            order.status === 'confirmed' ? 'bg-blue-500' :
+                            order.status === 'ready' ? 'bg-orange-500' : 'bg-emerald-500'
+                          }`} />
 
-                        {/* Customer Info */}
-                        <div className="mb-2.5 pl-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[170px]">
-                              {order.customerName || 'Cliente WhatsApp'}
+                          {/* Top row: Order Number & Time */}
+                          <div className="flex items-center justify-between mb-2 pl-1.5">
+                            <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-slate-100">
+                              {order.orderNumber}
                             </span>
-                            <a
-                              href={`https://wa.me/${order.customerPhone.replace(/\+/g, '')}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Chatear por WhatsApp"
-                              className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 p-1 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </a>
-                          </div>
-                          <span className="text-[11px] text-slate-500 font-mono">
-                            +{order.customerPhone}
-                          </span>
-                        </div>
-
-                        {/* Items list preview */}
-                        <div className="bg-slate-50 dark:bg-slate-900/60 rounded-lg p-2 mb-2.5 text-xs space-y-1">
-                          {order.items.slice(0, 3).map((item) => (
-                            <div key={item.id} className="flex justify-between items-center text-slate-700 dark:text-slate-300">
-                              <span className="truncate pr-2">
-                                <strong className="text-amber-600 dark:text-amber-400 font-bold mr-1">
-                                  {item.quantity}x
-                                </strong>
-                                {item.product.name}
-                              </span>
-                              <span className="text-slate-500 shrink-0 font-medium text-[11px]">
-                                S/. {(item.unitPrice * item.quantity).toFixed(2)}
-                              </span>
-                            </div>
-                          ))}
-                          {order.items.length > 3 && (
-                            <div className="text-[10px] text-slate-400 pt-0.5 font-medium">
-                              +{order.items.length - 3} platos más...
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Notes if any */}
-                        {order.notes && (
-                          <div className="mb-2.5 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-md text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-1">
-                            <span className="font-bold">Nota:</span>
-                            <span className="truncate">{order.notes}</span>
-                          </div>
-                        )}
-
-                        {/* Total & Action Buttons */}
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60 pl-1.5">
-                          <div>
-                            <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-semibold">Total</span>
-                            <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
-                              S/. {order.totalAmount.toFixed(2)}
+                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formatRelativeTime(order.createdAt)}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
-                            {/* Fast Next Status Advance Button */}
-                            {col.nextStatus && (
-                              <button
-                                onClick={() => updateOrderStatus(order.id, col.nextStatus!)}
-                                disabled={actionLoading === order.id}
-                                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white shadow-sm transition-all active:scale-95 flex items-center gap-1 disabled:opacity-50"
-                              >
-                                {actionLoading === order.id ? (
-                                  <RefreshCw className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <span>{col.btnLabel}</span>
-                                    <ChevronRight className="w-3 h-3" />
-                                  </>
-                                )}
-                              </button>
+                          {/* Badges: Tipo de Pedido (🛵 Delivery / 🏬 Retiro) & Método de Pago */}
+                          <div className="flex flex-wrap items-center gap-1.5 mb-2 pl-1.5">
+                            {meta.isDelivery ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 shadow-xs">
+                                <Truck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span>🛵 Delivery</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800 shadow-xs">
+                                <Store className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                <span>🏬 Retiro en Local</span>
+                              </span>
                             )}
 
-                            {/* Details modal button */}
-                            <button
-                              onClick={() => setSelectedOrder(order)}
-                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
-                              title="Ver detalles completos"
-                            >
-                              <Search className="w-3.5 h-3.5" />
-                            </button>
+                            {/* Método de pago */}
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border shadow-xs ${
+                              meta.paymentType === 'yape' 
+                                ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800' 
+                                : meta.paymentType === 'plin'
+                                ? 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/50 dark:text-cyan-300 dark:border-cyan-800'
+                                : meta.paymentType === 'card'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+                            }`}>
+                              {meta.paymentType === 'yape' ? '📱 Yape' :
+                               meta.paymentType === 'plin' ? '⚡ Plin' :
+                               meta.paymentType === 'card' ? '💳 Tarjeta POS' : '💵 Efectivo'}
+                            </span>
+                          </div>
+
+                          {/* Dirección de Entrega Destacada (Si es Delivery) */}
+                          {meta.isDelivery && meta.address && (
+                            <div className="mb-2 pl-1.5">
+                              <div className="flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-300 bg-emerald-50/50 dark:bg-emerald-950/20 p-2 rounded-lg border border-emerald-200/70 dark:border-emerald-900/50">
+                                <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                                <div className="leading-tight">
+                                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 block mb-0.5">
+                                    Dirección de Entrega:
+                                  </span>
+                                  <span className="font-semibold text-slate-900 dark:text-slate-100">
+                                    {meta.address}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Customer Info */}
+                          <div className="mb-2 pl-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[170px]">
+                                {order.customerName || 'Cliente WhatsApp'}
+                              </span>
+                              <a
+                                href={`https://wa.me/${order.customerPhone.replace(/\+/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Chatear por WhatsApp"
+                                className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 p-1 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </a>
+                            </div>
+                            <span className="text-[11px] text-slate-500 font-mono">
+                              +{order.customerPhone}
+                            </span>
+                          </div>
+
+                          {/* Items list preview */}
+                          <div className="bg-slate-50 dark:bg-slate-900/60 rounded-lg p-2 mb-2 text-xs space-y-1">
+                            {order.items.slice(0, 3).map((item) => (
+                              <div key={item.id} className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                                <span className="truncate pr-2">
+                                  <strong className="text-amber-600 dark:text-amber-400 font-bold mr-1">
+                                    {item.quantity}x
+                                  </strong>
+                                  {item.product.name}
+                                </span>
+                                <span className="text-slate-500 shrink-0 font-medium text-[11px]">
+                                  S/. {(item.unitPrice * item.quantity).toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
+                            {order.items.length > 3 && (
+                              <div className="text-[10px] text-slate-400 pt-0.5 font-medium">
+                                +{order.items.length - 3} platos más...
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Notas de Cocina (Chef Notes) destacadas */}
+                          {meta.kitchenNotes && (
+                            <div className="mb-2.5 px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-950 dark:text-amber-200 flex items-start gap-1.5 shadow-2xs">
+                              <span className="font-black shrink-0 text-amber-700 dark:text-amber-400">👨‍🍳 Cocina:</span>
+                              <span className="font-semibold leading-tight">{meta.kitchenNotes}</span>
+                            </div>
+                          )}
+
+                          {/* Total & Action Buttons */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60 pl-1.5">
+                            <div>
+                              <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-semibold">Total</span>
+                              <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
+                                S/. {order.totalAmount.toFixed(2)}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              {/* Fast Next Status Advance Button */}
+                              {col.nextStatus && (
+                                <button
+                                  onClick={() => updateOrderStatus(order.id, col.nextStatus!)}
+                                  disabled={actionLoading === order.id}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white shadow-sm transition-all active:scale-95 flex items-center gap-1 disabled:opacity-50"
+                                >
+                                  {actionLoading === order.id ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <span>{col.btnLabel}</span>
+                                      <ChevronRight className="w-3 h-3" />
+                                    </>
+                                  )}
+                                </button>
+                              )}
+
+                              {/* Details modal button */}
+                              <button
+                                onClick={() => setSelectedOrder(order)}
+                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                                title="Ver detalles completos"
+                              >
+                                <Search className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -550,34 +693,72 @@ export default function LiveOrdersPage() {
               </button>
             </div>
 
-            {/* Customer Contact Card */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3.5 space-y-2">
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Datos del Cliente</div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                    {selectedOrder.customerName || 'Cliente WhatsApp'}
+            {/* Customer & Delivery / Payment Card */}
+            {(() => {
+              const selectedMeta = parseOrderMetadata(selectedOrder.notes);
+              return (
+                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Información de Despacho</span>
+                    <div className="flex items-center gap-1.5">
+                      {selectedMeta.isDelivery ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300">
+                          <Truck className="w-3.5 h-3.5" /> 🛵 Delivery
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-black bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300">
+                          <Store className="w-3.5 h-3.5" /> 🏬 Retiro en Local
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                        {selectedMeta.paymentMethod}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500 font-mono">
-                    +{selectedOrder.customerPhone}
+
+                  {selectedMeta.isDelivery && selectedMeta.address && (
+                    <div className="flex items-start gap-2 bg-emerald-50/70 dark:bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-200/80 dark:border-emerald-900/50">
+                      <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                      <div className="text-xs">
+                        <span className="font-extrabold text-emerald-800 dark:text-emerald-400 block uppercase text-[10px]">
+                          Dirección de Entrega:
+                        </span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">
+                          {selectedMeta.address}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <div>
+                      <div className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                        {selectedOrder.customerName || 'Cliente WhatsApp'}
+                      </div>
+                      <div className="text-xs text-slate-500 font-mono">
+                        +{selectedOrder.customerPhone}
+                      </div>
+                    </div>
+                    <a
+                      href={`https://wa.me/${selectedOrder.customerPhone.replace(/\+/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 flex items-center gap-1.5 shadow-sm transition-all"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      WhatsApp
+                    </a>
                   </div>
+
+                  {selectedMeta.kitchenNotes && (
+                    <div className="text-xs bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 rounded-lg p-2.5 text-amber-950 dark:text-amber-200 flex items-start gap-1.5">
+                      <span className="font-extrabold text-amber-700 dark:text-amber-400 shrink-0">👨‍🍳 Cocina:</span>
+                      <span className="font-medium">{selectedMeta.kitchenNotes}</span>
+                    </div>
+                  )}
                 </div>
-                <a
-                  href={`https://wa.me/${selectedOrder.customerPhone.replace(/\+/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 flex items-center gap-1.5 shadow-sm transition-all"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  WhatsApp
-                </a>
-              </div>
-              {selectedOrder.notes && (
-                <div className="mt-2 text-xs bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded-lg p-2 text-amber-900 dark:text-amber-200">
-                  <span className="font-bold">Indicaciones especiales:</span> {selectedOrder.notes}
-                </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Items Breakdown */}
             <div className="space-y-2">
