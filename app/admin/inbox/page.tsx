@@ -25,7 +25,10 @@ import {
   Volume2, 
   VolumeX, 
   RefreshCw,
-  MessageSquare
+  MessageSquare,
+  Lock as LockIcon,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -92,9 +95,19 @@ function InboxInner() {
   const [newChatPhone, setNewChatPhone] = useState('');
   const [newChatName, setNewChatName] = useState('');
 
+  // Buscador de palabras en la conversación activa (In-Chat Search)
+  const [showChatSearch, setShowChatSearch] = useState(false);
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const chatSearchInputRef = useRef<HTMLInputElement>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevMessagesRef = useRef<Message[]>([]);
+  const isNearBottomRef = useRef(true);
+  const prevSelectedConvIdRef = useRef<string | null>(null);
+  const userJustSentMessageRef = useRef(false);
 
   // Notifications hook
   const {
@@ -104,14 +117,55 @@ function InboxInner() {
     setUnreadCount,
   } = useNotifications();
 
-  // Scroll to bottom
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+  // Detección precisa de scroll: distancia al fondo < 120px
+  const checkIsNearBottom = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return true;
+    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    return distance < 120;
   };
 
+  const handleMessagesScroll = () => {
+    isNearBottomRef.current = checkIsNearBottom();
+  };
+
+  // Scroll to bottom
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior,
+      });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }
+  };
+
+  // Regla de oro de Scroll:
+  // 1. Si se abre una conversación nueva -> ir al fondo de inmediato ('auto')
+  // 2. Si el usuario acaba de enviar un mensaje -> ir al fondo suavemente ('smooth')
+  // 3. Si el usuario ya estaba en el fondo (< 120px) -> ir al fondo suavemente ('smooth')
+  // 4. Si el operador hizo scroll arriba leyendo historial -> scroll completamente congelado!
   useEffect(() => {
-    scrollToBottom('smooth');
-  }, [messages]);
+    if (!selectedConversation) return;
+
+    const isNewConv = prevSelectedConvIdRef.current !== selectedConversation.id;
+    if (isNewConv) {
+      prevSelectedConvIdRef.current = selectedConversation.id;
+      isNearBottomRef.current = true;
+      userJustSentMessageRef.current = false;
+      setTimeout(() => scrollToBottom('auto'), 60);
+      return;
+    }
+
+    if (userJustSentMessageRef.current) {
+      userJustSentMessageRef.current = false;
+      isNearBottomRef.current = true;
+      scrollToBottom('smooth');
+    } else if (isNearBottomRef.current) {
+      scrollToBottom('smooth');
+    }
+  }, [messages, selectedConversation?.id]);
 
   // Initial loads
   useEffect(() => {
@@ -229,6 +283,9 @@ function InboxInner() {
 
   const selectConversation = async (conversation: Conversation) => {
     setSelectedConversation(conversation);
+    setShowChatSearch(false);
+    setChatSearchQuery('');
+    setCurrentMatchIndex(0);
     setTimeout(() => inputRef.current?.focus(), 150);
 
     if (conversation.isUnread) {
@@ -248,6 +305,17 @@ function InboxInner() {
       }
     }
   };
+
+  // Requerimiento 3: En desktop (>= 1024px), si hay conversaciones activas,
+  // selecciona automáticamente el primer chat por defecto para que la pantalla nunca quede vacía.
+  useEffect(() => {
+    if (loading) return;
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      if (!selectedConversation && conversations.length > 0) {
+        selectConversation(conversations[0]);
+      }
+    }
+  }, [conversations, loading, selectedConversation]);
 
   const markAllAsRead = async () => {
     try {
@@ -303,6 +371,7 @@ function InboxInner() {
       type: 'text',
       user: selectedConversation.user,
     };
+    userJustSentMessageRef.current = true;
     setMessages(prev => [...prev, tempMsg]);
     setMessageInput('');
     setShowQuickReplies(false);
@@ -379,14 +448,65 @@ function InboxInner() {
     }
   };
 
-  const renderMessageContent = (text: string) => {
+  // Requerimiento 2: Lógica del Buscador en la conversación activa (In-Chat Search)
+  const matchingMessages = chatSearchQuery.trim()
+    ? messages.filter((m) => m.content.toLowerCase().includes(chatSearchQuery.toLowerCase()))
+    : [];
+
+  const scrollToMatch = (msgId: string) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const goToNextMatch = () => {
+    if (matchingMessages.length === 0) return;
+    const nextIdx = (currentMatchIndex + 1) % matchingMessages.length;
+    setCurrentMatchIndex(nextIdx);
+    scrollToMatch(matchingMessages[nextIdx].id);
+  };
+
+  const goToPrevMatch = () => {
+    if (matchingMessages.length === 0) return;
+    const prevIdx = (currentMatchIndex - 1 + matchingMessages.length) % matchingMessages.length;
+    setCurrentMatchIndex(prevIdx);
+    scrollToMatch(matchingMessages[prevIdx].id);
+  };
+
+  useEffect(() => {
+    if (chatSearchQuery.trim() && matchingMessages.length > 0) {
+      setCurrentMatchIndex(0);
+      scrollToMatch(matchingMessages[0].id);
+    }
+  }, [chatSearchQuery]);
+
+  const renderMessageContent = (text: string, highlightQuery?: string) => {
+    if (!text) return null;
+
+    const highlightText = (segment: string) => {
+      if (!highlightQuery || !highlightQuery.trim()) return segment;
+      const escaped = highlightQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped})`, 'gi');
+      const subParts = segment.split(regex);
+      return subParts.map((sub, i) =>
+        sub.toLowerCase() === highlightQuery.toLowerCase() ? (
+          <mark key={i} className="bg-amber-300 dark:bg-amber-500/70 text-slate-950 dark:text-white px-0.5 rounded font-bold">
+            {sub}
+          </mark>
+        ) : (
+          sub
+        )
+      );
+    };
+
     const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
     return parts.map((part, index) => {
       if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('*') && part.endsWith('*'))) {
         const clean = part.replace(/^\*+|\*+$/g, '');
-        return <strong key={index} className="font-bold text-inherit">{clean}</strong>;
+        return <strong key={index} className="font-bold text-inherit">{highlightText(clean)}</strong>;
       }
-      return part;
+      return <span key={index}>{highlightText(part)}</span>;
     });
   };
 
@@ -548,13 +668,13 @@ function InboxInner() {
                   onClick={() => selectConversation(conv)}
                   className={`w-full p-3 sm:p-3.5 flex items-center gap-3 cursor-pointer transition-colors active:bg-slate-200 dark:active:bg-slate-800 ${
                     isSelected
-                      ? 'bg-indigo-50/80 dark:bg-slate-800/90 border-l-4 border-indigo-600'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                      ? 'bg-emerald-50/80 dark:bg-[#202c33] border-l-4 border-[#00a884]'
+                      : 'hover:bg-slate-50 dark:hover:bg-[#182229]'
                   }`}
                 >
                   {/* Avatar circular con foto o iniciales */}
                   <div className="relative shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-extrabold text-base shadow-sm overflow-hidden">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-slate-600 to-slate-400 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-white font-extrabold text-base shadow-sm overflow-hidden">
                       {conv.user.profilePicUrl ? (
                         <img src={conv.user.profilePicUrl} alt={displayName} className="w-full h-full object-cover" />
                       ) : (
@@ -588,7 +708,7 @@ function InboxInner() {
                         )}
                       </div>
                       <span className={`text-[11px] shrink-0 font-medium ${
-                        conv.isUnread ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-400'
+                        conv.isUnread ? 'text-[#00a884] font-bold' : 'text-slate-400'
                       }`}>
                         {lastMsg ? formatChatListTime(lastMsg.timestamp) : ''}
                       </span>
@@ -597,16 +717,16 @@ function InboxInner() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 truncate">
                         {isOutbound && (
-                          <CheckCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0 stroke-[2.5]" />
+                          <CheckCheck className="w-3.5 h-3.5 text-blue-500 shrink-0 stroke-[2.5]" />
                         )}
                         <span className={`truncate ${conv.isUnread ? 'font-semibold text-slate-900 dark:text-slate-100' : ''}`}>
                           {lastMsg ? lastMsg.content : 'Sin mensajes'}
                         </span>
                       </div>
 
-                      {/* Badge circular con no leídos */}
+                      {/* Badge circular verde con no leídos */}
                       {conv.isUnread && (
-                        <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-indigo-600 text-white text-[11px] font-extrabold flex items-center justify-center shadow-sm">
+                        <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[#25d366] text-white text-[11px] font-extrabold flex items-center justify-center shadow-sm">
                           1
                         </span>
                       )}
@@ -628,24 +748,24 @@ function InboxInner() {
         className={`${
           selectedConversation === null
             ? 'hidden md:flex md:flex-1 md:flex-col md:h-full bg-slate-50 dark:bg-[#111b21]'
-            : 'fixed inset-0 bottom-16 z-40 md:static md:bottom-auto md:z-auto md:flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-full w-full bg-slate-100/90 dark:bg-slate-950'
+            : 'fixed inset-0 bottom-16 z-40 md:static md:bottom-auto md:z-auto md:flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-full w-full bg-[#efeae2] dark:bg-[#0b141a]'
         }`}
       >
         {selectedConversation === null ? (
-          /* Desktop Empty State */
+          /* Desktop Empty State (WhatsApp Web Style) */
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none bg-slate-50 dark:bg-[#111b21]">
-            <div className="w-20 h-20 rounded-full bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 shadow-sm">
+            <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4 shadow-sm">
               <MessageSquare className="w-10 h-10 stroke-[1.8]" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              PITHY Live Inbox
+              PITHY WhatsApp Business
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-sm leading-relaxed">
-              Centro inteligente de mensajería para Churu&apos;s Comida Rápida. Responde directamente a tus clientes o activa la atención automática por IA.
+              Selecciona una conversación de la lista para leer, responder manualmente o activar el asistente de IA para Churu&apos;s Comida Rápida.
             </p>
             <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-slate-400">
               <LockIcon className="w-3.5 h-3.5" />
-              <span>Canal seguro sincronizado en tiempo real</span>
+              <span>Conexión cifrada de extremo a extremo</span>
             </div>
           </div>
         ) : (
@@ -653,7 +773,7 @@ function InboxInner() {
           <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
             
             {/* Header del Chat: Avatar, Nombre, Estado ("en línea"), y botones de acción */}
-            <div className="h-14 sm:h-16 px-2.5 sm:px-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-sm z-10 w-full">
+            <div className="h-14 sm:h-16 px-2.5 sm:px-4 bg-[#f0f2f5] dark:bg-[#202c33] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 shadow-sm z-10 w-full">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 {/* Botón Atrás (←) en móvil para volver a la lista */}
                 <button
@@ -693,7 +813,7 @@ function InboxInner() {
                 </div>
               </div>
 
-              {/* Botones de acción derecha: Cámara, llamada, búsqueda y menú */}
+              {/* Botones de acción derecha: Bot Toggle, Buscador en Chat, Cámara, Llamada, Menú */}
               <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 {/* Toggle Bot Mode */}
                 <button
@@ -717,6 +837,27 @@ function InboxInner() {
                       <span className="text-[11px] hidden sm:inline">Manual</span>
                     </>
                   )}
+                </button>
+
+                {/* Requerimiento 2: Botón de Lupa para búsqueda dentro de la conversación */}
+                <button
+                  onClick={() => {
+                    setShowChatSearch(!showChatSearch);
+                    if (!showChatSearch) {
+                      setTimeout(() => chatSearchInputRef.current?.focus(), 100);
+                    } else {
+                      setChatSearchQuery('');
+                      setCurrentMatchIndex(0);
+                    }
+                  }}
+                  className={`p-2 rounded-xl transition-colors ${
+                    showChatSearch
+                      ? 'bg-[#00a884]/15 text-[#00a884] dark:bg-[#00a884]/25 dark:text-[#25d366]'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                  title="Buscar en esta conversación"
+                >
+                  <Search className="w-4 h-4" />
                 </button>
 
                 {/* Videollamada */}
@@ -748,8 +889,90 @@ function InboxInner() {
               </div>
             </div>
 
-            {/* Fondo con textura sutil y Flujo de Burbujas de Mensaje */}
+            {/* Requerimiento 2: Barra de búsqueda interna en la conversación (In-Chat Search Bar) */}
+            {showChatSearch && (
+              <div className="px-3 sm:px-4 py-2 bg-white/95 dark:bg-[#1f2c34]/95 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shadow-sm z-10 shrink-0 animate-in slide-in-from-top-1">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                  <input
+                    ref={chatSearchInputRef}
+                    type="text"
+                    placeholder="Buscar en este chat (ej: broaster, yape, dirección)..."
+                    value={chatSearchQuery}
+                    onChange={(e) => setChatSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (e.shiftKey) goToPrevMatch();
+                        else goToNextMatch();
+                      } else if (e.key === 'Escape') {
+                        setShowChatSearch(false);
+                        setChatSearchQuery('');
+                      }
+                    }}
+                    className="w-full text-xs sm:text-sm bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none"
+                  />
+                  {chatSearchQuery && (
+                    <button
+                      onClick={() => {
+                        setChatSearchQuery('');
+                        setCurrentMatchIndex(0);
+                      }}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 text-xs">
+                  {/* Contador de coincidencias */}
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 min-w-[45px] text-right">
+                    {chatSearchQuery.trim()
+                      ? matchingMessages.length > 0
+                        ? `${currentMatchIndex + 1} de ${matchingMessages.length}`
+                        : '0 de 0'
+                      : ''}
+                  </span>
+
+                  {/* Flechas para navegar */}
+                  <button
+                    onClick={goToPrevMatch}
+                    disabled={matchingMessages.length === 0}
+                    className="p-1 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Anterior (Shift + Enter)"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={goToNextMatch}
+                    disabled={matchingMessages.length === 0}
+                    className="p-1 rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Siguiente (Enter)"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+
+                  {/* Cerrar barra de búsqueda */}
+                  <button
+                    onClick={() => {
+                      setShowChatSearch(false);
+                      setChatSearchQuery('');
+                      setCurrentMatchIndex(0);
+                    }}
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    title="Cerrar búsqueda"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Requerimiento 1: Contenedor de mensajes con scrollContainerRef y listener onScroll */}
             <div 
+              ref={scrollContainerRef}
+              onScroll={handleMessagesScroll}
               className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-6 py-4 space-y-3 scrollbar-thin"
               style={{
                 backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px)',
@@ -770,58 +993,60 @@ function InboxInner() {
               ) : (
                 messages.map((msg) => {
                   const isOutbound = msg.direction === 'outbound';
+                  const isCurrentMatch = matchingMessages.length > 0 && matchingMessages[currentMatchIndex]?.id === msg.id;
 
                   return (
                     <div
+                      id={`msg-${msg.id}`}
                       key={msg.id}
-                      className={`flex flex-col w-full ${isOutbound ? 'items-end' : 'items-start'}`}
+                      className={`flex flex-col w-full ${isOutbound ? 'items-end' : 'items-start'} transition-all`}
                     >
                       <div
-                        className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2.5 shadow-sm text-sm relative transition-all ${
+                        className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-3.5 py-2 shadow-sm text-sm relative transition-all ${
+                          isCurrentMatch
+                            ? 'ring-2 ring-amber-400 dark:ring-amber-400 ring-offset-2 dark:ring-offset-[#0b141a]'
+                            : ''
+                        } ${
                           isOutbound
-                            ? 'bg-indigo-600 dark:bg-indigo-700 text-white rounded-tr-none shadow-md shadow-indigo-600/15'
-                            : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200/80 dark:border-slate-700/60 shadow-sm'
+                            ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-tr-none border border-emerald-200/60 dark:border-transparent'
+                            : 'bg-white dark:bg-[#202c33] text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-200/60 dark:border-transparent'
                         }`}
                       >
                         {/* Soporte visual para respuestas citadas */}
                         {msg.quotedMessage && (
-                          <div className={`mb-2 p-2 rounded-lg text-xs ${
-                            isOutbound ? 'bg-indigo-700/60 border-l-4 border-white/60 text-indigo-100' : 'bg-black/5 dark:bg-black/20 border-l-4 border-indigo-500'
-                          }`}>
-                            <span className="font-bold block">{msg.quotedMessage.sender}</span>
-                            <span className="line-clamp-1 opacity-90">{msg.quotedMessage.content}</span>
+                          <div className="mb-2 p-2 rounded-lg bg-black/5 dark:bg-black/20 border-l-4 border-[#00a884] text-xs">
+                            <span className="font-bold text-[#00a884] block">{msg.quotedMessage.sender}</span>
+                            <span className="text-slate-600 dark:text-slate-300 line-clamp-1">{msg.quotedMessage.content}</span>
                           </div>
                         )}
 
                         {/* Etiqueta de remitente para mensajes salientes */}
                         {isOutbound && (
-                          <div className="text-[10px] font-bold text-indigo-200 mb-1 flex items-center gap-1">
+                          <div className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 mb-1 flex items-center gap-1">
                             {msg.sentBy === 'bot' ? (
                               <>
-                                <Bot className="w-3 h-3 text-emerald-300" />
+                                <Bot className="w-3 h-3" />
                                 <span>IA Asistente (Churu&apos;s)</span>
                               </>
                             ) : (
                               <>
-                                <UserCheck className="w-3 h-3 text-indigo-200" />
+                                <UserCheck className="w-3 h-3" />
                                 <span>Administrador</span>
                               </>
                             )}
                           </div>
                         )}
 
-                        {/* Contenido con formato */}
+                        {/* Contenido con formato y resaltado de búsqueda */}
                         <div className="whitespace-pre-wrap break-words leading-relaxed text-[13px] sm:text-sm">
-                          {renderMessageContent(msg.content)}
+                          {renderMessageContent(msg.content, chatSearchQuery)}
                         </div>
 
                         {/* Marca de hora y doble check en la esquina inferior derecha */}
-                        <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
-                          isOutbound ? 'text-indigo-200' : 'text-slate-400 dark:text-slate-400'
-                        }`}>
+                        <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-500 dark:text-slate-300">
                           <span>{formatMessageTime(msg.timestamp)}</span>
                           {isOutbound && (
-                            <CheckCheck className="w-3.5 h-3.5 text-indigo-200 stroke-[2.5]" />
+                            <CheckCheck className="w-3.5 h-3.5 text-blue-500 stroke-[2.5]" />
                           )}
                         </div>
                       </div>
@@ -885,13 +1110,13 @@ function InboxInner() {
               </div>
             )}
 
-            {/* Barra Inferior de Entrada */}
-            <div className="p-2 sm:p-2.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-1.5 shrink-0 w-full">
+            {/* Barra Inferior de Entrada: Botón clip, emojis, input píldora y botón círculo verde */}
+            <div className="p-2 sm:p-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-200 dark:border-slate-800 flex items-center gap-1.5 shrink-0 w-full">
               {/* Botón de emojis */}
               <button
                 type="button"
                 onClick={() => setShowQuickReplies(!showQuickReplies)}
-                className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0"
                 title="Emojis y plantillas"
               >
                 <Smile className="w-5 h-5" />
@@ -900,13 +1125,13 @@ function InboxInner() {
               {/* Botón de adjuntos (clip) */}
               <button
                 type="button"
-                className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0"
                 title="Adjuntar archivo o imagen"
               >
                 <Paperclip className="w-5 h-5" />
               </button>
 
-              {/* Input de texto */}
+              {/* Input de texto tipo píldora oscura ("Escribe un mensaje") */}
               <form 
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -917,22 +1142,22 @@ function InboxInner() {
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Escribe un mensaje..."
+                  placeholder="Escribe un mensaje"
                   value={messageInput}
                   onChange={(e) => {
                     const val = e.target.value;
                     setMessageInput(val);
                     if (val.startsWith('/')) setShowQuickReplies(true);
                   }}
-                  className="flex-1 px-4 py-2.5 text-xs sm:text-sm rounded-full bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500/30 shadow-inner min-w-0"
+                  className="flex-1 px-4 py-2.5 text-xs sm:text-sm rounded-full bg-white dark:bg-[#2a3942] text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none border border-slate-200 dark:border-transparent focus:ring-2 focus:ring-[#00a884]/40 shadow-inner min-w-0"
                 />
 
-                {/* Botón de micrófono / enviar */}
+                {/* Botón de micrófono / enviar en círculo verde */}
                 {messageInput.trim() ? (
                   <button
                     type="submit"
                     disabled={sending}
-                    className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-md shadow-indigo-600/20 flex items-center justify-center transition-all shrink-0"
+                    className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] active:scale-95 text-white shadow-md flex items-center justify-center transition-all shrink-0"
                     title="Enviar mensaje"
                   >
                     <Send className="w-4 h-4 stroke-[2.2] translate-x-0.5" />
@@ -940,7 +1165,7 @@ function InboxInner() {
                 ) : (
                   <button
                     type="button"
-                    className="w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-md shadow-indigo-600/20 flex items-center justify-center transition-all shrink-0"
+                    className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] active:scale-95 text-white shadow-md flex items-center justify-center transition-all shrink-0"
                     title="Grabar mensaje de voz"
                   >
                     <Mic className="w-4 h-4 stroke-[2.2]" />
@@ -1009,7 +1234,7 @@ function InboxInner() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold bg-[#00a884] text-white hover:bg-[#008f6f] transition-colors"
                 >
                   Iniciar Chat
                 </button>
@@ -1022,28 +1247,11 @@ function InboxInner() {
   );
 }
 
-function LockIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg 
-      {...props} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
-
 export default function InboxPage() {
   return (
     <Suspense fallback={
       <div className="py-20 flex flex-col items-center justify-center text-slate-400 space-y-2">
-        <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-[#00a884] border-t-transparent rounded-full animate-spin" />
         <span className="text-xs">Cargando bandeja de entrada...</span>
       </div>
     }>
