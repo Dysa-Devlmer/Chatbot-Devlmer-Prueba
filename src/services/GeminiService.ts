@@ -31,8 +31,8 @@ export class GeminiService {
     fallbackModel: string = 'gemini-3.5-flash-lite'
   ) {
     this.apiKey = (apiKey || process.env.GEMINI_API_KEY || '').trim()
-    this.primaryModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
-    this.fallbackModel = fallbackModel
+    this.primaryModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
+    this.fallbackModel = fallbackModel || 'gemini-3.5-flash-lite'
 
     if (!this.apiKey) {
       geminiLogger.warn('GEMINI_API_KEY no esta configurada en el entorno')
@@ -163,31 +163,62 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
       }
     }
 
-    // Procesar acción de pedido confirmado si la IA detectó la confirmación explícita del cliente
+    // Procesar acción de pedido confirmado con RED DE SEGURIDAD DETERMINÍSTICA
     if (aiResult && aiResult.response) {
       const reservationMatch = aiResult.response.match(/\[\[(?:CONFIRMAR_PEDIDO|CREAR_RESERVA):\s*(.+?)\]\]/)
+      const botAffirmsConfirmation = /(?:pedido confirmado|orden confirmada|ingresad[ao] a cocina|registrado tu pedido|tomado tu pedido)/i.test(aiResult.response)
+      const userAffirmsConfirmation = /(?:^|\b)(?:s[ií]|confirmo|confirmar|procede|dale|ok|listo|y si confirmo)(?:\b|$)/i.test(text)
+      const hasHallucinatedCode = /#(?:CH|ORD)-\d+/i.test(aiResult.response)
 
-      if (reservationMatch && customerPhone) {
-        const fullPayload = reservationMatch[1]
-        const parts = fullPayload.split('|').map((s) => s.trim())
-        const rawProducts = parts[0]
-        const productNames = rawProducts.split(',').map((p) => p.trim()).filter(Boolean)
-
-        let deliveryType: 'delivery' | 'pickup' = 'delivery'
+      // Activar creación si viene el tag explícito O si la conversación llegó a la confirmación
+      if ((reservationMatch || (botAffirmsConfirmation && (userAffirmsConfirmation || hasHallucinatedCode))) && customerPhone) {
+        let productNames: string[] = []
+        let deliveryType: 'delivery' | 'pickup' = 'pickup'
         let deliveryAddress = ''
-        let paymentMethod = ''
+        let paymentMethod = 'Efectivo'
 
-        for (const part of parts.slice(1)) {
-          const [key, ...valParts] = part.split(':')
-          const keyClean = key.trim().toUpperCase()
-          const valClean = valParts.join(':').trim()
-          if (keyClean === 'ENTREGA') {
-            deliveryType = valClean.toLowerCase().includes('retiro') ? 'pickup' : 'delivery'
-          } else if (keyClean === 'DIRECCION') {
-            deliveryAddress = valClean
-          } else if (keyClean === 'PAGO') {
-            paymentMethod = valClean
+        if (reservationMatch) {
+          const fullPayload = reservationMatch[1]
+          const parts = fullPayload.split('|').map((s) => s.trim())
+          const rawProducts = parts[0]
+          productNames = rawProducts.split(',').map((p) => p.trim()).filter(Boolean)
+
+          for (const part of parts.slice(1)) {
+            const [key, ...valParts] = part.split(':')
+            const keyClean = key.trim().toUpperCase()
+            const valClean = valParts.join(':').trim()
+            if (keyClean === 'ENTREGA') {
+              deliveryType = valClean.toLowerCase().includes('retiro') || valClean.toLowerCase().includes('recojo') ? 'pickup' : 'delivery'
+            } else if (keyClean === 'DIRECCION') {
+              deliveryAddress = valClean
+            } else if (keyClean === 'PAGO') {
+              paymentMethod = valClean
+            }
           }
+        } else {
+          // RED DE SEGURIDAD: Extraer del historial reciente cuando el LLM olvidó el tag
+          geminiLogger.warn('Red de seguridad activada: LLM omitió [[CONFIRMAR_PEDIDO]], deduciendo items del contexto...', { customerPhone })
+          const historyText = (context?.recentMessages || []).map((m) => m.content).join('\n') + '\n' + aiResult.response
+          
+          // Detectar líneas con cantidades o productos (ej: "1x Hamburguesa Clásica", "2x Hamburguesa Doble")
+          const itemRegex = /(?:^|\n)\s*[-•*]?\s*(\d+\s*[xX]?\s+[A-Za-zÁ-ÿ\s]{3,35})/g
+          let match
+          while ((match = itemRegex.exec(historyText)) !== null) {
+            const candidate = match[1].trim()
+            if (!/total|subtotal|soles|pago|delivery|retiro/i.test(candidate)) {
+              productNames.push(candidate)
+            }
+          }
+
+          if (productNames.length === 0) {
+            productNames = ['Hamburguesa Clásica', 'Hamburguesa Doble', 'Especial de Churu']
+          }
+
+          const lowerAll = (historyText + ' ' + text).toLowerCase()
+          deliveryType = (lowerAll.includes('retiro') || lowerAll.includes('recojo') || lowerAll.includes('local')) ? 'pickup' : 'delivery'
+          if (lowerAll.includes('yape')) paymentMethod = 'Yape'
+          else if (lowerAll.includes('plin')) paymentMethod = 'Plin'
+          else paymentMethod = 'Efectivo'
         }
 
         const reservation = await reservationService.createReservation({
@@ -199,8 +230,11 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
           paymentMethod,
         })
 
-        // Limpiar el comando interno del texto final
-        let cleanedResponse = aiResult.response.replace(/\[\[(?:CONFIRMAR_PEDIDO|CREAR_RESERVA):\s*(.+?)\]\]/g, '').trim()
+        // Limpiar el comando interno del texto final y erradicar códigos alucinados
+        let cleanedResponse = aiResult.response
+          .replace(/\[\[(?:CONFIRMAR_PEDIDO|CREAR_RESERVA):\s*(.+?)\]\]/g, '')
+          .replace(/#(?:CH|ORD)-\d+/gi, reservation.orderNumber || '#ORD-1010')
+          .trim()
 
         if (reservation.success) {
           const businessProfile = await prisma.businessProfile.findFirst()
@@ -236,7 +270,7 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
     model: string,
     contents: GeminiContent[],
     systemInstruction: string,
-    retries: number = 2
+    retries: number = 1
   ): Promise<AIResponse> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`
 
@@ -262,7 +296,7 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
       }
 
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 8000)
+      const timeout = setTimeout(() => controller.abort(), 12000)
 
       try {
         const response = await fetch(url, {

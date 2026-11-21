@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ArrowLeft, Calendar, Plus, Clock, CheckCircle, AlertCircle, XCircle, Trash2, X, Send } from 'lucide-react';
 
 interface ScheduledMessage {
   id: string;
@@ -27,7 +28,6 @@ export default function ScheduledMessagesPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingMessage, setEditingMessage] = useState<ScheduledMessage | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   // Form state
@@ -76,7 +76,7 @@ export default function ScheduledMessagesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: formPhoneNumber,
-          userName: formUserName || undefined,
+          userName: formUserName || null,
           content: formContent,
           scheduledFor: scheduledFor.toISOString(),
         }),
@@ -86,65 +86,25 @@ export default function ScheduledMessagesPage() {
         await fetchMessages();
         resetForm();
         setShowCreateModal(false);
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Error al crear mensaje');
       }
     } catch (error) {
-      console.error('Error creating message:', error);
-      alert('Error de conexión');
-    }
-  };
-
-  const updateMessage = async () => {
-    if (!editingMessage || !formContent || !formDate || !formTime) return;
-
-    const scheduledFor = new Date(`${formDate}T${formTime}`);
-
-    try {
-      const response = await fetch('/api/admin/scheduled', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editingMessage.id,
-          content: formContent,
-          scheduledFor: scheduledFor.toISOString(),
-        }),
-      });
-
-      if (response.ok) {
-        await fetchMessages();
-        resetForm();
-        setEditingMessage(null);
-      }
-    } catch (error) {
-      console.error('Error updating message:', error);
+      console.error('Error creating scheduled message:', error);
     }
   };
 
   const cancelMessage = async (id: string) => {
-    if (!confirm('¿Cancelar este mensaje programado?')) return;
+    if (!confirm('¿Estás seguro de cancelar este mensaje programado?')) return;
 
     try {
-      await fetch('/api/admin/scheduled', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: 'cancelled' }),
+      const response = await fetch(`/api/admin/scheduled?id=${id}`, {
+        method: 'DELETE',
       });
-      await fetchMessages();
+
+      if (response.ok) {
+        await fetchMessages();
+      }
     } catch (error) {
       console.error('Error cancelling message:', error);
-    }
-  };
-
-  const deleteMessage = async (id: string) => {
-    if (!confirm('¿Eliminar permanentemente este mensaje?')) return;
-
-    try {
-      await fetch(`/api/admin/scheduled?id=${id}`, { method: 'DELETE' });
-      await fetchMessages();
-    } catch (error) {
-      console.error('Error deleting message:', error);
     }
   };
 
@@ -156,513 +116,238 @@ export default function ScheduledMessagesPage() {
     setFormTime('');
   };
 
-  const openEditModal = (msg: ScheduledMessage) => {
-    setEditingMessage(msg);
-    setFormPhoneNumber(msg.phoneNumber);
-    setFormUserName(msg.userName || '');
-    setFormContent(msg.content);
-    const date = new Date(msg.scheduledFor);
-    setFormDate(date.toISOString().split('T')[0]);
-    setFormTime(date.toTimeString().slice(0, 5));
-  };
+  const getStatusBadge = (status: ScheduledMessage['status']) => {
+    const config = {
+      pending: { label: 'Pendiente', bg: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-800' },
+      sent: { label: 'Enviado', bg: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800' },
+      failed: { label: 'Fallido', bg: 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800' },
+      cancelled: { label: 'Cancelado', bg: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700' },
+    }[status];
 
-  const formatDateTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleString('es-CL', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, { bg: string; text: string; label: string }> = {
-      pending: { bg: '#FFA500', text: 'white', label: '⏳ Pendiente' },
-      sent: { bg: '#25D366', text: 'white', label: '✅ Enviado' },
-      completed: { bg: '#25D366', text: 'white', label: '✅ Enviado' },
-      failed: { bg: '#FF4444', text: 'white', label: '❌ Fallido' },
-      cancelled: { bg: '#6C757D', text: 'white', label: '🚫 Cancelado' },
-    };
-    const style = styles[status] || styles.pending;
     return (
-      <span
-        style={{
-          background: style.bg,
-          color: style.text,
-          padding: '4px 10px',
-          borderRadius: '12px',
-          fontSize: '12px',
-          fontWeight: '500',
-        }}
-      >
-        {style.label}
+      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${config.bg}`}>
+        {config.label}
       </span>
     );
   };
 
-  const getMinDateTime = () => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + 5);
-    return now.toISOString().slice(0, 16);
-  };
-
   if (loading) {
     return (
-      <div style={pageStyles.loadingContainer}>
-        <div style={{ fontSize: '20px', color: '#666' }}>Cargando mensajes programados...</div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-semibold text-stone-500 dark:text-stone-400">Cargando mensajes programados...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={pageStyles.container}>
+    <div className="space-y-6">
       {/* Header */}
-      <div style={pageStyles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <Link href="/admin" style={{ color: 'white', textDecoration: 'none', fontSize: '24px' }}>
-            <span style={{ cursor: 'pointer' }}>←</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/admin"
+            className="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 style={{ margin: 0, fontSize: '24px' }}>📅 Mensajes Programados</h1>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">Automatización & Marketing</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <span>Mensajes Programados</span>
+            </h1>
+          </div>
         </div>
-        <button onClick={() => setShowCreateModal(true)} style={pageStyles.createBtn}>
-          + Programar Mensaje
+
+        <button
+          onClick={() => {
+            resetForm();
+            setShowCreateModal(true);
+          }}
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-sm shadow-md transition-all active:scale-95"
+        >
+          <Plus className="w-4 h-4 stroke-[3]" />
+          <span>Programar Mensaje</span>
         </button>
       </div>
 
-      {/* Stats */}
-      <div style={pageStyles.statsRow}>
-        <div style={pageStyles.statCard}>
-          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#667eea' }}>{stats?.total || 0}</div>
-          <div style={{ color: '#666', fontSize: '14px' }}>Total</div>
+      {/* KPI Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm">
+          <div className="text-xs font-bold uppercase text-stone-400 mb-1">Total Programados</div>
+          <div className="text-3xl font-black text-slate-900 dark:text-white">{stats?.total || 0}</div>
         </div>
-        <div style={pageStyles.statCard}>
-          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#FFA500' }}>{stats?.pending || 0}</div>
-          <div style={{ color: '#666', fontSize: '14px' }}>Pendientes</div>
+        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm">
+          <div className="text-xs font-bold uppercase text-amber-500 mb-1">Pendientes</div>
+          <div className="text-3xl font-black text-amber-600 dark:text-amber-400">{stats?.pending || 0}</div>
         </div>
-        <div style={pageStyles.statCard}>
-          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#25D366' }}>{stats?.sent || 0}</div>
-          <div style={{ color: '#666', fontSize: '14px' }}>Enviados</div>
+        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm">
+          <div className="text-xs font-bold uppercase text-emerald-500 mb-1">Enviados</div>
+          <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{stats?.sent || 0}</div>
         </div>
-        <div style={pageStyles.statCard}>
-          <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#FF4444' }}>{stats?.failed || 0}</div>
-          <div style={{ color: '#666', fontSize: '14px' }}>Fallidos</div>
+        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm">
+          <div className="text-xs font-bold uppercase text-rose-500 mb-1">Fallidos</div>
+          <div className="text-3xl font-black text-rose-600 dark:text-rose-400">{stats?.failed || 0}</div>
         </div>
       </div>
 
-      {/* Filter */}
-      <div style={pageStyles.filterRow}>
-        {['all', 'pending', 'sent', 'failed', 'cancelled'].map((status) => (
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { id: 'all', label: 'Todos' },
+          { id: 'pending', label: 'Pendientes' },
+          { id: 'sent', label: 'Enviados' },
+          { id: 'failed', label: 'Fallidos' },
+          { id: 'cancelled', label: 'Cancelados' },
+        ].map((f) => (
           <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            style={{
-              ...pageStyles.filterBtn,
-              background: filterStatus === status ? '#667eea' : 'white',
-              color: filterStatus === status ? 'white' : '#333',
-            }}
+            key={f.id}
+            onClick={() => setFilterStatus(f.id)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              filterStatus === f.id
+                ? 'bg-orange-600 text-white shadow-sm'
+                : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+            }`}
           >
-            {status === 'all' ? 'Todos' :
-             status === 'pending' ? '⏳ Pendientes' :
-             status === 'sent' ? '✅ Enviados' :
-             status === 'failed' ? '❌ Fallidos' : '🚫 Cancelados'}
+            {f.label}
           </button>
         ))}
       </div>
 
       {/* Messages List */}
-      <div style={pageStyles.messagesList}>
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl overflow-hidden shadow-sm">
         {messages.length === 0 ? (
-          <div style={pageStyles.emptyState}>
-            <div style={{ fontSize: '48px', marginBottom: '15px' }}>📅</div>
-            <div style={{ fontSize: '18px', color: '#666' }}>No hay mensajes programados</div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              style={{ ...pageStyles.createBtn, marginTop: '20px' }}
-            >
-              + Programar Primer Mensaje
-            </button>
+          <div className="text-center py-12 text-stone-400 text-sm">
+            No hay mensajes programados en esta categoría.
           </div>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} style={pageStyles.messageCard}>
-              <div style={pageStyles.messageHeader}>
-                <div>
-                  <div style={{ fontWeight: '600', fontSize: '16px' }}>
-                    {msg.userName || msg.phoneNumber}
+          <div className="divide-y divide-stone-100 dark:divide-stone-800">
+            {messages.map((m) => (
+              <div key={m.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-stone-50 dark:hover:bg-stone-850 transition-colors">
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex items-center gap-2.5">
+                    {getStatusBadge(m.status)}
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">
+                      {m.userName || 'Cliente'} ({m.phoneNumber})
+                    </span>
+                    <span className="text-xs text-stone-400 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {new Date(m.scheduledFor).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })}
+                    </span>
                   </div>
-                  <div style={{ color: '#666', fontSize: '13px' }}>{msg.phoneNumber}</div>
-                </div>
-                {getStatusBadge(msg.status)}
-              </div>
-
-              <div style={pageStyles.messageContent}>{msg.content}</div>
-
-              <div style={pageStyles.messageFooter}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <span style={{ color: '#666', fontSize: '13px' }}>
-                    📅 {formatDateTime(msg.scheduledFor)}
-                  </span>
-                  <span style={{ color: '#888', fontSize: '12px' }}>
-                    Creado: {formatDateTime(msg.createdAt)}
-                  </span>
+                  <p className="text-sm text-stone-600 dark:text-stone-300 font-medium">
+                    {m.content}
+                  </p>
                 </div>
 
-                {msg.status === 'pending' && (
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      onClick={() => openEditModal(msg)}
-                      style={pageStyles.actionBtn}
-                      title="Editar"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => cancelMessage(msg.id)}
-                      style={pageStyles.actionBtn}
-                      title="Cancelar"
-                    >
-                      🚫
-                    </button>
-                    <button
-                      onClick={() => deleteMessage(msg.id)}
-                      style={{ ...pageStyles.actionBtn, color: '#FF4444' }}
-                      title="Eliminar"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                )}
-
-                {(msg.status === 'cancelled' || msg.status === 'failed') && (
+                {m.status === 'pending' && (
                   <button
-                    onClick={() => deleteMessage(msg.id)}
-                    style={{ ...pageStyles.actionBtn, color: '#FF4444' }}
-                    title="Eliminar"
+                    onClick={() => cancelMessage(m.id)}
+                    className="self-end sm:self-center px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold transition-colors flex items-center gap-1"
                   >
-                    🗑️
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Cancelar</span>
                   </button>
                 )}
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 
-      {/* Create/Edit Modal */}
-      {(showCreateModal || editingMessage) && (
-        <div style={pageStyles.modalOverlay}>
-          <div style={pageStyles.modal}>
-            <h2 style={{ margin: '0 0 20px 0' }}>
-              {editingMessage ? '✏️ Editar Mensaje' : '📅 Programar Mensaje'}
-            </h2>
-
-            <div style={pageStyles.formGroup}>
-              <label style={pageStyles.label}>Número de teléfono *</label>
-              <input
-                type="tel"
-                value={formPhoneNumber}
-                onChange={(e) => setFormPhoneNumber(e.target.value)}
-                placeholder="+56912345678"
-                style={pageStyles.input}
-                disabled={!!editingMessage}
-              />
-            </div>
-
-            <div style={pageStyles.formGroup}>
-              <label style={pageStyles.label}>Nombre (opcional)</label>
-              <input
-                type="text"
-                value={formUserName}
-                onChange={(e) => setFormUserName(e.target.value)}
-                placeholder="Nombre del contacto"
-                style={pageStyles.input}
-                disabled={!!editingMessage}
-              />
-            </div>
-
-            <div style={pageStyles.formGroup}>
-              <label style={pageStyles.label}>Mensaje *</label>
-              <textarea
-                value={formContent}
-                onChange={(e) => setFormContent(e.target.value)}
-                placeholder="Escribe tu mensaje..."
-                style={pageStyles.textarea}
-                rows={4}
-              />
-              <div style={{ fontSize: '12px', color: '#888', marginTop: '5px' }}>
-                {formContent.length} caracteres
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <div style={pageStyles.formGroup}>
-                <label style={pageStyles.label}>Fecha *</label>
-                <input
-                  type="date"
-                  value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  style={pageStyles.input}
-                  placeholder="dd-mm-aaaa"
-                />
-              </div>
-
-              <div style={pageStyles.formGroup}>
-                <label style={pageStyles.label}>Hora *</label>
-                <input
-                  type="time"
-                  value={formTime}
-                  onChange={(e) => setFormTime(e.target.value)}
-                  style={pageStyles.input}
-                  placeholder="hh:mm"
-                />
-              </div>
-            </div>
-
-            {formDate && formTime && (
-              <div style={pageStyles.previewDate}>
-                📅 Se enviará: {formatDateTime(`${formDate}T${formTime}`)}
-              </div>
-            )}
-
-            <div style={pageStyles.modalActions}>
+      {/* Modal Programar */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                Programar Mensaje WhatsApp
+              </h2>
               <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setEditingMessage(null);
-                  resetForm();
-                }}
-                style={pageStyles.cancelBtn}
+                onClick={() => setShowCreateModal(false)}
+                className="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-500 hover:text-stone-900 dark:hover:text-white flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-1">Número de WhatsApp *</label>
+                <input
+                  type="text"
+                  value={formPhoneNumber}
+                  onChange={(e) => setFormPhoneNumber(e.target.value)}
+                  placeholder="Ej: 51999888777"
+                  className="w-full px-4 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-1">Nombre Destinatario (Opcional)</label>
+                <input
+                  type="text"
+                  value={formUserName}
+                  onChange={(e) => setFormUserName(e.target.value)}
+                  placeholder="Ej: Carlos Mendoza"
+                  className="w-full px-4 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-1">Fecha *</label>
+                  <input
+                    type="date"
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-1">Hora *</label>
+                  <input
+                    type="time"
+                    value={formTime}
+                    onChange={(e) => setFormTime(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-1">Mensaje *</label>
+                <textarea
+                  rows={4}
+                  value={formContent}
+                  onChange={(e) => setFormContent(e.target.value)}
+                  placeholder="Escribe el mensaje que se enviará automáticamente..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2.5 rounded-xl text-stone-600 dark:text-stone-300 font-semibold text-sm hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
               >
                 Cancelar
               </button>
               <button
-                onClick={editingMessage ? updateMessage : createMessage}
-                disabled={!formPhoneNumber || !formContent || !formDate || !formTime}
-                style={{
-                  ...pageStyles.saveBtn,
-                  opacity: formPhoneNumber && formContent && formDate && formTime ? 1 : 0.5,
-                }}
+                onClick={createMessage}
+                className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-sm shadow-md transition-all active:scale-95"
               >
-                {editingMessage ? 'Guardar Cambios' : 'Programar Mensaje'}
+                Confirmar Envío
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Info Section */}
-      <div style={pageStyles.infoSection}>
-        <h3 style={{ margin: '0 0 15px 0' }}>💡 Información</h3>
-        <ul style={{ margin: 0, padding: '0 0 0 20px', color: '#666', lineHeight: '1.8' }}>
-          <li>Los mensajes programados se enviarán automáticamente a la hora especificada.</li>
-          <li>Solo puedes editar o cancelar mensajes que aún están pendientes.</li>
-          <li>Asegúrate de que el número incluya el código de país (ej: +56).</li>
-          <li>El sistema verificará cada minuto si hay mensajes para enviar.</li>
-        </ul>
-      </div>
     </div>
   );
 }
-
-const pageStyles: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: '100vh',
-    background: '#f0f2f5',
-    padding: '20px',
-  },
-  loadingContainer: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f0f2f5',
-  },
-  header: {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    padding: '20px 30px',
-    borderRadius: '12px',
-    marginBottom: '20px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  createBtn: {
-    background: 'rgba(255,255,255,0.2)',
-    color: 'white',
-    border: 'none',
-    padding: '12px 24px',
-    borderRadius: '25px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    transition: 'background 0.2s',
-  },
-  statsRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '15px',
-    marginBottom: '20px',
-  },
-  statCard: {
-    background: 'white',
-    padding: '20px',
-    borderRadius: '12px',
-    textAlign: 'center',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-  },
-  filterRow: {
-    display: 'flex',
-    gap: '10px',
-    marginBottom: '20px',
-    flexWrap: 'wrap',
-  },
-  filterBtn: {
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '20px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-  },
-  messagesList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px',
-    marginBottom: '20px',
-  },
-  emptyState: {
-    background: 'white',
-    borderRadius: '12px',
-    padding: '60px 40px',
-    textAlign: 'center',
-  },
-  messageCard: {
-    background: 'white',
-    borderRadius: '12px',
-    padding: '20px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-  },
-  messageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '15px',
-  },
-  messageContent: {
-    background: '#f8f9fa',
-    padding: '15px',
-    borderRadius: '8px',
-    marginBottom: '15px',
-    fontSize: '14px',
-    lineHeight: '1.5',
-    whiteSpace: 'pre-wrap',
-  },
-  messageFooter: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  actionBtn: {
-    background: 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '16px',
-    padding: '5px 10px',
-    borderRadius: '5px',
-    transition: 'background 0.2s',
-  },
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  modal: {
-    background: 'white',
-    borderRadius: '16px',
-    padding: '30px',
-    width: '500px',
-    maxWidth: '90vw',
-    maxHeight: '90vh',
-    overflowY: 'auto',
-  },
-  formGroup: {
-    marginBottom: '20px',
-  },
-  label: {
-    display: 'block',
-    marginBottom: '8px',
-    fontWeight: '600',
-    color: '#333',
-    fontSize: '14px',
-  },
-  input: {
-    width: '100%',
-    padding: '12px 15px',
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box',
-  },
-  textarea: {
-    width: '100%',
-    padding: '12px 15px',
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    resize: 'vertical',
-  },
-  previewDate: {
-    background: '#f0fdf4',
-    border: '1px solid #25D366',
-    padding: '12px 15px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    fontSize: '14px',
-    color: '#333',
-  },
-  modalActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '10px',
-  },
-  cancelBtn: {
-    padding: '12px 24px',
-    background: '#f0f2f5',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-  },
-  saveBtn: {
-    padding: '12px 24px',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500',
-  },
-  infoSection: {
-    background: 'white',
-    borderRadius: '12px',
-    padding: '20px',
-  },
-};

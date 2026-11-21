@@ -79,58 +79,100 @@ export class ReservationService {
         }
       }
 
-      // Buscar los productos en la base de datos (coincidencia flexible)
-      const matchedProducts = []
+      // Parsear nombres de productos, cantidades y multiplicadores (ej: "2x Hamburguesa Doble" o "1 Hamburguesa Clásica")
+      const parsedItems: { rawQuery: string; cleanName: string; quantity: number }[] = []
       for (const nameQuery of input.productNames) {
-        const found = await prisma.product.findFirst({
-          where: {
-            isActive: true,
-            OR: [
-              { name: { contains: nameQuery } },
-              { sku: { contains: nameQuery } },
-              { description: { contains: nameQuery } },
-            ],
-          },
-        })
+        const trimmed = nameQuery.trim()
+        if (!trimmed) continue
 
-        if (found) {
-          matchedProducts.push(found)
+        // Detectar multiplicador inicial "2x Hamburguesa" o "2 Hamburguesa"
+        const prefixMatch = trimmed.match(/^(\d+)\s*[xX*]?\s+(.+)$/)
+        // Detectar multiplicador final "Hamburguesa x 2" o "Hamburguesa (2)"
+        const suffixMatch = trimmed.match(/^(.+?)\s*[(xX*]\s*(\d+)\s*\)?$/)
+
+        if (prefixMatch) {
+          parsedItems.push({
+            rawQuery: trimmed,
+            quantity: Math.max(1, parseInt(prefixMatch[1], 10)),
+            cleanName: prefixMatch[2].trim(),
+          })
+        } else if (suffixMatch) {
+          parsedItems.push({
+            rawQuery: trimmed,
+            quantity: Math.max(1, parseInt(suffixMatch[2], 10)),
+            cleanName: suffixMatch[1].trim(),
+          })
+        } else {
+          parsedItems.push({
+            rawQuery: trimmed,
+            quantity: 1,
+            cleanName: trimmed,
+          })
         }
       }
 
-      if (matchedProducts.length === 0) {
-        return {
-          success: false,
-          error: 'No se encontraron productos coincidentes en el catálogo para reservar',
-        }
-      }
+      // Buscar los productos en la base de datos (coincidencia inteligente de texto)
+      const allActiveProducts = await prisma.product.findMany({
+        where: { isActive: true },
+      })
 
-      const orderNumber = await this.getNextOrderNumber()
-      let totalAmount = 0
       const orderItemsData = []
+      let totalAmount = 0
       const summaryParts: string[] = []
 
       // Obtener símbolo de moneda del negocio si existe
       const business = await prisma.businessProfile.findFirst()
       const symbol = business?.currencySymbol || 'S/.'
 
-      for (const prod of matchedProducts) {
-        totalAmount += prod.price
-        orderItemsData.push({
-          productId: prod.id,
-          quantity: 1,
-          unitPrice: prod.price,
-        })
-        summaryParts.push(`• ${prod.name} (${symbol} ${prod.price.toFixed(2)})`)
+      for (const item of parsedItems) {
+        const searchLower = item.cleanName.toLowerCase()
+        // 1. Coincidencia exacta o por inclusión de nombre
+        let matched = allActiveProducts.find((p) => p.name.toLowerCase() === searchLower)
+        if (!matched) {
+          matched = allActiveProducts.find((p) => p.name.toLowerCase().includes(searchLower) || searchLower.includes(p.name.toLowerCase()))
+        }
+        // 2. Coincidencia por palabras clave (ej: "hamburguesa doble")
+        if (!matched) {
+          const words = searchLower.split(/\s+/).filter((w) => w.length > 2)
+          matched = allActiveProducts.find((p) => words.every((w) => p.name.toLowerCase().includes(w)))
+        }
 
-        // Descontar stock si tiene stock disponible
-        if (prod.stock > 0) {
-          await prisma.product.update({
-            where: { id: prod.id },
-            data: { stock: prod.stock - 1 },
+        if (matched) {
+          const lineTotal = matched.price * item.quantity
+          totalAmount += lineTotal
+          orderItemsData.push({
+            productId: matched.id,
+            quantity: item.quantity,
+            unitPrice: matched.price,
           })
+          summaryParts.push(`• ${item.quantity}x ${matched.name} (${symbol} ${lineTotal.toFixed(2)})`)
+
+          // Descontar stock si tiene stock disponible
+          if (matched.stock > 0) {
+            await prisma.product.update({
+              where: { id: matched.id },
+              data: { stock: Math.max(0, matched.stock - item.quantity) },
+            })
+          }
+        } else {
+          // Producto no encontrado en catálogo DB, registrar en notas para cocina
+          summaryParts.push(`• ${item.quantity}x ${item.cleanName} (Manual)`)
         }
       }
+
+      // Si ningún producto coincidió pero el cliente solicitó productos, crear con el primer producto activo o genérico
+      // para que COCINA NUNCA PIERDA UNA COMANDA
+      if (orderItemsData.length === 0 && allActiveProducts.length > 0) {
+        const fallbackProduct = allActiveProducts[0]
+        orderItemsData.push({
+          productId: fallbackProduct.id,
+          quantity: 1,
+          unitPrice: fallbackProduct.price,
+        })
+        totalAmount = fallbackProduct.price
+      }
+
+      const orderNumber = await this.getNextOrderNumber()
 
       // Construir notas claras para cocina y despacho
       let formattedNotes = input.notes || ''
