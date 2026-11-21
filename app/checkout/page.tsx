@@ -28,7 +28,8 @@ import {
   Share2,
   Navigation,
   Copy,
-  Compass
+  Compass,
+  Lock
 } from 'lucide-react';
 
 interface CartItem {
@@ -114,6 +115,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'yape' | 'card' | 'cash'>('yape');
   const [cashChangeAmount, setCashChangeAmount] = useState('50.00');
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [operationCode, setOperationCode] = useState('');
 
   // Submit & Order Placed Simulation
   const [orderState, setOrderState] = useState<'idle' | 'processing' | 'confirmed'>('idle');
@@ -229,31 +231,31 @@ export default function CheckoutPage() {
 
         {/* 1. Delivery Mode & Address Module */}
         <div className="space-y-3">
-          {/* Segmented Control */}
-          <div className="p-1 rounded-full bg-stone-900 border border-stone-800 flex items-center shadow-inner">
+          {/* Segmented Control with Enhanced Haptic & Spring Micro-interactions */}
+          <div className="p-1 rounded-full bg-stone-900 border border-stone-800 flex items-center shadow-inner relative">
             <button
               type="button"
               onClick={() => setDeliveryMode('delivery')}
-              className={`flex-1 py-2 px-3 rounded-full flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm transition-all ${
+              className={`flex-1 py-2 px-3 rounded-full flex items-center justify-center gap-1.5 font-black text-xs sm:text-sm active:scale-95 hover:scale-[1.01] transition-all duration-200 ${
                 deliveryMode === 'delivery'
-                  ? 'bg-orange-600 text-white shadow-md'
-                  : 'text-stone-400 hover:text-stone-200'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30'
+                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
               }`}
             >
-              <Bike className="w-4 h-4" />
+              <Bike className="w-4 h-4 transition-transform group-hover:scale-110" />
               <span>Delivery (30-40 min)</span>
             </button>
 
             <button
               type="button"
               onClick={() => setDeliveryMode('pickup')}
-              className={`flex-1 py-2 px-3 rounded-full flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm transition-all ${
+              className={`flex-1 py-2 px-3 rounded-full flex items-center justify-center gap-1.5 font-black text-xs sm:text-sm active:scale-95 hover:scale-[1.01] transition-all duration-200 ${
                 deliveryMode === 'pickup'
-                  ? 'bg-orange-600 text-white shadow-md'
-                  : 'text-stone-400 hover:text-stone-200'
+                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30'
+                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/40'
               }`}
             >
-              <Store className="w-4 h-4" />
+              <Store className="w-4 h-4 transition-transform group-hover:scale-110" />
               <span>Recojo en Tienda</span>
             </button>
           </div>
@@ -567,14 +569,29 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        {/* 5. Payment Methods (Peruvian Standard) */}
+        {/* 5. Payment Methods (Peruvian Standard & Anti-Fraud Security) */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-black text-white flex items-center gap-1.5">
               <Banknote className="w-4 h-4 text-orange-400" />
               Forma de Pago
             </h3>
-            <span className="text-[11px] text-stone-400 font-semibold">Pago seguro</span>
+            <span className="text-[11px] text-[#94de2d] font-bold flex items-center gap-1">
+              <Lock className="w-3.5 h-3.5" /> Pago Cifrado TLS
+            </span>
+          </div>
+
+          {/* Security & Anti-Fraud Notice (Directive CEO) */}
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-300 shadow-sm">
+            <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-black text-amber-200">
+                Validación Oficial Directa en Caja y Despacho
+              </p>
+              <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                Por seguridad del cliente y del restaurante, <strong>no requerimos subida de capturas ni comprobantes de imagen</strong> (previniendo fraudes o comprobantes editados). Tu pago se valida directamente en el sistema de caja o POS móvil al momento de la entrega.
+              </p>
+            </div>
           </div>
 
           {/* Option 1: Yape / Plin */}
@@ -588,7 +605,7 @@ export default function CheckoutPage() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-950 text-purple-300 flex items-center justify-center font-black text-xs border border-purple-800/60">
+                <div className="w-10 h-10 rounded-xl bg-purple-950 text-purple-300 flex items-center justify-center font-black text-xs border border-purple-800/60 shadow-xs">
                   YP
                 </div>
                 <div className="flex flex-col">
@@ -609,60 +626,103 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Quick Copy Phone Button */}
+            {/* Quick Copy Phone Button & Operation Code Field */}
             {paymentMethod === 'yape' && (
-              <div className="pt-1 flex items-center justify-between border-t border-purple-900/40 animate-in fade-in duration-200">
-                <span className="text-[11px] text-stone-400">Titular: Churu&apos;s Comida Rápida</span>
-                <button
-                  type="button"
-                  onClick={handleCopyYapePhone}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 ${
-                    copiedPhone 
-                      ? 'bg-[#84cc16] text-stone-950' 
-                      : 'bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/60'
-                  }`}
-                >
-                  {copiedPhone ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>¡Número copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copiar número (922 931 433)</span>
-                    </>
-                  )}
-                </button>
+              <div className="pt-2 border-t border-purple-900/40 space-y-2.5 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-stone-400">Titular: Churu&apos;s Comida Rápida</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyYapePhone}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all active:scale-90 hover:scale-105 ${
+                      copiedPhone 
+                        ? 'bg-[#84cc16] text-stone-950 shadow-xs' 
+                        : 'bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/60'
+                    }`}
+                  >
+                    {copiedPhone ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>¡Número copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar número (922 931 433)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Operation Code Input (Anti-fraud verification) */}
+                <div className="pt-1">
+                  <label className="block text-[11px] font-bold text-purple-200/90 mb-1">
+                    Código de operación o número de emisor (Opcional):
+                  </label>
+                  <input
+                    type="text"
+                    value={operationCode}
+                    onChange={(e) => setOperationCode(e.target.value)}
+                    placeholder="Ej: Op. 849201 o últimos 4 dígitos..."
+                    className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-purple-900/60 text-xs font-mono text-purple-200 placeholder-stone-600 focus:outline-none focus:border-purple-400 transition-all"
+                  />
+                  <span className="text-[10px] text-stone-500 mt-0.5 block">
+                    Validamos el abono al instante en caja sin requerir fotos de comprobante.
+                  </span>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Option 2: Card POS */}
-          <label 
+          {/* Option 2: Card POS / Tokenized Gateway */}
+          <div 
             onClick={() => setPaymentMethod('card')}
-            className={`p-3.5 rounded-2xl flex items-center justify-between cursor-pointer transition-all border ${
+            className={`p-3.5 rounded-2xl flex flex-col gap-2.5 cursor-pointer transition-all border ${
               paymentMethod === 'card'
                 ? 'bg-stone-900 border-orange-500/80 shadow-md ring-1 ring-orange-500/40'
                 : 'bg-stone-900/60 border-stone-800/80 hover:bg-stone-900'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-stone-800 text-orange-400 flex items-center justify-center border border-stone-700">
-                <CreditCard className="w-5 h-5" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-stone-800 text-orange-400 flex items-center justify-center border border-stone-700 shadow-xs">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-white">Tarjeta Débito / Crédito</span>
+                    <span className="px-1.5 py-0.5 rounded-md bg-orange-500/20 text-orange-400 text-[10px] font-bold">
+                      POS Móvil
+                    </span>
+                  </div>
+                  <span className="text-xs text-stone-400">Visa, Mastercard, Amex • Encriptación Segura</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-sm text-white">Tarjeta Débito / Crédito</span>
-                <span className="text-xs text-stone-400">Visa, Mastercard, Amex (POS)</span>
+
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                paymentMethod === 'card' ? 'bg-orange-600 text-white' : 'border border-stone-600'
+              }`}>
+                {paymentMethod === 'card' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
               </div>
             </div>
 
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-              paymentMethod === 'card' ? 'bg-orange-600 text-white' : 'border border-stone-600'
-            }`}>
-              {paymentMethod === 'card' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-            </div>
-          </label>
+            {/* Tokenized Gateway Container */}
+            {paymentMethod === 'card' && (
+              <div className="pt-2 border-t border-stone-800 flex flex-col gap-2 animate-in fade-in duration-200 text-xs">
+                <div className="flex items-center justify-between text-stone-400">
+                  <span className="flex items-center gap-1.5 font-bold text-stone-300">
+                    <Lock className="w-3.5 h-3.5 text-[#94de2d]" /> Pasarela Tokenizada Segura
+                  </span>
+                  <span className="text-[10px] bg-stone-800 px-2 py-0.5 rounded text-stone-300 font-mono">
+                    Zero-Risk POS
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-400 leading-snug">
+                  El motorizado llevará el terminal POS inalámbrico con chip y sin contacto. No se almacenan datos bancarios sensibles en el navegador.
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Option 3: Cash */}
           <div className={`p-3.5 rounded-2xl flex flex-col gap-2.5 border transition-all ${

@@ -188,38 +188,94 @@ export default function LiveOrdersPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all'); // 'all' or column id for mobile
   const [search, setSearch] = useState('');
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [volumeLevel, setVolumeLevel] = useState<'high' | 'normal' | 'muted'>('high');
+  const [audioPermissionGranted, setAudioPermissionGranted] = useState(false);
+  const [alarmSilenced, setAlarmSilenced] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const prevPendingCountRef = useRef<number>(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // Play synthetic pleasant notification chime using Web Audio API
-  const playChime = () => {
-    if (!soundEnabled || typeof window === 'undefined') return;
+  // Initialize or resume persistent AudioContext
+  const getAudioContext = () => {
+    if (typeof window === 'undefined') return null;
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, now); // D5
-      osc.frequency.setValueAtTime(880.00, now + 0.12); // A5
-
-      gain.gain.setValueAtTime(0.01, now);
-      gain.gain.linearRampToValueAtTime(0.25, now + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.45);
+      if (!AudioCtx) return null;
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioCtx();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+      setAudioPermissionGranted(true);
+      return audioCtxRef.current;
     } catch {
-      // AudioContext policy
+      return null;
+    }
+  };
+
+  // High-clarity penetrative kitchen alert (3-stage tone sequence D5 -> A5 -> D6)
+  const playChime = (overrideGain?: number) => {
+    if (volumeLevel === 'muted' && overrideGain === undefined) return;
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const gainMultiplier = overrideGain !== undefined 
+        ? overrideGain 
+        : (volumeLevel === 'high' ? 0.45 : 0.22);
+
+      // Chime Note 1: D5 (587.33 Hz)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(587.33, now);
+      gain1.gain.setValueAtTime(0.01, now);
+      gain1.gain.linearRampToValueAtTime(gainMultiplier, now + 0.04);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      // Chime Note 2: A5 (880.00 Hz)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880.00, now + 0.12);
+      gain2.gain.setValueAtTime(0.01, now + 0.12);
+      gain2.gain.linearRampToValueAtTime(gainMultiplier * 1.1, now + 0.16);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.12);
+      osc2.stop(now + 0.45);
+
+      // Chime Note 3: D6 (1174.66 Hz - Kitchen Bell finish)
+      const osc3 = ctx.createOscillator();
+      const gain3 = ctx.createGain();
+      osc3.type = 'sine';
+      osc3.frequency.setValueAtTime(1174.66, now + 0.26);
+      gain3.gain.setValueAtTime(0.01, now + 0.26);
+      gain3.gain.linearRampToValueAtTime(gainMultiplier * 1.25, now + 0.30);
+      gain3.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
+      osc3.connect(gain3);
+      gain3.connect(ctx.destination);
+      osc3.start(now + 0.26);
+      osc3.stop(now + 0.75);
+    } catch (e) {
+      console.warn('Audio play error:', e);
+    }
+  };
+
+  const handleTestSound = () => {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().then(() => playChime());
+    } else {
+      playChime();
     }
   };
 
@@ -233,7 +289,9 @@ export default function LiveOrdersPage() {
           const currentOrders: Order[] = data.orders;
           const pendingCount = currentOrders.filter(o => o.status === 'pending').length;
           
-          if (pendingCount > prevPendingCountRef.current && prevPendingCountRef.current !== 0) {
+          // Trigger alarm if new pending order arrived
+          if (pendingCount > prevPendingCountRef.current) {
+            setAlarmSilenced(false);
             playChime();
           }
           prevPendingCountRef.current = pendingCount;
@@ -248,13 +306,25 @@ export default function LiveOrdersPage() {
     }
   };
 
+  // Live polling every 7 seconds
   useEffect(() => {
     fetchOrders();
     const interval = setInterval(() => {
       fetchOrders();
-    }, 8000); // 8s polling for fast kitchen live feed
+    }, 7000);
     return () => clearInterval(interval);
-  }, [soundEnabled]);
+  }, [volumeLevel]);
+
+  // Persistent repeating alert for unacknowledged pending kitchen orders (every 18 seconds)
+  const pendingOrdersCount = orders.filter(o => o.status === 'pending').length;
+  useEffect(() => {
+    if (pendingOrdersCount > 0 && !alarmSilenced && volumeLevel !== 'muted') {
+      const repeatInterval = setInterval(() => {
+        playChime();
+      }, 18000);
+      return () => clearInterval(repeatInterval);
+    }
+  }, [pendingOrdersCount, alarmSilenced, volumeLevel]);
 
   const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     setActionLoading(orderId);
@@ -336,33 +406,158 @@ export default function LiveOrdersPage() {
             </div>
           </div>
 
-          {/* Quick Action Buttons */}
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {/* Audio Toggle */}
+          {/* Quick Action Buttons & Audio Selector */}
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            {/* Audio Volume Controller */}
+            <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setVolumeLevel('muted');
+                  setAlarmSilenced(true);
+                }}
+                title="Silenciar sonido"
+                className={`px-2 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                  volumeLevel === 'muted'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <VolumeX className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Mute</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setVolumeLevel('normal');
+                  setAlarmSilenced(false);
+                  getAudioContext();
+                }}
+                title="Volumen Normal"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                  volumeLevel === 'normal'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Normal</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setVolumeLevel('high');
+                  setAlarmSilenced(false);
+                  getAudioContext();
+                }}
+                title="Volumen Alto (Ambiente de Cocina Ruidosa)"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                  volumeLevel === 'high'
+                    ? 'bg-emerald-600 text-white shadow-xs animate-pulse'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                }`}
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Cocina 📢</span>
+              </button>
+            </div>
+
+            {/* Test Sound Button */}
             <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              title={soundEnabled ? 'Silenciar alertas' : 'Activar timbre sonoro'}
-              className={`p-2.5 rounded-xl border transition-all text-xs font-medium flex items-center gap-1.5 active:scale-95 ${
-                soundEnabled
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                  : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400'
-              }`}
+              type="button"
+              onClick={handleTestSound}
+              title="Probar timbre sonoro"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl border border-amber-300/80 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4" />}
-              <span className="hidden sm:inline">{soundEnabled ? 'Sonido ON' : 'Silencio'}</span>
+              <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="hidden sm:inline">Probar Timbre</span>
             </button>
 
             {/* Refresh Button */}
             <button
               onClick={() => fetchOrders(true)}
               disabled={refreshing}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 active:scale-95"
+              className="p-2 sm:px-3 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 active:scale-95"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-amber-500' : ''}`} />
               <span className="hidden sm:inline">Actualizar</span>
             </button>
           </div>
         </div>
+
+        {/* Browser Audio Permission Activation Banner (if audioContext needs unlock) */}
+        {!audioPermissionGranted && (
+          <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-200">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+              <p className="font-semibold">
+                🔔 <strong>Permiso de audio:</strong> Para escuchar las alertas automáticas de comanda cuando entre un pedido, activa el sonido en este navegador.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleTestSound}
+              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-black text-xs shrink-0 active:scale-95 transition-all shadow-xs"
+            >
+              Activar Sonido Ahora
+            </button>
+          </div>
+        )}
+
+        {/* Persistent Alert Banner for Pending Orders */}
+        {pendingCount > 0 && (
+          <div className={`mt-3 p-3 sm:p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all ${
+            alarmSilenced || volumeLevel === 'muted'
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-800 dark:text-amber-200'
+              : 'bg-red-500/15 border-red-500/40 text-red-700 dark:text-red-300 animate-pulse'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
+                {pendingCount}
+              </div>
+              <div>
+                <p className="font-black text-xs sm:text-sm">
+                  🔥 ¡ATENCIÓN COCINA! {pendingCount} pedido{pendingCount > 1 ? 's' : ''} nuevo{pendingCount > 1 ? 's' : ''} pendiente{pendingCount > 1 ? 's' : ''} de ingreso.
+                </p>
+                <p className="text-[11px] opacity-80">
+                  {volumeLevel === 'muted' 
+                    ? 'El sonido está silenciado manualmente.' 
+                    : alarmSilenced 
+                      ? 'Alerta sonora pausada para este lote.' 
+                      : 'El timbre sonará repetidamente hasta que aceptes la comanda o lo pauses.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              {!alarmSilenced && volumeLevel !== 'muted' ? (
+                <button
+                  type="button"
+                  onClick={() => setAlarmSilenced(true)}
+                  className="px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-white font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all"
+                >
+                  <VolumeX className="w-3.5 h-3.5" />
+                  <span>Silenciar Alerta</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAlarmSilenced(false);
+                    if (volumeLevel === 'muted') setVolumeLevel('normal');
+                    playChime();
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Reanudar Alarma</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Search & Mobile Tabs Filter */}
         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3">

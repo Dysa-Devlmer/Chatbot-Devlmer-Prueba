@@ -354,9 +354,9 @@ export default function PublicMenuPage() {
                     setSelectedProduct(item);
                     setIsDrawerOpen(true);
                   }}
-                  className="py-2 px-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-orange-600/20 active:scale-95 transition-all"
+                  className="group/btn relative overflow-hidden py-2 px-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-orange-600/25 hover:shadow-orange-600/40 active:scale-90 hover:scale-105 active:ring-2 active:ring-orange-400 active:ring-offset-2 dark:active:ring-offset-[#141312] transition-all duration-200 cursor-pointer select-none"
                 >
-                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <Plus className="w-4 h-4 stroke-[3] transition-transform duration-200 group-hover/btn:rotate-90" />
                   <span>Personalizar</span>
                 </button>
               </div>
@@ -373,7 +373,7 @@ export default function PublicMenuPage() {
           <button
             type="button"
             onClick={() => setIsCartModalOpen(true)}
-            className="w-full h-14 rounded-2xl bg-gradient-to-r from-orange-600 via-amber-600 to-[#84cc16] text-white font-black text-xs sm:text-sm flex items-center justify-between px-5 shadow-xl shadow-orange-600/30 active:scale-[0.98] transition-all"
+            className="w-full h-14 rounded-2xl bg-gradient-to-r from-orange-600 via-amber-600 to-[#84cc16] text-white font-black text-xs sm:text-sm flex items-center justify-between px-5 shadow-xl shadow-orange-600/35 hover:shadow-orange-600/50 hover:scale-[1.01] active:scale-[0.97] transition-all duration-200 cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-black/20 flex items-center justify-center">
