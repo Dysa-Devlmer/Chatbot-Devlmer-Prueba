@@ -240,7 +240,7 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
           const businessProfile = await prisma.businessProfile.findFirst()
           const currSymbol = businessProfile?.currencySymbol || 'S/.'
           if (!cleanedResponse.includes(reservation.orderNumber!)) {
-            cleanedResponse += `\n\n📝 *Pedido Confirmado en Cocina:* Código *${reservation.orderNumber}* por un total de *${currSymbol} ${reservation.totalAmount?.toFixed(2)}*.\n¡En breve te iremos notificando cada avance por aquí!`
+            cleanedResponse += `\n\n📝 *Pedido Confirmado en Cocina:* Código *${reservation.orderNumber}* por un total de *${currSymbol} ${reservation.totalAmount?.toFixed(2)}*.\n\n🛵 *Seguimiento en Vivo:*\nPuedes seguir la preparación de tus platos y la ruta de tu entrega aquí:\n👉 https://chatbot.zgamersa.com/tracking?order=${reservation.orderNumber}\n\n¡En breve te iremos notificando cada avance por aquí!`
           }
         }
 

@@ -81,16 +81,18 @@ export async function PUT(request: NextRequest) {
       const isDelivery = (updated.notes || '').toLowerCase().includes('delivery') || !(updated.notes || '').toLowerCase().includes('retiro')
       let notifyText = ''
 
+      const trackingUrl = `https://chatbot.zgamersa.com/tracking?order=${updated.orderNumber}`
+
       if (status === 'confirmed') {
-        notifyText = `👨‍🍳🔥 *¡Tu pedido #${updated.orderNumber} ya está en preparación!*\n\nNuestros cocineros en *Churu's Comida Rápida* ya están elaborando tus platos con los mejores ingredientes y todo el sabor.\n\nTe notificaremos apenas esté listo. ¡Muchas gracias por tu paciencia!`
+        notifyText = `👨‍🍳🔥 *¡Tu pedido #${updated.orderNumber} ya está en preparación!*\n\nNuestros cocineros en *Churu's Comida Rápida* ya están elaborando tus platos con los mejores ingredientes y todo el sabor.\n\n🛵 *Seguimiento en Vivo:*\n👉 ${trackingUrl}\n\n¡Te notificaremos apenas esté listo!`
       } else if (status === 'ready') {
         if (isDelivery) {
-          notifyText = `🛵💨 *¡Tu pedido #${updated.orderNumber} está listo y en camino!*\n\nNuestro repartidor ya salió rumbo a tu dirección con tu pedido calientito. Por favor mantente atento a tu teléfono para recibirlo. 🍗📦\n\n¡Buen provecho!`
+          notifyText = `🛵💨 *¡Tu pedido #${updated.orderNumber} está listo y en camino!*\n\nNuestro repartidor Carlos Mendoza ya salió rumbo a tu dirección con tu pedido calientito.\n\n🛵 *Sigue al repartidor en vivo:*\n👉 ${trackingUrl}\n\n¡Por favor mantente atento para recibirlo! 🍗📦`
         } else {
-          notifyText = `🍗✨ *¡Tu pedido #${updated.orderNumber} ya está listo para retirar!*\n\nPuedes pasar a recogerlo en nuestro local:\n📍 *Av. Los Próceres 458* (Ref: A media cuadra del parque principal).\n\n¡Te esperamos!`
+          notifyText = `🍗✨ *¡Tu pedido #${updated.orderNumber} ya está listo para retirar!*\n\nPuedes pasar a recogerlo en nuestro local:\n📍 *Av. Los Próceres 458* (Ref: A media cuadra del parque principal).\n\n📄 *Ver boleta y detalles:*\n👉 ${trackingUrl}\n\n¡Te esperamos!`
         }
       } else if (status === 'delivered') {
-        notifyText = `🎉 *¡Tu pedido #${updated.orderNumber} ha sido entregado!*\n\nMuchísimas gracias por tu preferencia en *Churu's Comida Rápida*. Esperamos que lo disfrutes mucho. ⭐⭐⭐⭐⭐\n\n¡Buen provecho y que tengas un excelente día!`
+        notifyText = `🎉 *¡Tu pedido #${updated.orderNumber} ha sido entregado!*\n\nMuchísimas gracias por tu preferencia en *Churu's Comida Rápida*. Esperamos que lo disfrutes mucho. ⭐⭐⭐⭐⭐\n\n📄 *Descarga tu boleta electrónica:*\n👉 ${trackingUrl}\n\n¡Buen provecho y que tengas un excelente día!`
       } else if (status === 'cancelled') {
         notifyText = `⚠️ *Aviso sobre tu pedido #${updated.orderNumber}*\n\nTu pedido ha sido cancelado en nuestro sistema. Si tienes alguna consulta o deseas reprogramarlo, puedes escribirnos por este mismo medio.`
       }

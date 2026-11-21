@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { 
@@ -18,86 +18,163 @@ import {
   MapPin, 
   ShieldCheck, 
   UtensilsCrossed, 
-  Sparkles,
   HelpCircle,
   FileText,
-  UserCheck
+  RefreshCw,
+  Store
 } from 'lucide-react';
 
-interface TrackingTimelineStep {
+interface OrderItem {
   id: string;
-  title: string;
-  time: string;
-  desc: string;
-  status: 'done' | 'active' | 'pending';
-  icon: typeof Flame;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+interface TrackingData {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  status: 'pending' | 'confirmed' | 'ready' | 'delivered' | 'cancelled';
+  totalAmount: number;
+  isDelivery: boolean;
+  deliveryType: 'delivery' | 'pickup';
+  address: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: OrderItem[];
+  business: {
+    name: string;
+    ruc: string;
+    address: string;
+    currencySymbol: string;
+  };
+  driver?: {
+    name: string;
+    rating: number;
+    deliveriesCount: number;
+    vehicle: string;
+    phone: string;
+  } | null;
 }
 
 function OrderTrackingContent() {
   const searchParams = useSearchParams();
-  const orderNumber = searchParams?.get('order') || 'CR-8492';
+  const rawOrder = searchParams?.get('order') || 'ORD-1004';
+  const orderNumber = rawOrder.trim().toUpperCase();
+
+  const [orderData, setOrderData] = useState<TrackingData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
-  // Timeline steps
-  const steps: TrackingTimelineStep[] = [
-    {
-      id: 'step-1',
-      title: 'Pedido Confirmado',
-      time: '10:45 PM',
-      desc: 'Recibido e ingresado al sistema de Churu\'s.',
-      status: 'done',
-      icon: Check,
-    },
-    {
-      id: 'step-2',
-      title: 'Crujiendo en Cocina',
-      time: '10:50 PM',
-      desc: 'Dorando tu pollo broaster artesanal y papas nativas crujientes a la perfección.',
-      status: 'active',
-      icon: Flame,
-    },
-    {
-      id: 'step-3',
-      title: 'Repartidor en Camino',
-      time: '~11:05 PM',
-      desc: 'Embalado térmico para mantenerlo caliente y crocante.',
-      status: 'pending',
-      icon: Bike,
-    },
-    {
-      id: 'step-4',
-      title: '¡Entregado y a disfrutar!',
-      time: '--:--',
-      desc: '¡Buen provecho con ese ají y salsas especiales!',
-      status: 'pending',
-      icon: Home,
-    },
-  ];
+  const fetchTracking = async (isManual = false) => {
+    if (isManual) setRefreshing(true);
+    try {
+      const res = await fetch(`/api/tracking?order=${encodeURIComponent(orderNumber)}`);
+      const data = await res.json();
+      if (data.success && data.tracking) {
+        setOrderData(data.tracking);
+      }
+    } catch (err) {
+      console.error('Error fetching tracking data:', err);
+    } finally {
+      setLoading(false);
+      if (isManual) setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTracking();
+    const interval = setInterval(() => {
+      fetchTracking();
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [orderNumber]);
+
+  const currentStatus = orderData?.status || 'confirmed';
+  const isDelivery = orderData ? orderData.isDelivery : true;
+  const curr = orderData?.business?.currencySymbol || 'S/.';
+  const total = orderData?.totalAmount ?? 29.00;
+
+  // Configuration according to status
+  const getStageMeta = () => {
+    switch (currentStatus) {
+      case 'pending':
+        return {
+          pill: 'PEDIDO RECIBIDO • EN COLA DE COCINA',
+          heroTitle: '¡Tu orden ha sido registrada!',
+          progressPct: '25%',
+          eta: isDelivery ? '35 - 45 min' : '15 - 25 min',
+          etaApprox: 'En breve',
+          stepActive: 1,
+        };
+      case 'confirmed':
+        return {
+          pill: 'CRUJIENDO EN COCINA • DORANDO POLLO',
+          heroTitle: '¡Tu pedido está en el fuego!',
+          progressPct: '60%',
+          eta: isDelivery ? '25 - 35 min' : '10 - 15 min',
+          etaApprox: 'Próximos 20 min',
+          stepActive: 2,
+        };
+      case 'ready':
+        return {
+          pill: isDelivery ? 'MOTORIZADO EN CAMINO • RUTA ACTIVA' : 'LISTO PARA RETIRAR EN LOCAL',
+          heroTitle: isDelivery ? '¡Tu comida va en camino calientita!' : '¡Tu pedido está listo para recoger!',
+          progressPct: '85%',
+          eta: isDelivery ? '10 - 15 min' : 'Disponible ahora',
+          etaApprox: 'Muy pronto',
+          stepActive: 3,
+        };
+      case 'delivered':
+        return {
+          pill: 'PEDIDO ENTREGADO • ¡BUEN PROVECHO!',
+          heroTitle: '¡Disfruta tu banquete Churu\'s!',
+          progressPct: '100%',
+          eta: 'Completado',
+          etaApprox: 'Entregado con éxito',
+          stepActive: 4,
+        };
+      default:
+        return {
+          pill: 'ESTADO EN CONSULTA',
+          heroTitle: 'Seguimiento de orden',
+          progressPct: '50%',
+          eta: '25 - 35 min',
+          etaApprox: 'En proceso',
+          stepActive: 2,
+        };
+    }
+  };
+
+  const meta = getStageMeta();
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#141312] text-slate-900 dark:text-[#e6e1df] font-sans flex flex-col selection:bg-orange-500 selection:text-white pb-24 transition-colors duration-200">
       
       {/* 1. Header Bar */}
-      <header className="fixed top-0 inset-x-0 z-50 bg-white/90 dark:bg-[#141312]/90 backdrop-blur-xl border-b border-stone-200 dark:border-stone-800 shadow-[0_4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.65)]">
+      <header className="fixed top-0 inset-x-0 z-50 bg-white/90 dark:bg-[#141312]/90 backdrop-blur-xl border-b border-stone-200 dark:border-stone-800 shadow-sm">
         <div className="h-16 max-w-lg mx-auto px-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <Link 
-              href="/checkout"
+              href="/menu"
               className="w-10 h-10 -ml-1 flex items-center justify-center rounded-full text-slate-700 dark:text-stone-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-stone-200/60 dark:hover:bg-stone-800/60 active:scale-95 transition-all shrink-0"
-              title="Volver al checkout"
+              title="Volver al Menú"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
 
-            {/* Churu's Logo Badge */}
             <div className="w-9 h-9 rounded-xl bg-orange-600 flex items-center justify-center font-black text-white text-lg shadow-md shadow-orange-600/30 shrink-0">
               C
             </div>
 
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400 truncate">
-                Paso de Orden
+                Orden #{orderNumber}
               </span>
               <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
                 Seguimiento En Vivo
@@ -105,9 +182,13 @@ function OrderTrackingContent() {
             </div>
           </div>
 
-          <div className="w-8 h-8 rounded-full bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/30 flex items-center justify-center font-bold text-xs shrink-0">
-            🇵🇪
-          </div>
+          <button
+            onClick={() => fetchTracking(true)}
+            className="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 flex items-center justify-center transition-all active:scale-90"
+            title="Actualizar estado"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-orange-500' : ''}`} />
+          </button>
         </div>
       </header>
 
@@ -119,7 +200,6 @@ function OrderTrackingContent() {
 
         {/* Hero Status Card */}
         <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 shadow-lg">
-          {/* Internal ambient glow */}
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-500/10 dark:bg-orange-500/20 rounded-full blur-2xl pointer-events-none" />
           <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-[#84cc16]/10 dark:bg-[#94de2d]/15 rounded-full blur-2xl pointer-events-none" />
 
@@ -129,7 +209,15 @@ function OrderTrackingContent() {
             <div className="relative my-2 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-orange-500/30 blur-lg animate-ping opacity-60" />
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg relative text-white">
-                <Flame className="w-8 h-8 fill-amber-300 text-amber-300 animate-pulse" />
+                {currentStatus === 'delivered' ? (
+                  <Check className="w-8 h-8 stroke-[3] text-white" />
+                ) : isDelivery && currentStatus === 'ready' ? (
+                  <Bike className="w-8 h-8 text-white animate-bounce" />
+                ) : !isDelivery && currentStatus === 'ready' ? (
+                  <Store className="w-8 h-8 text-white" />
+                ) : (
+                  <Flame className="w-8 h-8 fill-amber-300 text-amber-300 animate-pulse" />
+                )}
               </div>
               <span className="absolute -bottom-1 -right-1 bg-[#84cc16] dark:bg-[#94de2d] text-stone-950 rounded-full p-1 shadow flex items-center justify-center">
                 <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -140,15 +228,15 @@ function OrderTrackingContent() {
             <div className="mt-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-100 dark:bg-stone-800 text-amber-700 dark:text-amber-400 text-xs font-black tracking-wide border border-amber-300/40 dark:border-amber-700/40">
                 <span className="w-2 h-2 rounded-full bg-[#84cc16] dark:bg-[#94de2d] animate-pulse" />
-                PEDIDO ACTIVO • EN TIEMPO REAL
+                {meta.pill}
               </span>
             </div>
 
             <h2 className="mt-2 text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              ¡Tu pedido está en marcha!
+              {meta.heroTitle}
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-stone-300 mt-0.5">
-              Orden <span className="font-extrabold text-slate-900 dark:text-white">#{orderNumber}</span>
+              Cliente: <span className="font-extrabold text-slate-900 dark:text-white">{orderData?.customerName || 'Cliente WhatsApp'}</span> • Orden <span className="font-extrabold text-orange-600 dark:text-orange-400">#{orderNumber}</span>
             </p>
 
             {/* ETA Badge Box */}
@@ -162,17 +250,17 @@ function OrderTrackingContent() {
                     Tiempo Estimado
                   </span>
                   <span className="block text-sm sm:text-base font-black text-orange-600 dark:text-orange-400">
-                    25 - 35 min
+                    {meta.eta}
                   </span>
                 </div>
               </div>
 
               <div className="text-right pr-1">
                 <span className="block text-[10px] font-black uppercase text-slate-500 dark:text-stone-400">
-                  Entrega Aprox.
+                  {isDelivery ? 'Entrega Aprox.' : 'Retiro Aprox.'}
                 </span>
                 <span className="block text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                  11:15 PM
+                  {meta.etaApprox}
                 </span>
               </div>
             </div>
@@ -186,19 +274,24 @@ function OrderTrackingContent() {
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-orange-600 dark:text-orange-400" />
               <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                Estado de la Cocina
+                Progreso de la Orden
               </h3>
             </div>
             <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-slate-600 dark:text-stone-300">
-              4 etapas
+              {currentStatus === 'delivered' ? '4 de 4 completadas' : 'En tiempo real'}
             </span>
           </div>
 
           <div className="relative pl-7 space-y-4">
             {/* Background continuous line */}
             <div className="absolute left-3 top-2 bottom-4 w-0.5 bg-stone-200 dark:bg-stone-800" />
-            {/* Active completed line up to step 2 */}
-            <div className="absolute left-3 top-2 h-16 w-0.5 bg-[#84cc16] dark:bg-[#94de2d]" />
+            {/* Dynamic completed line */}
+            <div 
+              className="absolute left-3 top-2 w-0.5 bg-[#84cc16] dark:bg-[#94de2d] transition-all duration-700" 
+              style={{
+                height: meta.stepActive === 1 ? '15%' : meta.stepActive === 2 ? '45%' : meta.stepActive === 3 ? '75%' : '100%'
+              }}
+            />
 
             {/* Step 1: Confirmed */}
             <div className="relative flex items-start gap-3">
@@ -208,73 +301,111 @@ function OrderTrackingContent() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
-                    Pedido Confirmado
+                    1. Pedido Confirmado
                   </h4>
-                  <span className="text-[11px] text-slate-500 dark:text-stone-400">10:45 PM</span>
-                </div>
-                <p className="text-xs text-slate-600 dark:text-stone-400 mt-0.5">
-                  Recibido en el sistema de Churu&apos;s.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 2: Crujiendo en Cocina (Activo) */}
-            <div className="relative flex items-start gap-3">
-              <div className="absolute -left-7 top-0.5 w-6 h-6 rounded-full bg-orange-600 text-white flex items-center justify-center shadow-md ring-4 ring-orange-500/20 animate-pulse">
-                <Flame className="w-3.5 h-3.5 fill-white" />
-              </div>
-              <div className="flex-1 min-w-0 bg-stone-50 dark:bg-stone-800/70 p-3 rounded-2xl border border-orange-200 dark:border-orange-950/60 shadow-2xs">
-                <div className="flex items-center justify-between gap-1">
-                  <h4 className="font-black text-xs sm:text-sm text-orange-600 dark:text-orange-400">
-                    Crujiendo en Cocina
-                  </h4>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-[#84cc16] dark:text-[#94de2d] bg-[#84cc16]/10 dark:bg-[#94de2d]/15 px-2 py-0.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#84cc16] dark:bg-[#94de2d] animate-ping" />
-                    En progreso
+                  <span className="text-[11px] text-slate-500 dark:text-stone-400">
+                    {orderData ? new Date(orderData.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : 'Registrado'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-700 dark:text-stone-200 mt-1">
-                  Dorando tu pollo broaster artesanal y papas nativas crujientes a la perfección.
+                <p className="text-xs text-slate-600 dark:text-stone-400 mt-0.5">
+                  Recibido e ingresado al sistema de Churu&apos;s.
                 </p>
-                {/* Progress bar */}
-                <div className="w-full bg-stone-200 dark:bg-stone-900 h-1.5 rounded-full mt-2.5 overflow-hidden">
-                  <div className="bg-gradient-to-r from-orange-500 to-[#84cc16] h-full w-3/4 rounded-full transition-all duration-500" />
-                </div>
               </div>
             </div>
 
-            {/* Step 3: Courier on the Way (Pending) */}
-            <div className="relative flex items-start gap-3 opacity-60">
-              <div className="absolute -left-7 top-0.5 w-6 h-6 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center text-stone-500 dark:text-stone-400">
-                <Bike className="w-3.5 h-3.5" />
+            {/* Step 2: Crujiendo en Cocina */}
+            <div className={`relative flex items-start gap-3 ${meta.stepActive < 2 ? 'opacity-60' : ''}`}>
+              <div className={`absolute -left-7 top-0.5 w-6 h-6 rounded-full flex items-center justify-center shadow-md ${
+                meta.stepActive > 2 
+                  ? 'bg-[#84cc16] text-stone-950' 
+                  : meta.stepActive === 2 
+                  ? 'bg-orange-600 text-white ring-4 ring-orange-500/20 animate-pulse' 
+                  : 'bg-stone-200 dark:bg-stone-800 text-stone-500'
+              }`}>
+                {meta.stepActive > 2 ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Flame className="w-3.5 h-3.5 fill-white" />}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs sm:text-sm text-slate-800 dark:text-stone-300">
-                    Repartidor en Camino
+              <div className={`flex-1 min-w-0 p-3 rounded-2xl border transition-all ${
+                meta.stepActive === 2
+                  ? 'bg-stone-50 dark:bg-stone-800/70 border-orange-200 dark:border-orange-950/60 shadow-2xs'
+                  : 'border-transparent'
+              }`}>
+                <div className="flex items-center justify-between gap-1">
+                  <h4 className={`font-black text-xs sm:text-sm ${meta.stepActive === 2 ? 'text-orange-600 dark:text-orange-400' : 'text-slate-900 dark:text-white'}`}>
+                    2. Crujiendo en Cocina
                   </h4>
-                  <span className="text-[11px] text-stone-400">~11:05 PM</span>
+                  {meta.stepActive === 2 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-[#84cc16] dark:text-[#94de2d] bg-[#84cc16]/10 dark:bg-[#94de2d]/15 px-2 py-0.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#84cc16] dark:bg-[#94de2d] animate-ping" />
+                      En preparación
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                  Embalado térmico para mantenerlo caliente y crocante.
+                <p className="text-xs text-slate-700 dark:text-stone-300 mt-1">
+                  Dorando pollo broaster artesanal y papas nativas crujientes a la perfección.
+                </p>
+                {meta.stepActive === 2 && (
+                  <div className="w-full bg-stone-200 dark:bg-stone-900 h-1.5 rounded-full mt-2.5 overflow-hidden">
+                    <div className="bg-gradient-to-r from-orange-500 to-[#84cc16] h-full w-2/3 rounded-full transition-all duration-500 animate-pulse" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Step 3: En Camino / Listo para Retiro */}
+            <div className={`relative flex items-start gap-3 ${meta.stepActive < 3 ? 'opacity-60' : ''}`}>
+              <div className={`absolute -left-7 top-0.5 w-6 h-6 rounded-full flex items-center justify-center ${
+                meta.stepActive > 3
+                  ? 'bg-[#84cc16] text-stone-950'
+                  : meta.stepActive === 3
+                  ? 'bg-orange-600 text-white ring-4 ring-orange-500/20 animate-pulse'
+                  : 'bg-stone-200 dark:bg-stone-800 text-stone-500 dark:text-stone-400'
+              }`}>
+                {meta.stepActive > 3 ? (
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                ) : isDelivery ? (
+                  <Bike className="w-3.5 h-3.5" />
+                ) : (
+                  <Store className="w-3.5 h-3.5" />
+                )}
+              </div>
+              <div className={`flex-1 min-w-0 p-3 rounded-2xl border transition-all ${
+                meta.stepActive === 3
+                  ? 'bg-stone-50 dark:bg-stone-800/70 border-orange-200 dark:border-orange-950/60 shadow-2xs'
+                  : 'border-transparent'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <h4 className={`font-bold text-xs sm:text-sm ${meta.stepActive === 3 ? 'text-orange-600 dark:text-orange-400' : 'text-slate-900 dark:text-white'}`}>
+                    {isDelivery ? '3. Repartidor en Camino' : '3. Listo para Retirar en Local'}
+                  </h4>
+                  {meta.stepActive === 3 && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-[#84cc16] dark:text-[#94de2d] bg-[#84cc16]/10 dark:bg-[#94de2d]/15 px-2 py-0.5 rounded-full">
+                      ¡Ya salió!
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-600 dark:text-stone-400 mt-0.5">
+                  {isDelivery 
+                    ? 'Embalado térmico hermético para mantenerlo crujiente y caliente.' 
+                    : 'Empacado y listo en barra esperándote en Av. Los Próceres 458.'}
                 </p>
               </div>
             </div>
 
-            {/* Step 4: Delivered (Pending) */}
-            <div className="relative flex items-start gap-3 opacity-40">
-              <div className="absolute -left-7 top-0.5 w-6 h-6 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center text-stone-500 dark:text-stone-400">
+            {/* Step 4: Entregado */}
+            <div className={`relative flex items-start gap-3 ${meta.stepActive < 4 ? 'opacity-60' : ''}`}>
+              <div className={`absolute -left-7 top-0.5 w-6 h-6 rounded-full flex items-center justify-center ${
+                meta.stepActive === 4
+                  ? 'bg-[#84cc16] text-stone-950 ring-4 ring-[#84cc16]/20'
+                  : 'bg-stone-200 dark:bg-stone-800 text-stone-500 dark:text-stone-400'
+              }`}>
                 <Home className="w-3.5 h-3.5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs sm:text-sm text-slate-800 dark:text-stone-300">
-                    ¡Entregado y a disfrutar!
-                  </h4>
-                  <span className="text-[11px] text-stone-400">--:--</span>
-                </div>
-                <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                  ¡Buen provecho con ese ají especial!
+                <h4 className={`font-bold text-xs sm:text-sm ${meta.stepActive === 4 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
+                  4. ¡Entregado y a disfrutar!
+                </h4>
+                <p className="text-xs text-slate-600 dark:text-stone-400 mt-0.5">
+                  ¡Buen provecho con ese ají artesanal y salsas especiales!
                 </p>
               </div>
             </div>
@@ -282,70 +413,70 @@ function OrderTrackingContent() {
           </div>
         </div>
 
-        {/* 4. Driver Partner Card */}
-        <div className="rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 sm:p-5 shadow-md">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-stone-400">
-              Tu Repartidor Asignado
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs font-black text-[#84cc16] dark:text-[#94de2d]">
-              <span className="w-2 h-2 rounded-full bg-[#84cc16] dark:bg-[#94de2d]" />
-              En ruta hacia local
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3.5">
-            {/* Driver Avatar */}
-            <div className="relative shrink-0">
-              <img 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCX5E777w7C5HaKHVrgxACb4ErGDa2x7uWKyhvtFR8mXm5fF-SqdJblyWFySdGOuy7VEuy725E74z5gug95W43I0qpzrKdYbZfHqWOHuWmxD4cvkHvcRaAR-c9EKT8NU4rHACwvENpCi2OftQJs5NuVAAZb8cu1go56dGgyG9igI9VdP-b-DoKcLNPlb017KopyTBb8W3jd3-x2Oamh_wqaYcO_QZYNZiTmEZotKkK6" 
-                alt="Carlos Mendoza - Repartidor Churu's" 
-                className="w-14 h-14 rounded-full object-cover shadow-sm border border-stone-200 dark:border-stone-700"
-              />
-              <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-[#84cc16] dark:bg-[#94de2d] border-2 border-white dark:border-stone-900 flex items-center justify-center text-[10px] text-stone-950 font-black">
-                ✓
+        {/* 4. Motorizado Card (Si aplica) */}
+        {isDelivery && (
+          <div className="rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 shadow-md">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                Repartidor Oficial Asignado
+              </span>
+              <span className="text-xs font-bold text-[#84cc16] dark:text-[#94de2d] flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#84cc16] dark:bg-[#94de2d] animate-pulse" />
+                En ruta
               </span>
             </div>
 
-            <div className="flex-1 min-w-0">
-              <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                Carlos Mendoza
-              </h4>
-              <div className="flex items-center gap-1 text-amber-500 mt-0.5">
-                <span className="text-xs">★</span>
-                <span className="text-xs font-black text-slate-900 dark:text-white">4.9</span>
-                <span className="text-[11px] text-slate-500 dark:text-stone-400">(420 entregas)</span>
+            <div className="flex items-center gap-3.5">
+              <div className="relative shrink-0">
+                <img 
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCX5E777w7C5HaKHVrgxACb4ErGDa2x7uWKyhvtFR8mXm5fF-SqdJblyWFySdGOuy7VEuy725E74z5gug95W43I0qpzrKdYbZfHqWOHuWmxD4cvkHvcRaAR-c9EKT8NU4rHACwvENpCi2OftQJs5NuVAAZb8cu1go56dGgyG9igI9VdP-b-DoKcLNPlb017KopyTBb8W3jd3-x2Oamh_wqaYcO_QZYNZiTmEZotKkK6" 
+                  alt="Carlos Mendoza - Repartidor Churu's" 
+                  className="w-14 h-14 rounded-full object-cover shadow-sm border border-stone-200 dark:border-stone-700"
+                />
+                <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-[#84cc16] dark:bg-[#94de2d] border-2 border-white dark:border-stone-900 flex items-center justify-center text-[10px] text-stone-950 font-black">
+                  ✓
+                </span>
               </div>
-              <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-600 dark:text-stone-300">
-                <Bike className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
-                <span className="truncate">Moto Honda Blanca • Placa 4821-B</span>
+
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                  Carlos Mendoza
+                </h4>
+                <div className="flex items-center gap-1 text-amber-500 mt-0.5">
+                  <span className="text-xs">★</span>
+                  <span className="text-xs font-black text-slate-900 dark:text-white">4.9</span>
+                  <span className="text-[11px] text-slate-500 dark:text-stone-400">(420 entregas)</span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-600 dark:text-stone-300">
+                  <Bike className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
+                  <span className="truncate">Moto Honda Blanca • Placa 4821-B</span>
+                </div>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-2.5 mt-4">
+              <a 
+                href="tel:+51922931433" 
+                className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 active:scale-95 transition-all text-slate-900 dark:text-white font-bold text-xs"
+              >
+                <Phone className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                <span>Llamar</span>
+              </a>
+
+              <a 
+                href={`https://wa.me/51922931433?text=${encodeURIComponent(`Hola Carlos, te escribo por mi pedido de Churu's #${orderNumber}`)}`}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-[#84cc16] hover:bg-[#72b513] dark:bg-[#94de2d] dark:hover:bg-[#83c923] active:scale-95 transition-all text-stone-950 font-black text-xs shadow-xs"
+              >
+                <MessageSquare className="w-4 h-4 fill-stone-950" />
+                <span>WhatsApp</span>
+              </a>
+            </div>
           </div>
+        )}
 
-          {/* Quick Contact Actions */}
-          <div className="grid grid-cols-2 gap-2.5 mt-4">
-            <a 
-              href="tel:+51922931433" 
-              className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 active:scale-95 transition-all text-slate-900 dark:text-white font-bold text-xs"
-            >
-              <Phone className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-              <span>Llamar</span>
-            </a>
-
-            <a 
-              href={`https://wa.me/51922931433?text=${encodeURIComponent(`Hola Carlos, te escribo por mi pedido de Churu's #${orderNumber}`)}`}
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-[#84cc16] hover:bg-[#72b513] dark:bg-[#94de2d] dark:hover:bg-[#83c923] active:scale-95 transition-all text-stone-950 font-black text-xs shadow-xs"
-            >
-              <MessageSquare className="w-4 h-4 fill-stone-950" />
-              <span>WhatsApp</span>
-            </a>
-          </div>
-        </div>
-
-        {/* 5. Order Details Accordion */}
+        {/* 5. Order Details Accordion (Con items reales de la DB) */}
         <div className="rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 overflow-hidden shadow-md">
           <button 
             type="button"
@@ -358,10 +489,10 @@ function OrderTrackingContent() {
               </div>
               <div className="min-w-0">
                 <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
-                  Resumen del Pedido (1 plato)
+                  Detalle del Pedido ({orderData?.items?.length || 1} {orderData?.items?.length === 1 ? 'ítem' : 'ítems'})
                 </h4>
                 <span className="text-xs text-[#84cc16] dark:text-[#94de2d] font-bold">
-                  Total: S/. 29.00 • Pagado con Yape
+                  Total: {curr} {total.toFixed(2)} • {isDelivery ? 'Delivery' : 'Retiro en Local'}
                 </span>
               </div>
             </div>
@@ -374,41 +505,41 @@ function OrderTrackingContent() {
           {isAccordionOpen && (
             <div className="px-5 pb-5 space-y-4 border-t border-stone-100 dark:border-stone-800 pt-3 animate-in fade-in duration-200">
               
-              {/* Dish Preview */}
-              <div className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700/60 flex gap-3 items-center">
-                <img 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyqtna8vMw9z0Q9RyrdQpwiEP3Q8FFS9FWcAv_lhKR12BU_f6kgDiOVmY7jNN05P6eGHBjqo_752tcUsJ3P0CwaoFmtK_I4wSi1mYnRWGKSeUNHXpuC0mmtkViDYkA4phnZPdRn80kitHt-IKjDn0DbXfqngJ8g1leXdagvzBDjvZs1kxhzQ5tNlJolk11KsT3e6X7r8nEfQKL04tyyfj5en-gKWCyJL-1SLwX6yFE" 
-                  alt="Broaster Pecho Clásico" 
-                  className="w-16 h-16 rounded-xl object-cover shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400">
-                      1x
-                    </span>
-                    <span className="text-xs font-black text-[#84cc16] dark:text-[#94de2d]">
-                      S/. 29.00
-                    </span>
+              {/* Product list */}
+              <div className="space-y-2">
+                {orderData?.items && orderData.items.length > 0 ? (
+                  orderData.items.map((item, idx) => (
+                    <div key={idx} className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700/60 flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-lg bg-orange-500/10 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 font-black flex items-center justify-center text-[11px]">
+                          {item.quantity}x
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {item.name}
+                        </span>
+                      </div>
+                      <span className="font-black text-[#84cc16] dark:text-[#94de2d]">
+                        {curr} {item.subtotal.toFixed(2)}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 text-xs text-stone-500">
+                    {orderData?.notes || 'Platos solicitados por WhatsApp'}
                   </div>
-                  <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
-                    Broaster Pecho Clásico
-                  </h5>
-                  <p className="text-[11px] text-slate-500 dark:text-stone-400 line-clamp-1 mt-0.5">
-                    + Salchibroaster + Papas nativas + Inca Kola 500ml + Tártara, Ají y Mayo.
-                  </p>
-                </div>
+                )}
               </div>
 
               {/* Delivery Meta */}
-              <div className="space-y-2 text-xs">
+              <div className="space-y-2 text-xs pt-1 border-t border-stone-100 dark:border-stone-800">
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="text-slate-500 dark:text-stone-400 block text-[10px] font-bold uppercase">
-                      Dirección de Entrega:
+                      {isDelivery ? 'Dirección de Entrega:' : 'Punto de Retiro:'}
                     </span>
                     <span className="text-slate-900 dark:text-white font-medium">
-                      Av. Las Palmeras 452, Dpto 302, Los Olivos
+                      {orderData?.address || 'Av. Los Próceres 458, Chorrillos'}
                     </span>
                   </div>
                 </div>
@@ -417,10 +548,10 @@ function OrderTrackingContent() {
                   <ShieldCheck className="w-4 h-4 text-[#84cc16] dark:text-[#94de2d] shrink-0 mt-0.5" />
                   <div>
                     <span className="text-slate-500 dark:text-stone-400 block text-[10px] font-bold uppercase">
-                      Método de Pago:
+                      Modalidad de Pago:
                     </span>
                     <span className="text-slate-900 dark:text-white font-medium">
-                      Yape Directo (Operación #94012)
+                      Contraentrega / Transferencia Asistida
                     </span>
                   </div>
                 </div>
@@ -463,7 +594,7 @@ function OrderTrackingContent() {
           {/* Support Button */}
           <a 
             href={`https://wa.me/51922931433?text=${encodeURIComponent(`Hola Churu's, tengo una consulta sobre mi pedido #${orderNumber}`)}`}
-            target="_blank"
+            target="_blank" 
             rel="noopener noreferrer"
             className="w-full h-12 rounded-2xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-slate-900 dark:text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-98 transition-all"
           >
@@ -473,17 +604,17 @@ function OrderTrackingContent() {
 
           {/* Back to Menu Primary Action */}
           <Link 
-            href="/admin/products"
+            href="/menu"
             className="w-full h-14 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-orange-600/30 active:scale-98 transition-all mt-3"
           >
             <UtensilsCrossed className="w-5 h-5" />
-            <span>Volver al Menú Principal</span>
+            <span>Volver a la Carta Digital</span>
           </Link>
         </div>
 
       </main>
 
-      {/* Invoice Modal Simulation */}
+      {/* Invoice Modal Dinámico */}
       {showInvoiceModal && (
         <div 
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
@@ -495,8 +626,8 @@ function OrderTrackingContent() {
           >
             <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
               <div>
-                <h3 className="font-black text-base">Boleta Electrónica B001-{orderNumber.replace(/[^0-9]/g, '') || '008492'}</h3>
-                <span className="text-[11px] text-slate-500 dark:text-stone-400">RUC 20608941231 • Churu&apos;s S.A.C.</span>
+                <h3 className="font-black text-base">Boleta Electrónica B001-{orderNumber.replace(/[^0-9]/g, '') || '1004'}</h3>
+                <span className="text-[11px] text-slate-500 dark:text-stone-400">RUC 20608934512 • Churu&apos;s Comida Rápida S.A.C.</span>
               </div>
               <button 
                 type="button" 
@@ -509,20 +640,42 @@ function OrderTrackingContent() {
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-stone-400">Fecha y Hora:</span>
-                <span className="font-bold">20/11/2026 10:45 PM</span>
+                <span className="text-slate-500 dark:text-stone-400">Fecha de Emisión:</span>
+                <span className="font-bold">
+                  {orderData ? new Date(orderData.createdAt).toLocaleDateString('es-PE') : new Date().toLocaleDateString('es-PE')}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 dark:text-stone-400">Cliente:</span>
-                <span className="font-bold">Consumidor Final</span>
+                <span className="font-bold">{orderData?.customerName || 'Cliente WhatsApp'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-stone-400">Método de Pago:</span>
-                <span className="font-bold text-[#84cc16] dark:text-[#94de2d]">YAPE (Op. #94012)</span>
+                <span className="text-slate-500 dark:text-stone-400">Modalidad:</span>
+                <span className="font-bold text-[#84cc16] dark:text-[#94de2d]">
+                  {isDelivery ? '🛵 Delivery a Domicilio' : '🏬 Retiro en Tienda'}
+                </span>
               </div>
+
+              {/* Items Breakdown */}
+              <div className="border-t border-stone-100 dark:border-stone-800 pt-2 space-y-1">
+                {orderData?.items && orderData.items.length > 0 ? (
+                  orderData.items.map((it, idx) => (
+                    <div key={idx} className="flex justify-between text-[11px]">
+                      <span>{it.quantity}x {it.name}</span>
+                      <span className="font-semibold">{curr} {it.subtotal.toFixed(2)}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex justify-between text-[11px]">
+                    <span>Consumo General</span>
+                    <span className="font-semibold">{curr} {total.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
               <div className="border-t border-stone-200 dark:border-stone-800 pt-2 flex justify-between font-black text-sm">
-                <span>TOTAL PAGADO:</span>
-                <span className="text-orange-600 dark:text-orange-400">S/. 29.00</span>
+                <span>TOTAL A PAGAR:</span>
+                <span className="text-orange-600 dark:text-orange-400">{curr} {total.toFixed(2)}</span>
               </div>
             </div>
 
@@ -531,7 +684,7 @@ function OrderTrackingContent() {
               onClick={() => setShowInvoiceModal(false)}
               className="w-full py-3 rounded-xl bg-orange-600 text-white font-bold text-xs shadow-md"
             >
-              Cerrar Ticket
+              Cerrar Comprobante
             </button>
           </div>
         </div>
