@@ -47,6 +47,7 @@ next-env.d.ts
 # Logs
 logs/
 *.log
+scripts/
 
 # Database
 *.db

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiLogger, logError } from '@/lib/logger'
+import { syncCatalogPricesToCurrency } from '@/lib/currencyCatalog'
 
 // GET /api/admin/business - Obtener perfil del negocio
 export async function GET() {
@@ -84,6 +85,10 @@ export async function PUT(request: NextRequest) {
           customPrompt,
         },
       })
+    }
+
+    if (currency) {
+      await syncCatalogPricesToCurrency(currency)
     }
 
     return NextResponse.json({ success: true, profile })

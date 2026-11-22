@@ -23,9 +23,7 @@ export class InteractiveMenuService {
         orderBy: { name: 'asc' }
       });
 
-      const profile = await prisma.businessProfile.findUnique({
-        where: { id: 'default' }
-      });
+      const profile = await prisma.businessProfile.findFirst();
 
       const businessName = profile?.name || "Churu's Fast Food";
       const currency = profile?.currencySymbol || 'S/.';
@@ -85,10 +83,9 @@ export class InteractiveMenuService {
         return false;
       }
 
-      const profile = await prisma.businessProfile.findUnique({
-        where: { id: 'default' }
-      });
+      const profile = await prisma.businessProfile.findFirst();
       const currency = profile?.currencySymbol || 'S/.';
+      const businessName = profile?.name || "Churu's Comida Rápida";
 
       const rows = category.products.slice(0, 10).map(p => ({
         id: `prod_${p.id}`,
@@ -111,7 +108,7 @@ export class InteractiveMenuService {
         'Ver Platos',
         sections,
         category.name,
-        'Churu\'s Comida Rápida'
+        businessName
       );
       return true;
     } catch (error) {
@@ -132,10 +129,9 @@ export class InteractiveMenuService {
 
       if (!product) return false;
 
-      const profile = await prisma.businessProfile.findUnique({
-        where: { id: 'default' }
-      });
+      const profile = await prisma.businessProfile.findFirst();
       const currency = profile?.currencySymbol || 'S/.';
+      const businessName = profile?.name || "Churu's Comida Rápida";
 
       const detailText = `🍽️ *${product.name}*\n` +
         `📂 Categoría: ${product.category?.name || 'General'}\n` +
@@ -151,7 +147,7 @@ export class InteractiveMenuService {
           { id: `order_${product.id}`, title: 'Pedir este plato 🛍️' },
           { id: 'menu_principal', title: 'Ver Carta Completa 📋' }
         ],
-        'Churu\'s Fast Food'
+        businessName
       );
       return true;
     } catch (error) {

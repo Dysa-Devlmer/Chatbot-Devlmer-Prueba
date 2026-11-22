@@ -180,6 +180,36 @@ const BRAND_PRESETS = [
   },
 ];
 
+function renderPermissionBadge(permission: 'full' | 'view_edit' | 'view_only' | 'none') {
+  switch (permission) {
+    case 'full':
+      return (
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+          Acceso Total
+        </span>
+      );
+    case 'view_edit':
+      return (
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+          Edición
+        </span>
+      );
+    case 'view_only':
+      return (
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/20">
+          Solo Lectura
+        </span>
+      );
+    case 'none':
+    default:
+      return (
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-stone-800 text-stone-500">
+          Sin Acceso
+        </span>
+      );
+  }
+}
+
 function SettingsContent() {
   const { data: session, update } = useSession();
   const searchParams = useSearchParams();
@@ -236,7 +266,7 @@ function SettingsContent() {
 
   useEffect(() => {
     const tab = searchParams?.get('tab');
-    if (tab && ['profile', 'security', 'roles', 'notifications', 'appearance', 'ai'].includes(tab)) {
+    if (tab && ['profile', 'security', 'roles', 'notifications', 'appearance'].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -488,7 +518,6 @@ function SettingsContent() {
     { id: 'appearance', label: 'Apariencia & Marca', icon: Palette },
     { id: 'security', label: 'Seguridad', icon: Lock },
     { id: 'notifications', label: 'Notificaciones', icon: Bell },
-    { id: 'ai', label: 'Configuración IA', icon: Bot },
   ];
 
   return (
@@ -513,26 +542,26 @@ function SettingsContent() {
           Configuración del Sistema
         </h1>
         <p className="text-sm text-slate-600 dark:text-stone-400 mt-0.5">
-          Gestiona perfiles, roles del equipo, marca comercial, seguridad y modelos de IA.
+          Gestiona perfiles de usuario, roles de equipo, identidad visual, seguridad y alertas.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Navigation Sidebar */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="lg:col-span-4 xl:col-span-3 space-y-4">
           
           {/* User Profile Card */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm flex flex-col items-center text-center">
-            <div className="relative group">
+          <div className="p-4 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm flex items-center gap-3.5">
+            <div className="relative group shrink-0">
               {avatar ? (
                 <img 
                   src={avatar} 
                   alt="Avatar" 
-                  className="w-20 h-20 rounded-2xl object-cover border-2 border-orange-500 shadow-md"
+                  className="w-13 h-13 rounded-2xl object-cover border border-orange-500/40 shadow-sm"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white font-black text-2xl flex items-center justify-center shadow-md">
+                <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white font-black text-lg flex items-center justify-center shadow-sm">
                   {profile.name?.charAt(0).toUpperCase() || 'P'}
                 </div>
               )}
@@ -542,8 +571,9 @@ function SettingsContent() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
                 className="absolute inset-0 bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity cursor-pointer"
+                title="Cambiar avatar"
               >
-                <Upload className="w-5 h-5" />
+                <Upload className="w-4 h-4" />
               </button>
             </div>
 
@@ -555,16 +585,20 @@ function SettingsContent() {
               className="hidden"
             />
 
-            <h3 className="text-base font-black text-slate-900 dark:text-white mt-3">
-              {profile.name}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-stone-400 truncate max-w-full">
-              {profile.email}
-            </p>
-
-            <span className="mt-2 px-2.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[11px] font-black border border-orange-500/20">
-              {profile.role}
-            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                {profile.name || 'Admin'}
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-stone-400 truncate">
+                {profile.email || 'admin@pithy.pe'}
+              </p>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">
+                  {profile.role || 'SuperAdmin'}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Tab Navigation List */}
@@ -577,14 +611,14 @@ function SettingsContent() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all text-left ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all text-left whitespace-nowrap ${
                     isActive
                       ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20'
                       : 'text-slate-600 dark:text-stone-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800/60'
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{tab.label}</span>
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
@@ -592,7 +626,7 @@ function SettingsContent() {
         </div>
 
         {/* Tab Content Panel */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-8 xl:col-span-9">
           
           {/* TAB 1: Profile */}
           {activeTab === 'profile' && (
@@ -687,7 +721,7 @@ function SettingsContent() {
                   </p>
                 </div>
 
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-[#94de2d] text-xs font-black self-start sm:self-auto">
+                <span className="px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold self-start sm:self-auto">
                   5 Roles Configurados
                 </span>
               </div>
@@ -718,21 +752,21 @@ function SettingsContent() {
 
                       {/* Permissions Pills */}
                       <div className="pt-2 border-t border-slate-200/60 dark:border-stone-800/60 grid grid-cols-2 gap-1.5 text-[11px]">
-                        <div className="flex items-center justify-between px-2 py-1 rounded bg-white dark:bg-stone-900">
+                        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-slate-100 dark:border-stone-800/60">
                           <span className="text-slate-500 dark:text-stone-400">Comandas:</span>
-                          <span className="font-black text-orange-500 uppercase">{role.permissions.orders}</span>
+                          {renderPermissionBadge(role.permissions.orders)}
                         </div>
-                        <div className="flex items-center justify-between px-2 py-1 rounded bg-white dark:bg-stone-900">
+                        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-slate-100 dark:border-stone-800/60">
                           <span className="text-slate-500 dark:text-stone-400">Chats Inbox:</span>
-                          <span className="font-black text-purple-500 uppercase">{role.permissions.inbox}</span>
+                          {renderPermissionBadge(role.permissions.inbox)}
                         </div>
-                        <div className="flex items-center justify-between px-2 py-1 rounded bg-white dark:bg-stone-900">
+                        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-slate-100 dark:border-stone-800/60">
                           <span className="text-slate-500 dark:text-stone-400">Catálogo:</span>
-                          <span className="font-black text-blue-500 uppercase">{role.permissions.products}</span>
+                          {renderPermissionBadge(role.permissions.products)}
                         </div>
-                        <div className="flex items-center justify-between px-2 py-1 rounded bg-white dark:bg-stone-900">
+                        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-slate-100 dark:border-stone-800/60">
                           <span className="text-slate-500 dark:text-stone-400">Finanzas:</span>
-                          <span className="font-black text-emerald-500 uppercase">{role.permissions.finances}</span>
+                          {renderPermissionBadge(role.permissions.finances)}
                         </div>
                       </div>
                     </div>
@@ -1063,27 +1097,6 @@ function SettingsContent() {
                   <span>{saving ? 'Guardando...' : 'Guardar Preferencias'}</span>
                 </button>
               </div>
-            </div>
-          )}
-
-          {/* TAB 6: AI Configuration */}
-          {activeTab === 'ai' && (
-            <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm space-y-6">
-              <div>
-                <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-orange-500" />
-                  <span>Motor de Inteligencia Artificial (Gemini & Ollama)</span>
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-stone-400 mt-0.5">
-                  Control del proveedor, modelos, temperatura y aprendizaje RAG para el bot de WhatsApp.
-                </p>
-              </div>
-
-              <AIConfiguration
-                initialConfig={aiConfig}
-                onSave={handleSaveAIConfig}
-                saving={saving}
-              />
             </div>
           )}
 

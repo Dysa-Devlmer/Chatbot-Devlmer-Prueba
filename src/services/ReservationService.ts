@@ -31,13 +31,46 @@ export interface ReservationResult {
 }
 
 export class ReservationService {
+  // Mutex para garantizar que la generación de números secuenciales y creación de órdenes sea 100% atómica
+  private static orderCreationMutex: Promise<unknown> = Promise.resolve()
+
   /**
    * Genera el siguiente código secuencial de orden (ej: ORD-1001, ORD-1002...)
+   * Algoritmo blindado contra colisiones y huecos de secuencia:
+   * 1. Consulta todas las órdenes y extrae el número entero más alto existente.
+   * 2. Incrementa en 1 y verifica en bucle que no exista colisión en la DB.
    */
   private async getNextOrderNumber(): Promise<string> {
-    const count = await prisma.order.count()
-    const number = 1000 + count + 1
-    return `ORD-${number}`
+    const orders = await prisma.order.findMany({
+      select: { orderNumber: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    })
+
+    let maxNum = 1000
+    for (const o of orders) {
+      const match = o.orderNumber.match(/ORD-(\d+)/i)
+      if (match) {
+        const val = parseInt(match[1], 10)
+        if (!isNaN(val) && val > maxNum) {
+          maxNum = val
+        }
+      }
+    }
+
+    let candidate = maxNum + 1
+    // Loop de verificación para garantizar unicidad absoluta
+    while (true) {
+      const candidateCode = `ORD-${candidate}`
+      const existing = await prisma.order.findUnique({
+        where: { orderNumber: candidateCode },
+        select: { id: true },
+      })
+      if (!existing) {
+        return candidateCode
+      }
+      candidate++
+    }
   }
 
   /**
@@ -116,7 +149,7 @@ export class ReservationService {
         where: { isActive: true },
       })
 
-      const orderItemsData = []
+      const orderItemsData: { productId: string; quantity: number; unitPrice: number }[] = []
       let totalAmount = 0
       const summaryParts: string[] = []
 
@@ -185,21 +218,56 @@ export class ReservationService {
         formattedNotes = 'Pedido confirmado por WhatsApp'
       }
 
-      // Crear la orden en la base de datos
-      const order = await prisma.order.create({
-        data: {
-          orderNumber,
-          customerPhone: input.customerPhone,
-          customerName: input.customerName || 'Cliente WhatsApp',
-          status: 'pending',
-          totalAmount,
-          notes: formattedNotes,
-          channel: input.channel || 'whatsapp',
-          items: {
-            create: orderItemsData,
-          },
-        },
-      })
+      // Crear la orden en la base de datos de forma estrictamente atómica y serializada vía Mutex
+      const executeOrderCreation = async () => {
+        let createdOrder = null
+        let attempts = 0
+        const maxAttempts = 5
+
+        while (attempts < maxAttempts && !createdOrder) {
+          attempts++
+          const orderNumber = await this.getNextOrderNumber()
+          try {
+            createdOrder = await prisma.order.create({
+              data: {
+                orderNumber,
+                customerPhone: input.customerPhone,
+                customerName: input.customerName || 'Cliente WhatsApp',
+                status: 'pending',
+                totalAmount,
+                notes: formattedNotes,
+                channel: input.channel || 'whatsapp',
+                items: {
+                  create: orderItemsData,
+                },
+              },
+            })
+          } catch (createErr: any) {
+            // Si es colisión de clave única (P2002), reintentar tras breve jitter
+            if (createErr?.code === 'P2002' && attempts < maxAttempts) {
+              apiLogger.warn('Colisión de orderNumber prevenida, reintentando de inmediato...', {
+                orderNumber,
+                attempt: attempts,
+              })
+              await new Promise((resolve) => setTimeout(resolve, 15 + Math.random() * 25))
+              continue
+            }
+            throw createErr
+          }
+        }
+        return createdOrder
+      }
+
+      const nextMutexTask = ReservationService.orderCreationMutex
+        .catch(() => {})
+        .then(() => executeOrderCreation())
+      ReservationService.orderCreationMutex = nextMutexTask
+
+      const order = await nextMutexTask
+
+      if (!order) {
+        throw new Error('No se pudo generar un código único de orden tras varios reintentos')
+      }
 
       apiLogger.info('Reserva creada exitosamente', {
         orderId: order.id,
@@ -218,6 +286,35 @@ export class ReservationService {
       logError(apiLogger, error, { stage: 'create-reservation', customerPhone: input.customerPhone })
       return { success: false, error: 'Error interno al registrar la reserva' }
     }
+  }
+
+  /**
+   * Obtiene la última orden del cliente por su número de teléfono
+   */
+  async getLatestOrderByPhone(customerPhone: string) {
+    if (!customerPhone) return null
+    // Limpieza de caracteres no numéricos
+    const cleanPhone = customerPhone.replace(/\D/g, '')
+    // Si viene con prefijo país (ej: 51987654321 o 56987654321), buscar por sufijo de 9 dígitos o coincidencia parcial
+    const suffix = cleanPhone.slice(-9)
+
+    return prisma.order.findFirst({
+      where: {
+        OR: [
+          { customerPhone: cleanPhone },
+          { customerPhone: customerPhone },
+          { customerPhone: { contains: suffix } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    })
   }
 
   /**

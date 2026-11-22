@@ -33,6 +33,8 @@ type WhatsAppClient = {
 const SESSION_TIMEOUT_MS = 24 * 60 * 60 * 1000
 
 export class WhatsAppService {
+  private phoneLocks = new Map<string, Promise<unknown>>()
+
   constructor(
     private readonly processor: MessageProcessorClient = messageProcessorService,
     private readonly whatsappClient: WhatsAppClient = {
@@ -45,9 +47,35 @@ export class WhatsAppService {
   }
 
   /**
-   * Procesa el payload del webhook de WhatsApp.
+   * Procesa el payload del webhook de WhatsApp garantizando serialización por número.
    */
   async processWebhookPayload(
+    payload: WhatsAppMessagePayload,
+    config?: WhatsAppResponseConfig
+  ): Promise<WhatsAppProcessResult> {
+    const phoneNumber = payload.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from
+    if (!phoneNumber) {
+      return this.executeProcessWebhook(payload, config)
+    }
+
+    // Mutex en cola: Si el mismo número manda mensajes rápidos (ráfaga), procesarlos en orden secuencial
+    const currentLock = this.phoneLocks.get(phoneNumber) || Promise.resolve()
+    const nextTask = currentLock
+      .catch(() => {})
+      .then(() => this.executeProcessWebhook(payload, config))
+
+    this.phoneLocks.set(phoneNumber, nextTask)
+
+    try {
+      return await nextTask
+    } finally {
+      if (this.phoneLocks.get(phoneNumber) === nextTask) {
+        this.phoneLocks.delete(phoneNumber)
+      }
+    }
+  }
+
+  private async executeProcessWebhook(
     payload: WhatsAppMessagePayload,
     config?: WhatsAppResponseConfig
   ): Promise<WhatsAppProcessResult> {

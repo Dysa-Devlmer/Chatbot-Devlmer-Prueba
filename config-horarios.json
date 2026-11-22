@@ -1,25 +1,54 @@
 {
   "horarios": {
     "habilitado": true,
-    "zona_horaria": "America/Santiago",
+    "zona_horaria": "America/Lima",
+    "modo_manual": "auto",
     "dias_semana": {
-      "lunes": { "abierto": true, "apertura": "09:00", "cierre": "03:00" },
-      "martes": { "abierto": true, "apertura": "09:00", "cierre": "03:00" },
-      "miercoles": { "abierto": true, "apertura": "09:00", "cierre": "03:00" },
-      "jueves": { "abierto": true, "apertura": "09:00", "cierre": "03:00" },
-      "viernes": { "abierto": true, "apertura": "09:00", "cierre": "03:00" },
-      "sabado": { "abierto": true, "apertura": "10:00", "cierre": "03:00" },
-      "domingo": { "abierto": true, "apertura": "09:00", "cierre": "03:00" }
+      "lunes": {
+        "abierto": true,
+        "apertura": "12:00",
+        "cierre": "23:30"
+      },
+      "martes": {
+        "abierto": true,
+        "apertura": "12:00",
+        "cierre": "23:30"
+      },
+      "miercoles": {
+        "abierto": true,
+        "apertura": "12:00",
+        "cierre": "23:30"
+      },
+      "jueves": {
+        "abierto": true,
+        "apertura": "12:00",
+        "cierre": "23:30"
+      },
+      "viernes": {
+        "abierto": true,
+        "apertura": "12:00",
+        "cierre": "01:00"
+      },
+      "sabado": {
+        "abierto": true,
+        "apertura": "12:00",
+        "cierre": "01:00"
+      },
+      "domingo": {
+        "abierto": true,
+        "apertura": "12:00",
+        "cierre": "23:00"
+      }
     }
   },
   "mensajes": {
-    "fuera_de_horario": "🕐 **Estamos cerrados en este momento**\n\nGracias por contactarnos. Nuestro horario de atención es:\n\n📅 **Lunes a Viernes:** 9:00 AM - 3:00 AM\n📅 **Sábados:** 10:00 AM - 3:00 AM\n📅 **Domingos:** 9:00 AM - 3:00 AM\n\nTe responderemos cuando abramos. ¡Que tengas un excelente día! 😊",
-    "proximo_a_cerrar": "⚠️ **Aviso:** Cerraremos en {minutos} minutos.\n\nSi necesitas atención urgente, por favor háznoslo saber ahora.",
-    "recien_abierto": "✅ ¡Buenos días! Ya estamos disponibles para atenderte.\n\n¿En qué puedo ayudarte hoy?"
+    "fuera_de_horario": "🌙 *¡Hola! En este momento nos encontramos fuera de nuestro horario de atención.*\n\n⏰ *Nuestro horario de cocina es:*\n{horario}\n\n📖 Puedes revisar nuestra carta digital y armar tu pedido para cuando abramos aquí:\n👉 {link_carta}\n\n¡Déjanos tu mensaje y te responderemos puntualmente al abrir! 🙌🍔",
+    "proximo_a_cerrar": "⚠️ *Aviso de Cocina:* Cerraremos en {minutos} minutos. Si deseas ordenar, por favor confírmanos tu pedido ahora.",
+    "recien_abierto": "👋 ¡Hola! Ya estamos abiertos y listos para atenderte con las mejores promociones. ¿Qué se te antoja hoy?"
   },
   "configuracion": {
     "avisar_antes_de_cerrar_minutos": 15,
     "mensaje_bienvenida_al_abrir": true,
-    "pausar_ai_fuera_horario": false
+    "pausar_ai_fuera_horario": true
   }
 }

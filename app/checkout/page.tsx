@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -58,15 +58,59 @@ interface UpsellItem {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  
+  // Business Profile Info
+  const [business, setBusiness] = useState<{
+    name: string;
+    currency: string;
+    currencySymbol: string;
+    phone: string;
+    address: string;
+    isOpen?: boolean;
+    todayHours?: string;
+  }>({
+    name: "Churu's Comida Rápida",
+    currency: 'CLP',
+    currencySymbol: '$',
+    phone: '+56912345678',
+    address: 'Av. Los Próceres 458',
+  });
+
+  useEffect(() => {
+    async function loadBusinessData() {
+      try {
+        const res = await fetch('/api/menu', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.success && data.business) {
+          setBusiness(data.business);
+        }
+      } catch (e) {
+        console.error('Error fetching business for checkout:', e);
+      }
+    }
+    loadBusinessData();
+  }, []);
+
+  const formatPrice = (val: number) => {
+    const sym = business.currencySymbol || '$';
+    const curr = business.currency || 'CLP';
+    if (curr === 'CLP' || curr === 'COP' || curr === 'ARS' || sym === '$') {
+      return `${sym} ${Math.round(val).toLocaleString('es-CL')}`;
+    }
+    return `${sym} ${val.toFixed(2)}`;
+  };
+
   // Delivery Mode
   const [deliveryMode, setDeliveryMode] = useState<'delivery' | 'pickup'>('delivery');
   
+  const isHighDenomination = business.currency === 'CLP' || business.currency === 'COP' || business.currency === 'ARS';
+
   // Cart Item State
   const [itemQty, setItemQty] = useState(1);
-  const baseItemPrice = 18.50;
-  const salchiPrice = 5.00;
-  const drinkPrice = 4.50;
-  const singleItemSubtotal = baseItemPrice + salchiPrice + drinkPrice; // 28.00
+  const baseItemPrice = isHighDenomination ? 5900 : 18.50;
+  const salchiPrice = isHighDenomination ? 1800 : 5.00;
+  const drinkPrice = isHighDenomination ? 1500 : 4.50;
+  const singleItemSubtotal = baseItemPrice + salchiPrice + drinkPrice;
 
   // Upselling Items
   const [upsells, setUpsells] = useState<UpsellItem[]>([
@@ -99,13 +143,23 @@ export default function CheckoutPage() {
     },
   ]);
 
+  // Dynamic upsell prices according to currency
+  const getUpsellPrice = (u: UpsellItem) => {
+    if (isHighDenomination) {
+      if (u.id === 'tequenos') return 4500;
+      if (u.id === 'incakola_15') return 2800;
+      if (u.id === 'pie_limon') return 2500;
+    }
+    return u.price;
+  };
+
   // Coupon State
   const [couponCode, setCouponCode] = useState('CHURUSCRUJIENTE');
   const [isCouponApplied, setIsCouponApplied] = useState(true);
-  const couponDiscount = isCouponApplied ? 3.00 : 0.00;
+  const couponDiscount = isCouponApplied ? (isHighDenomination ? 1500 : 3.00) : 0.00;
 
   // Address & GPS State
-  const [deliveryAddress, setDeliveryAddress] = useState('Av. Las Palmeras 452, Dpto 302, Los Olivos, Lima');
+  const [deliveryAddress, setDeliveryAddress] = useState('Av. Las Palmeras 452, Dpto 302, Los Olivos');
   const [deliveryReference, setDeliveryReference] = useState('Fachada blanca, tocar timbre 302');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -113,7 +167,7 @@ export default function CheckoutPage() {
 
   // Payment Method
   const [paymentMethod, setPaymentMethod] = useState<'yape' | 'card' | 'cash'>('yape');
-  const [cashChangeAmount, setCashChangeAmount] = useState('50.00');
+  const [cashChangeAmount, setCashChangeAmount] = useState(isHighDenomination ? '20000' : '50.00');
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [operationCode, setOperationCode] = useState('');
 
@@ -168,11 +222,11 @@ export default function CheckoutPage() {
   };
 
   // Price Calculations
-  const deliveryFee = deliveryMode === 'delivery' ? 4.00 : 0.00;
+  const deliveryFee = deliveryMode === 'delivery' ? (isHighDenomination ? 2500 : 4.00) : 0.00;
   const itemTotal = singleItemSubtotal * itemQty;
   const upsellsTotal = upsells
     .filter(u => u.added)
-    .reduce((sum, u) => sum + u.price, 0);
+    .reduce((sum, u) => sum + getUpsellPrice(u), 0);
   
   const subtotalProducts = itemTotal + upsellsTotal;
   const grandTotal = Math.max(0, subtotalProducts + deliveryFee - couponDiscount);
@@ -202,14 +256,14 @@ export default function CheckoutPage() {
               <ArrowLeft className="w-5 h-5" />
             </Link>
 
-            {/* Churu's Avatar/Badge */}
+            {/* Business Avatar/Badge */}
             <div className="w-9 h-9 rounded-xl bg-orange-600 flex items-center justify-center font-black text-white text-lg shadow-md shadow-orange-600/30 shrink-0">
-              C
+              {business.name.charAt(0).toUpperCase()}
             </div>
 
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-[11px] font-bold text-orange-400 uppercase tracking-wider truncate">
-                Paso de Orden
+                Paso de Orden • {business.name}
               </span>
               <h1 className="text-base sm:text-lg font-black text-white truncate">
                 Checkout Y Pago
@@ -217,8 +271,8 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="w-8 h-8 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center font-bold text-xs shrink-0">
-            🇵🇪
+          <div className="px-2.5 py-1 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center font-black text-xs shrink-0">
+            {business.currency} ({business.currencySymbol})
           </div>
         </div>
       </header>
@@ -228,6 +282,21 @@ export default function CheckoutPage() {
         
         {/* Atmospheric Glow Overlay */}
         <div className="absolute top-12 left-1/2 -translate-x-1/2 w-80 h-36 bg-gradient-to-b from-orange-500/15 via-amber-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
+
+        {/* Closed Business Banner */}
+        {business.isOpen === false && (
+          <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-200 flex items-start gap-3 shadow-md">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0 mt-1" />
+            <div>
+              <span className="text-xs sm:text-sm font-black text-rose-400 block">
+                Local Fuera de Horario de Cocina ({business.todayHours || 'Cerrado ahora'})
+              </span>
+              <span className="text-[11px] text-stone-300 block mt-0.5 leading-relaxed">
+                Tu pedido quedará registrado y se preparará puntualmente cuando inicie el horario de atención.
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* 1. Delivery Mode & Address Module */}
         <div className="space-y-3">
@@ -351,10 +420,10 @@ export default function CheckoutPage() {
                   Punto de Retiro
                 </span>
                 <p className="text-sm font-bold text-white truncate">
-                  Local Principal Churu&apos;s
+                  {business.name}
                 </p>
                 <span className="text-xs text-stone-400 truncate">
-                  Av. Antúnez de Mayolo 1240, Los Olivos (¡Listo en 15 min!)
+                  {business.address || 'Local Comercial'} (¡Listo en 15-20 min!)
                 </span>
               </div>
             </div>
@@ -399,7 +468,7 @@ export default function CheckoutPage() {
                 </p>
                 <div className="mt-1 flex items-baseline gap-1.5">
                   <span className="text-base font-black text-[#94de2d]">
-                    S/. {baseItemPrice.toFixed(2)}
+                    {formatPrice(baseItemPrice)}
                   </span>
                   <span className="text-[10px] text-stone-400">Base</span>
                 </div>
@@ -413,7 +482,7 @@ export default function CheckoutPage() {
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                   <span>Salchibroaster doradita</span>
                 </div>
-                <span className="font-bold text-white">+S/. 5.00</span>
+                <span className="font-bold text-white">+{formatPrice(5)}</span>
               </div>
 
               <div className="flex items-center justify-between text-xs text-stone-300">
@@ -429,7 +498,7 @@ export default function CheckoutPage() {
                   <span className="text-xs">🥤</span>
                   <span>Gaseosa Inca Kola 500ml</span>
                 </div>
-                <span className="font-bold text-white">+S/. 4.50</span>
+                <span className="font-bold text-white">+{formatPrice(4.50)}</span>
               </div>
             </div>
 
@@ -461,7 +530,7 @@ export default function CheckoutPage() {
               <div className="text-right">
                 <span className="text-[11px] text-stone-400 block">Subtotal ítem</span>
                 <span className="text-base font-black text-white">
-                  S/. {itemTotal.toFixed(2)}
+                  {formatPrice(itemTotal)}
                 </span>
               </div>
             </div>
@@ -500,7 +569,7 @@ export default function CheckoutPage() {
 
                 <div className="flex items-center justify-between mt-2 pt-1">
                   <span className="font-black text-sm text-[#94de2d]">
-                    S/. {upsell.price.toFixed(2)}
+                    {formatPrice(getUpsellPrice(upsell))}
                   </span>
                   <button
                     type="button"
@@ -556,7 +625,7 @@ export default function CheckoutPage() {
           {isCouponApplied && (
             <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-stone-900 border border-emerald-900/60 text-[#94de2d] text-xs">
               <span className="flex items-center gap-1.5 font-bold">
-                🎉 Cupón aplicado: ¡Descuento de S/. 3.00!
+                🎉 Cupón aplicado: ¡Descuento de {formatPrice(3)}!
               </span>
               <button 
                 type="button"
@@ -594,7 +663,7 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Option 1: Yape / Plin */}
+          {/* Option 1: Direct Mobile Transfer (Yape/Plin for PE, Transferencia CuentaRUT for CL) */}
           <div 
             onClick={() => setPaymentMethod('yape')}
             className={`p-3.5 rounded-2xl flex flex-col gap-2.5 cursor-pointer transition-all border ${
@@ -606,16 +675,21 @@ export default function CheckoutPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-950 text-purple-300 flex items-center justify-center font-black text-xs border border-purple-800/60 shadow-xs">
-                  YP
+                  {business.currency === 'CLP' ? 'TR' : 'YP'}
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white">Yape / Plin</span>
+                    <span className="font-bold text-sm text-white">
+                      {business.currency === 'CLP' ? 'Transferencia Directa (CuentaRUT)' : 'Yape / Plin'}
+                    </span>
                     <span className="px-1.5 py-0.5 rounded-md bg-[#94de2d]/15 text-[#94de2d] text-[10px] font-black">
                       Sin comisión
                     </span>
                   </div>
-                  <span className="text-xs text-stone-400">Paga al instante: <strong className="text-purple-300">922 931 433</strong></span>
+                  <span className="text-xs text-stone-400">
+                    {business.currency === 'CLP' ? 'Transfiere al instante: ' : 'Paga al instante: '}
+                    <strong className="text-purple-300">{business.phone || '922 931 433'}</strong>
+                  </span>
                 </div>
               </div>
 
@@ -630,7 +704,7 @@ export default function CheckoutPage() {
             {paymentMethod === 'yape' && (
               <div className="pt-2 border-t border-purple-900/40 space-y-2.5 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-stone-400">Titular: Churu&apos;s Comida Rápida</span>
+                  <span className="text-[11px] text-stone-400">Titular: {business.name}</span>
                   <button
                     type="button"
                     onClick={handleCopyYapePhone}
@@ -648,7 +722,7 @@ export default function CheckoutPage() {
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" />
-                        <span>Copiar número (922 931 433)</span>
+                        <span>Copiar contacto ({business.phone || '922 931 433'})</span>
                       </>
                     )}
                   </button>
@@ -695,7 +769,9 @@ export default function CheckoutPage() {
                       POS Móvil
                     </span>
                   </div>
-                  <span className="text-xs text-stone-400">Visa, Mastercard, Amex • Encriptación Segura</span>
+                  <span className="text-xs text-stone-400">
+                    {business.currency === 'CLP' ? 'Redcompra, Visa, Mastercard • POS Inalámbrico' : 'Visa, Mastercard, Amex • Encriptación Segura'}
+                  </span>
                 </div>
               </div>
 
@@ -755,12 +831,12 @@ export default function CheckoutPage() {
               <div className="pl-13 pt-1 flex items-center gap-2 animate-in fade-in duration-200">
                 <span className="text-xs text-stone-400 whitespace-nowrap">¿Con cuánto pagarás?</span>
                 <div className="relative flex-1">
-                  <span className="absolute left-2.5 top-1.5 text-xs font-bold text-stone-400">S/.</span>
+                  <span className="absolute left-2.5 top-1.5 text-xs font-bold text-stone-400">{business.currencySymbol}</span>
                   <input
                     type="number"
                     value={cashChangeAmount}
                     onChange={(e) => setCashChangeAmount(e.target.value)}
-                    placeholder="50.00"
+                    placeholder="50"
                     className="w-full h-8 pl-8 pr-2.5 rounded-lg bg-stone-950 border border-stone-700 text-white text-xs font-bold focus:outline-none focus:border-orange-500"
                   />
                 </div>
@@ -777,16 +853,16 @@ export default function CheckoutPage() {
 
           <div className="flex items-center justify-between text-xs text-stone-300">
             <span>Subtotal productos</span>
-            <span className="font-bold text-white">S/. {subtotalProducts.toFixed(2)}</span>
+            <span className="font-bold text-white">{formatPrice(subtotalProducts)}</span>
           </div>
 
           <div className="flex items-center justify-between text-xs text-stone-300">
             <span className="flex items-center gap-1">
-              <span>{deliveryMode === 'delivery' ? 'Envío a Los Olivos' : 'Retiro en Local'}</span>
+              <span>{deliveryMode === 'delivery' ? 'Costo de Envío' : 'Retiro en Local'}</span>
               <HelpCircle className="w-3.5 h-3.5 text-stone-500" />
             </span>
             <span className="font-bold text-white">
-              {deliveryMode === 'delivery' ? `S/. ${deliveryFee.toFixed(2)}` : 'Gratis'}
+              {deliveryMode === 'delivery' ? formatPrice(deliveryFee) : 'Gratis'}
             </span>
           </div>
 
@@ -796,7 +872,7 @@ export default function CheckoutPage() {
                 <TicketPercent className="w-3.5 h-3.5" />
                 Descuento cupón
               </span>
-              <span className="font-black">-S/. {couponDiscount.toFixed(2)}</span>
+              <span className="font-black">-{formatPrice(couponDiscount)}</span>
             </div>
           )}
 
@@ -804,12 +880,11 @@ export default function CheckoutPage() {
           <div className="pt-3 mt-1 flex items-baseline justify-between bg-stone-950/80 border border-stone-800/60 p-3 rounded-xl">
             <div className="flex flex-col">
               <span className="text-sm font-black text-white">Total a Pagar</span>
-              <span className="text-[10px] text-stone-400">Incluye IGV (18%)</span>
+              <span className="text-[10px] text-stone-400">Precios finales</span>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-xs font-black text-orange-400">S/.</span>
               <span className="text-2xl font-black text-white">
-                {grandTotal.toFixed(2)}
+                {formatPrice(grandTotal)}
               </span>
             </div>
           </div>
@@ -840,7 +915,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="bg-black/20 px-2.5 py-1 rounded-xl text-xs sm:text-sm">
-                    S/. {grandTotal.toFixed(2)}
+                    {formatPrice(grandTotal)}
                   </span>
                   <ChevronRight className="w-5 h-5" />
                 </div>

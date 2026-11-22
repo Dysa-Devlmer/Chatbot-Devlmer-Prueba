@@ -27,7 +27,14 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ success: true, orders })
+    const business = await prisma.businessProfile.findFirst()
+
+    return NextResponse.json({ 
+      success: true, 
+      orders,
+      currency: business?.currency || 'PEN',
+      currencySymbol: business?.currencySymbol || 'S/.'
+    })
   } catch (error) {
     logError(apiLogger, error, { stage: 'get-orders' })
     return NextResponse.json(

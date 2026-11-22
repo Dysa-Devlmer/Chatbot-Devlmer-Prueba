@@ -28,6 +28,7 @@ interface ProductModifierDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onAddToCart?: (customizedItem: CustomizedItem) => void;
+  currencySymbol?: string;
 }
 
 export interface CustomizedItem {
@@ -69,6 +70,7 @@ export function ProductModifierDrawer({
   isOpen,
   onClose,
   onAddToCart,
+  currencySymbol = '$',
 }: ProductModifierDrawerProps) {
   const [quantity, setQuantity] = useState(1);
   const [selectedBaseSauces, setSelectedBaseSauces] = useState<string[]>(['tartara', 'aji']);
@@ -78,6 +80,13 @@ export function ProductModifierDrawer({
   const [kitchenNotes, setKitchenNotes] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [animateLimit, setAnimateLimit] = useState(false);
+
+  const formatPrice = (val: number) => {
+    if (currencySymbol === '$' || currencySymbol === 'CLP' || currencySymbol === 'COP' || currencySymbol === 'ARS') {
+      return `${currencySymbol} ${Math.round(val).toLocaleString('es-CL')}`;
+    }
+    return `${currencySymbol} ${val.toFixed(2)}`;
+  };
 
   if (!isOpen || !product) return null;
 
@@ -268,7 +277,7 @@ export function ProductModifierDrawer({
                     Añade abundantes rodajas de salchicha parrillera doradita sobre tus papas.
                   </p>
                   <span className="inline-block mt-1 font-black text-xs text-orange-600 dark:text-orange-400">
-                    + S/. 5.00
+                    + {formatPrice(5)}
                   </span>
                 </div>
               </div>
@@ -378,7 +387,7 @@ export function ProductModifierDrawer({
                           {sauce.name}
                         </span>
                         <span className="text-[11px] font-black text-orange-600 dark:text-orange-400">
-                          + S/. {sauce.price.toFixed(2)}
+                          + {formatPrice(sauce.price)}
                         </span>
                       </div>
                     </div>
@@ -412,7 +421,7 @@ export function ProductModifierDrawer({
                           {extra.name}
                         </h4>
                         <p className="text-xs font-bold text-orange-600 dark:text-orange-400">
-                          + S/. {extra.price.toFixed(2)}
+                          + {formatPrice(extra.price)}
                         </p>
                       </div>
                     </div>
@@ -499,7 +508,7 @@ export function ProductModifierDrawer({
               Agregar al Pedido
             </span>
             <span className="font-black text-xs sm:text-sm bg-black/25 px-2.5 py-1 rounded-xl">
-              S/. {grandTotal.toFixed(2)}
+              {formatPrice(grandTotal)}
             </span>
           </button>
         </div>
@@ -517,7 +526,7 @@ export function ProductModifierDrawer({
               </div>
             </div>
             <span className="text-xs font-black text-orange-400">
-              S/. {grandTotal.toFixed(2)}
+              {formatPrice(grandTotal)}
             </span>
           </div>
         )}

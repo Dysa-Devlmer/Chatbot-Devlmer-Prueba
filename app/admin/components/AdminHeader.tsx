@@ -6,17 +6,21 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import AIIndicator from './AIIndicator';
 import { 
-  Search, 
   Bell, 
   ChevronDown, 
   LogOut, 
   User, 
   Shield, 
-  Sliders, 
   Palette,
-  Store,
+  Sliders,
   Sun,
-  Moon
+  Moon,
+  ExternalLink,
+  Flame,
+  MessageSquare,
+  UtensilsCrossed,
+  Store,
+  TrendingUp
 } from 'lucide-react';
 
 interface AdminProfile {
@@ -42,15 +46,14 @@ export function AdminHeader() {
   const pathname = usePathname();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [isDark, setIsDark] = useState(true);
+  
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize and synchronize Theme (Dark / Light)
   useEffect(() => {
@@ -99,22 +102,38 @@ export function AdminHeader() {
     loadProfile();
   }, []);
 
-  // Load notifications
+  // Poll for notifications and pending orders count
   useEffect(() => {
-    const loadNotifications = async () => {
+    const fetchCounters = async () => {
       try {
-        const response = await fetch('/api/admin/notifications');
-        if (response.ok) {
-          const data = await response.json();
-          setNotifications(data.notifications || []);
-          setUnreadCount(data.unreadCount || 0);
+        // Pending orders for Kitchen
+        const ordersRes = await fetch('/api/admin/orders');
+        if (ordersRes.ok) {
+          const ordersData = await ordersRes.json();
+          if (ordersData.success && Array.isArray(ordersData.orders)) {
+            const pending = ordersData.orders.filter((o: any) => o.status === 'pending').length;
+            setPendingOrdersCount(pending);
+          }
         }
-      } catch (error) {
-        console.error('Error loading notifications:', error);
+      } catch {
+        // Silently catch
+      }
+
+      try {
+        // Notifications & unread messages
+        const notifRes = await fetch('/api/admin/notifications');
+        if (notifRes.ok) {
+          const notifData = await notifRes.json();
+          setNotifications(notifData.notifications || []);
+          setUnreadCount(notifData.unreadCount || 0);
+        }
+      } catch {
+        // Silently catch
       }
     };
-    loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
+
+    fetchCounters();
+    const interval = setInterval(fetchCounters, 12000);
     return () => clearInterval(interval);
   }, []);
 
@@ -133,13 +152,37 @@ export function AdminHeader() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // The 5 essential, high-conversion modules of Churu's Fast Food
   const navItems = [
-    { href: '/admin', label: 'Dashboard', icon: '📊' },
-    { href: '/admin/orders', label: 'Pedidos', icon: '🔔' },
-    { href: '/admin/inbox', label: 'Inbox', icon: '💬' },
-    { href: '/admin/products', label: 'Menú', icon: '🍔' },
-    { href: '/admin/business', label: 'Mi Local', icon: '🏢' },
-    { href: '/admin/analytics', label: 'Analytics', icon: '📈' },
+    { 
+      href: '/admin/orders', 
+      label: 'Pedidos', 
+      icon: Flame,
+      badge: pendingOrdersCount > 0 ? pendingOrdersCount : null,
+      badgeColor: 'bg-amber-500 text-stone-950 animate-pulse'
+    },
+    { 
+      href: '/admin/inbox', 
+      label: 'Inbox WhatsApp', 
+      icon: MessageSquare,
+      badge: unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : null,
+      badgeColor: 'bg-emerald-500 text-stone-950 font-black'
+    },
+    { 
+      href: '/admin/products', 
+      label: 'Menú & Platos', 
+      icon: UtensilsCrossed 
+    },
+    { 
+      href: '/admin/business', 
+      label: 'Mi Local & Horarios', 
+      icon: Store 
+    },
+    { 
+      href: '/admin/analytics', 
+      label: 'Analytics & Ventas', 
+      icon: TrendingUp 
+    },
   ];
 
   const userMenuItems = [
@@ -151,52 +194,78 @@ export function AdminHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-slate-900 border-b border-slate-800 text-white shadow-md">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 overflow-hidden">
-        {/* Brand / Logo Section */}
-        <Link 
-          href="/admin" 
-          className="flex items-center gap-2.5 shrink-0 text-white hover:opacity-90 transition-opacity"
-        >
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md shrink-0">
-            <Store className="w-5 h-5 text-slate-950" />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="font-extrabold text-sm sm:text-base tracking-tight text-white flex items-center gap-1.5">
-              <span>Churu&apos;s</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 font-mono">SaaS</span>
-            </span>
-            <span className="text-[10px] text-slate-400 font-medium">WhatsApp Business</span>
-          </div>
-        </Link>
+    <header className="sticky top-0 z-50 w-full bg-white/95 dark:bg-[#141312]/95 backdrop-blur-md border-b border-slate-200 dark:border-stone-800 text-slate-900 dark:text-white shadow-xs transition-colors duration-200">
+      <div className="w-full px-3 sm:px-6 h-16 flex items-center justify-between gap-4">
+        
+        {/* Left Section: Brand Logo */}
+        <div className="flex items-center gap-3 shrink-0">
+          <Link href="/admin/orders" className="flex items-center gap-2.5 group">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center font-black text-white text-lg shadow-md group-hover:scale-105 transition-transform">
+              🍗
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-black text-base text-slate-900 dark:text-white tracking-tight">
+                  Churu&apos;s
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                  SaaS
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-stone-400 -mt-0.5 font-medium hidden sm:block">
+                WhatsApp Business Platform
+              </p>
+            </div>
+          </Link>
+        </div>
 
-        {/* Desktop Navigation - Hidden on mobile screen strictly */}
+        {/* Center: The 5 High-Conversion Essential Horizontal Tabs (Full Screen) */}
         <nav 
           aria-label="Navegación principal"
-          className="hidden md:flex items-center gap-1 bg-slate-800/60 p-1 rounded-xl border border-slate-700/50"
+          className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-stone-900/90 p-1.5 rounded-2xl border border-slate-200 dark:border-stone-800 shadow-inner"
         >
           {navItems.map((item) => {
+            const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname?.startsWith(item.href));
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all relative ${
                   isActive
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                    ? 'bg-orange-500 text-stone-950 shadow-md shadow-orange-500/20 font-black'
+                    : 'text-slate-600 dark:text-stone-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-stone-800'
                 }`}
               >
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">{item.label}</span>
+                {item.badge && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    isActive ? 'bg-stone-950 text-amber-400' : item.badgeColor
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
 
-        {/* Right Section: AI Status, Notifications & User */}
+        {/* Right Section: Direct Menu Link, AI Indicator, Theme, Notifications & Profile */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* AI Indicator */}
+          
+          {/* Public Menu Direct Link */}
+          <Link
+            href="/menu"
+            target="_blank"
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 transition-all hover:scale-105"
+            title="Abrir menú digital público de comensales"
+          >
+            <span>Ver Carta</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+
+          {/* Official AI Indicator (Gemini Flash 🟢) */}
           <div className="hidden sm:block">
             <AIIndicator />
           </div>
@@ -204,13 +273,14 @@ export function AdminHeader() {
           {/* Theme Switcher Button (Dark / Light) */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors"
             title={isDark ? 'Cambiar a modo Claro' : 'Cambiar a modo Oscuro'}
+            aria-label="Cambiar tema"
           >
             {isDark ? (
-              <Sun className="w-5 h-5 text-amber-400 animate-in spin-in-180 duration-200" />
+              <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 animate-in spin-in-180 duration-200" />
             ) : (
-              <Moon className="w-5 h-5 text-indigo-400 animate-in spin-in-180 duration-200" />
+              <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 animate-in spin-in-180 duration-200" />
             )}
           </button>
 
@@ -218,12 +288,13 @@ export function AdminHeader() {
           <div ref={notifRef} className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors relative"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors relative"
               title="Notificaciones"
+              aria-label="Notificaciones"
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full flex items-center justify-center">
+                <span className="absolute top-1 right-1 w-4 h-4 bg-amber-500 text-stone-950 text-[10px] font-black rounded-full flex items-center justify-center animate-pulse shadow-xs">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -231,23 +302,23 @@ export function AdminHeader() {
 
             {/* Notification Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-3 z-50 text-xs animate-in fade-in">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2 font-bold text-slate-200">
+              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-3 z-50 text-xs animate-in fade-in">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-stone-800 mb-2 font-bold text-slate-900 dark:text-slate-200">
                   <span>Notificaciones</span>
                   {unreadCount > 0 && (
-                    <Link href="/admin/inbox" className="text-amber-400 hover:underline">
+                    <Link href="/admin/inbox" className="text-amber-500 dark:text-amber-400 hover:underline">
                       Ver en inbox
                     </Link>
                   )}
                 </div>
-                <div className="max-h-60 overflow-y-auto space-y-1.5">
+                <div className="max-h-60 overflow-y-auto space-y-1.5 no-scrollbar">
                   {notifications.length === 0 ? (
-                    <div className="py-4 text-center text-slate-500">Sin nuevas notificaciones</div>
+                    <div className="py-4 text-center text-slate-400 dark:text-stone-500">Sin nuevas notificaciones</div>
                   ) : (
                     notifications.slice(0, 5).map((n) => (
-                      <div key={n.id} className="p-2 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors">
-                        <div className="font-semibold text-slate-200 truncate">{n.title || n.text}</div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">{n.relativeTime}</div>
+                      <div key={n.id} className="p-2 rounded-xl bg-slate-50 dark:bg-stone-900/60 hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors">
+                        <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">{n.title || n.text}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-stone-500 mt-0.5">{n.relativeTime}</div>
                       </div>
                     ))
                   )}
@@ -256,13 +327,14 @@ export function AdminHeader() {
             )}
           </div>
 
-          {/* User Avatar Menu */}
+          {/* User Profile Avatar & Menu */}
           <div ref={menuRef} className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 p-1 sm:px-2 sm:py-1 rounded-xl hover:bg-slate-800 transition-all text-left"
+              className="flex items-center gap-2 p-1 sm:px-2 sm:py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-stone-800 transition-all text-left"
+              aria-label="Menú de usuario"
             >
-              <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold text-amber-400 overflow-hidden shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-stone-950 flex items-center justify-center text-xs font-black overflow-hidden shrink-0 shadow-xs">
                 {profile?.avatar ? (
                   <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -270,18 +342,18 @@ export function AdminHeader() {
                 )}
               </div>
               <div className="hidden lg:flex flex-col leading-none">
-                <span className="text-xs font-bold text-slate-200">{profile?.name || 'Admin'}</span>
-                <span className="text-[10px] text-slate-400">{profile?.role || 'CEO'}</span>
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{profile?.name || 'Admin'}</span>
+                <span className="text-[10px] text-slate-500 dark:text-stone-400">{profile?.role || 'CEO'}</span>
               </div>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
             </button>
 
             {/* User Dropdown */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50 text-xs animate-in fade-in">
-                <div className="p-2 border-b border-slate-800 mb-1">
-                  <div className="font-bold text-slate-200">{profile?.name || 'Administrador'}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{profile?.email || 'admin@churus.pe'}</div>
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-2 z-50 text-xs animate-in fade-in">
+                <div className="p-2 border-b border-slate-100 dark:border-stone-800 mb-1">
+                  <div className="font-bold text-slate-900 dark:text-slate-200">{profile?.name || 'Administrador'}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-stone-400 truncate">{profile?.email || 'admin@churus.pe'}</div>
                 </div>
 
                 <div className="space-y-0.5">
@@ -292,19 +364,19 @@ export function AdminHeader() {
                         key={item.href}
                         href={item.href}
                         onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 dark:text-stone-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors"
                       >
-                        <Icon className="w-4 h-4 text-slate-400" />
+                        <Icon className="w-4 h-4 text-slate-400 dark:text-stone-500" />
                         <span>{item.label}</span>
                       </Link>
                     );
                   })}
                 </div>
 
-                <div className="pt-1 mt-1 border-t border-slate-800">
+                <div className="pt-1 mt-1 border-t border-slate-100 dark:border-stone-800">
                   <button
                     onClick={() => signOut({ callbackUrl: '/login' })}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-400 hover:bg-rose-950/40 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors font-semibold"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>Cerrar Sesión</span>
@@ -313,7 +385,9 @@ export function AdminHeader() {
               </div>
             )}
           </div>
+
         </div>
+
       </div>
     </header>
   );

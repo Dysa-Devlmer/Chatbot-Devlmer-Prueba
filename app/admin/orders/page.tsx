@@ -184,6 +184,8 @@ const COLUMNS: {
 
 export default function LiveOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [currencySymbol, setCurrencySymbol] = useState('S/.');
+  const [currencyCode, setCurrencyCode] = useState('PEN');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all'); // 'all' or column id for mobile
@@ -193,6 +195,7 @@ export default function LiveOrdersPage() {
   const [alarmSilenced, setAlarmSilenced] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deliveredDateFilter, setDeliveredDateFilter] = useState<'today' | 'yesterday' | 'older'>('today');
   const prevPendingCountRef = useRef<number>(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -271,6 +274,12 @@ export default function LiveOrdersPage() {
   };
 
   const handleTestSound = () => {
+    setAudioPermissionGranted(true);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('pithy_audio_unlocked', 'true');
+      } catch {}
+    }
     const ctx = getAudioContext();
     if (ctx && ctx.state === 'suspended') {
       ctx.resume().then(() => playChime());
@@ -279,6 +288,44 @@ export default function LiveOrdersPage() {
     }
   };
 
+  const changeVolumeLevel = (level: 'high' | 'normal' | 'muted') => {
+    setVolumeLevel(level);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('pithy_kitchen_volume', level);
+      } catch {}
+    }
+    if (level === 'muted') {
+      setAlarmSilenced(true);
+    } else {
+      setAlarmSilenced(false);
+      handleTestSound();
+    }
+  };
+
+  // Restore audio unlock & kitchen volume preferences from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const savedVol = localStorage.getItem('pithy_kitchen_volume') as 'high' | 'normal' | 'muted' | null;
+      if (savedVol) setVolumeLevel(savedVol);
+
+      const unlocked = localStorage.getItem('pithy_audio_unlocked') === 'true';
+      if (unlocked) {
+        setAudioPermissionGranted(true);
+        const unlockOnFirstTouch = () => {
+          getAudioContext();
+          window.removeEventListener('click', unlockOnFirstTouch);
+          window.removeEventListener('keydown', unlockOnFirstTouch);
+          window.removeEventListener('touchstart', unlockOnFirstTouch);
+        };
+        window.addEventListener('click', unlockOnFirstTouch, { once: true });
+        window.addEventListener('keydown', unlockOnFirstTouch, { once: true });
+        window.addEventListener('touchstart', unlockOnFirstTouch, { once: true });
+      }
+    } catch {}
+  }, []);
+
   const fetchOrders = async (isManual = false) => {
     if (isManual) setRefreshing(true);
     try {
@@ -286,6 +333,8 @@ export default function LiveOrdersPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.orders)) {
+          if (data.currencySymbol) setCurrencySymbol(data.currencySymbol);
+          if (data.currency) setCurrencyCode(data.currency);
           const currentOrders: Order[] = data.orders;
           const pendingCount = currentOrders.filter(o => o.status === 'pending').length;
           
@@ -326,6 +375,13 @@ export default function LiveOrdersPage() {
     }
   }, [pendingOrdersCount, alarmSilenced, volumeLevel]);
 
+  const formatMoney = (val: number) => {
+    if (['CLP', 'COP', 'ARS'].includes(currencyCode) || (currencySymbol === '$' && val > 100)) {
+      return `${currencySymbol} ${Math.round(val).toLocaleString('es')}`;
+    }
+    return `${currencySymbol} ${val.toFixed(2)}`;
+  };
+
   const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     setActionLoading(orderId);
     try {
@@ -364,6 +420,35 @@ export default function LiveOrdersPage() {
     return `Hace ${hours}h`;
   };
 
+  const getDateCategory = (dateStr: string): 'today' | 'yesterday' | 'older' => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    
+    const isToday = date.getFullYear() === now.getFullYear() &&
+                    date.getMonth() === now.getMonth() &&
+                    date.getDate() === now.getDate();
+    if (isToday) return 'today';
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.getFullYear() === yesterday.getFullYear() &&
+                        date.getMonth() === yesterday.getMonth() &&
+                        date.getDate() === yesterday.getDate();
+    if (isYesterday) return 'yesterday';
+
+    return 'older';
+  };
+
+  const formatOrderDateHeader = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-PE', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   // Filtered orders
   const filteredOrders = orders.filter(o => {
     const matchesSearch = 
@@ -378,6 +463,11 @@ export default function LiveOrdersPage() {
   const getOrdersByStatus = (status: Order['status']) => {
     return filteredOrders.filter(o => o.status === status);
   };
+
+  const allDeliveredOrders = filteredOrders.filter(o => o.status === 'delivered');
+  const todayDelivered = allDeliveredOrders.filter(o => getDateCategory(o.createdAt) === 'today');
+  const yesterdayDelivered = allDeliveredOrders.filter(o => getDateCategory(o.createdAt) === 'yesterday');
+  const olderDelivered = allDeliveredOrders.filter(o => getDateCategory(o.createdAt) === 'older');
 
   const pendingCount = orders.filter(o => o.status === 'pending').length;
 
@@ -412,10 +502,7 @@ export default function LiveOrdersPage() {
             <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
               <button
                 type="button"
-                onClick={() => {
-                  setVolumeLevel('muted');
-                  setAlarmSilenced(true);
-                }}
+                onClick={() => changeVolumeLevel('muted')}
                 title="Silenciar sonido"
                 className={`px-2 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
                   volumeLevel === 'muted'
@@ -429,11 +516,7 @@ export default function LiveOrdersPage() {
               
               <button
                 type="button"
-                onClick={() => {
-                  setVolumeLevel('normal');
-                  setAlarmSilenced(false);
-                  getAudioContext();
-                }}
+                onClick={() => changeVolumeLevel('normal')}
                 title="Volumen Normal"
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
                   volumeLevel === 'normal'
@@ -447,11 +530,7 @@ export default function LiveOrdersPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setVolumeLevel('high');
-                  setAlarmSilenced(false);
-                  getAudioContext();
-                }}
+                onClick={() => changeVolumeLevel('high')}
                 title="Volumen Alto (Ambiente de Cocina Ruidosa)"
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
                   volumeLevel === 'high'
@@ -489,20 +568,37 @@ export default function LiveOrdersPage() {
 
         {/* Browser Audio Permission Activation Banner (if audioContext needs unlock) */}
         {!audioPermissionGranted && (
-          <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-200">
+          <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-200 animate-in fade-in">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
               <p className="font-semibold">
                 🔔 <strong>Permiso de audio:</strong> Para escuchar las alertas automáticas de comanda cuando entre un pedido, activa el sonido en este navegador.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleTestSound}
-              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-black text-xs shrink-0 active:scale-95 transition-all shadow-xs"
-            >
-              Activar Sonido Ahora
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleTestSound}
+                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-black text-xs active:scale-95 transition-all shadow-xs"
+              >
+                Activar Sonido Ahora
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAudioPermissionGranted(true);
+                  if (typeof window !== 'undefined') {
+                    try {
+                      localStorage.setItem('pithy_audio_unlocked', 'true');
+                    } catch {}
+                  }
+                }}
+                title="Descartar aviso"
+                className="p-1 rounded-md text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -638,13 +734,24 @@ export default function LiveOrdersPage() {
           </p>
         </div>
       ) : (
-        /* Responsive Grid / Kanban Columns */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+        /* Responsive Grid / Focused Kanban Column */
+        <div className={
+          activeTab === 'all'
+            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start'
+            : 'max-w-4xl mx-auto w-full'
+        }>
           {COLUMNS.map((col) => {
-            // When in mobile tab mode, if tab is not 'all' and not this col, hide
+            // When in mobile tab mode or single tab filter, if tab is not 'all' and not this col, hide
             if (activeTab !== 'all' && activeTab !== col.id) return null;
 
             const colOrders = getOrdersByStatus(col.id);
+            const displayedOrders = col.id === 'delivered'
+              ? (deliveredDateFilter === 'today' 
+                  ? todayDelivered 
+                  : deliveredDateFilter === 'yesterday' 
+                    ? yesterdayDelivered 
+                    : olderDelivered)
+              : colOrders;
 
             return (
               <div 
@@ -659,26 +766,96 @@ export default function LiveOrdersPage() {
                       {col.label}
                     </h3>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${col.badgeBg}`}>
-                    {colOrders.length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {activeTab !== 'all' && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('all')}
+                        className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1"
+                      >
+                        ← Ver todas
+                      </button>
+                    )}
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${col.badgeBg}`}>
+                      {col.id === 'delivered' ? displayedOrders.length : colOrders.length}
+                    </span>
+                  </div>
                 </div>
 
+                {/* Sub-filtro de fechas exclusivo para pedidos Entregados */}
+                {col.id === 'delivered' && (
+                  <div className="p-1 rounded-xl bg-slate-200/70 dark:bg-slate-800/80 flex items-center gap-1 text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setDeliveredDateFilter('today')}
+                      className={`flex-1 py-1 px-1.5 rounded-lg text-center transition-all ${
+                        deliveredDateFilter === 'today'
+                          ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-400 font-extrabold shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Hoy ({todayDelivered.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveredDateFilter('yesterday')}
+                      className={`flex-1 py-1 px-1.5 rounded-lg text-center transition-all ${
+                        deliveredDateFilter === 'yesterday'
+                          ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-400 font-extrabold shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Ayer ({yesterdayDelivered.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveredDateFilter('older')}
+                      className={`flex-1 py-1 px-1.5 rounded-lg text-center transition-all ${
+                        deliveredDateFilter === 'older'
+                          ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-400 font-extrabold shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Pasadas ({olderDelivered.length})
+                    </button>
+                  </div>
+                )}
+
                 {/* Orders List inside column */}
-                <div className="space-y-3">
-                  {colOrders.length === 0 ? (
-                    <div className="py-8 text-center text-xs text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                      Sin pedidos
+                <div className={activeTab === 'all' ? 'space-y-3' : 'grid grid-cols-1 md:grid-cols-2 gap-3'}>
+                  {displayedOrders.length === 0 ? (
+                    <div className={`py-8 text-center text-xs text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl ${
+                      activeTab !== 'all' ? 'col-span-full' : ''
+                    }`}>
+                      {col.id === 'delivered' 
+                        ? (deliveredDateFilter === 'today' 
+                            ? 'Sin entregas registradas hoy' 
+                            : deliveredDateFilter === 'yesterday' 
+                              ? 'Sin entregas registradas ayer' 
+                              : 'Sin entregas en fechas pasadas')
+                        : 'Sin pedidos'}
                     </div>
                   ) : (
-                    colOrders.map((order) => {
+                    displayedOrders.map((order, orderIdx) => {
                       const meta = parseOrderMetadata(order.notes);
+                      const showDateDivider = col.id === 'delivered' && deliveredDateFilter === 'older' && (
+                        orderIdx === 0 || formatOrderDateHeader(displayedOrders[orderIdx - 1].createdAt) !== formatOrderDateHeader(order.createdAt)
+                      );
 
                       return (
-                        <div
-                          key={order.id}
-                          className="group bg-white dark:bg-slate-800/90 hover:shadow-md border border-slate-200 dark:border-slate-700/80 rounded-xl p-3.5 transition-all duration-200 relative overflow-hidden active:scale-[0.99]"
-                        >
+                        <div key={order.id} className={`space-y-2 ${showDateDivider && activeTab !== 'all' ? 'col-span-full' : ''}`}>
+                          {showDateDivider && (
+                            <div className="pt-2 pb-1 flex items-center gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-200/80 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                📅 {formatOrderDateHeader(order.createdAt)}
+                              </span>
+                              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                            </div>
+                          )}
+
+                          <div
+                            className="group bg-white dark:bg-slate-800/90 hover:shadow-md border border-slate-200 dark:border-slate-700/80 rounded-xl p-3.5 transition-all duration-200 relative overflow-hidden active:scale-[0.99]"
+                          >
                           {/* Status side indicator */}
                           <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${
                             order.status === 'pending' ? 'bg-amber-500' :
@@ -776,7 +953,7 @@ export default function LiveOrdersPage() {
                                   {item.product.name}
                                 </span>
                                 <span className="text-slate-500 shrink-0 font-medium text-[11px]">
-                                  S/. {(item.unitPrice * item.quantity).toFixed(2)}
+                                  {formatMoney(item.unitPrice * item.quantity)}
                                 </span>
                               </div>
                             ))}
@@ -800,7 +977,7 @@ export default function LiveOrdersPage() {
                             <div>
                               <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-semibold">Total</span>
                               <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
-                                S/. {order.totalAmount.toFixed(2)}
+                                {formatMoney(order.totalAmount)}
                               </span>
                             </div>
 
@@ -834,7 +1011,8 @@ export default function LiveOrdersPage() {
                             </div>
                           </div>
                         </div>
-                      );
+                      </div>
+                    );
                     })
                   )}
                 </div>
@@ -967,11 +1145,11 @@ export default function LiveOrdersPage() {
                         {item.product.name}
                       </div>
                       <div className="text-xs text-slate-400">
-                        Precio unitario: S/. {item.unitPrice.toFixed(2)}
+                        Precio unitario: {formatMoney(item.unitPrice)}
                       </div>
                     </div>
                     <div className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                      S/. {(item.quantity * item.unitPrice).toFixed(2)}
+                      {formatMoney(item.quantity * item.unitPrice)}
                     </div>
                   </div>
                 ))}
@@ -983,7 +1161,7 @@ export default function LiveOrdersPage() {
               <div>
                 <span className="text-xs text-slate-500">Total a cobrar:</span>
                 <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                  S/. {selectedOrder.totalAmount.toFixed(2)}
+                  {formatMoney(selectedOrder.totalAmount)}
                 </div>
               </div>
 

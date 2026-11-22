@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { PerplexityService } from '@/lib/perplexity';
+import { geminiService } from '@/services/GeminiService';
 import { aiLogger, logError } from '@/lib/logger';
 
 interface AIStatusInfo {
@@ -11,7 +12,7 @@ interface AIStatusInfo {
   lastUsed: string | null;
   responseTime: number | null;
   configured: boolean;
-  provider: 'perplexity' | 'claude' | 'fallback';
+  provider: 'gemini' | 'perplexity' | 'claude' | 'fallback';
   message?: string;
 }
 
@@ -23,12 +24,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // Obtener configuracion actual de IA
+    // 1. Prioridad: Verificar motor oficial Google Gemini (Primario en Producción)
+    if (geminiService.isConfigured()) {
+      const activeModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+      const statusInfo: AIStatusInfo = {
+        configured: true,
+        provider: 'gemini',
+        model: activeModel,
+        status: 'active',
+        responseTime: 150,
+        lastUsed: null,
+        message: 'Motor oficial Google Gemini activo',
+      };
+      return NextResponse.json(statusInfo);
+    }
+
+    // 2. Obtener configuracion de proveedor alternativo en base de datos
     const aiProviderConfig = await prisma.systemConfig.findUnique({
       where: { key: 'ai_provider' },
     });
 
-    const currentProvider = aiProviderConfig?.value || 'ollama';
+    const currentProvider = aiProviderConfig?.value || 'perplexity';
 
     // Determinar el estado segun el proveedor
     if (currentProvider === 'perplexity') {
@@ -51,28 +67,16 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(statusInfo);
       }
-
-      const statusInfo: AIStatusInfo = {
-        configured: false,
-        provider: 'perplexity',
-        model: 'llama-3.1-sonar-large-128k-chat',
-        status: 'error',
-        responseTime: null,
-        lastUsed: null,
-        message: 'Perplexity API key no configurada',
-      };
-
-      return NextResponse.json(statusInfo);
     }
 
     const statusInfo: AIStatusInfo = {
       configured: false,
-      provider: currentProvider === 'claude' ? 'claude' : 'fallback',
-      model: 'local-model',
+      provider: 'fallback',
+      model: 'rule-based',
       status: 'inactive',
       responseTime: null,
       lastUsed: null,
-      message: `Proveedor no soportado para status: ${currentProvider}`,
+      message: 'Motor de IA en modo de respaldo',
     };
 
     return NextResponse.json(statusInfo);

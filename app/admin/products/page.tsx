@@ -42,6 +42,8 @@ interface Product {
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [currencySymbol, setCurrencySymbol] = useState('S/.');
+  const [currencyCode, setCurrencyCode] = useState('PEN');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -73,7 +75,11 @@ export default function ProductsPage() {
       const prodData = await prodRes.json();
       const catData = await catRes.json();
 
-      if (prodData.success) setProducts(prodData.products);
+      if (prodData.success) {
+        setProducts(prodData.products);
+        if (prodData.currencySymbol) setCurrencySymbol(prodData.currencySymbol);
+        if (prodData.currency) setCurrencyCode(prodData.currency);
+      }
       if (catData.success) setCategories(catData.categories);
     } catch (err) {
       console.error('Error cargando catálogo:', err);
@@ -253,7 +259,7 @@ export default function ProductsPage() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Churu&apos;s Comida Rápida • Control táctil de platos y stock en S/.
+                Churu&apos;s Comida Rápida • Control táctil de platos y stock en {currencySymbol}
               </p>
             </div>
           </div>
@@ -373,7 +379,7 @@ export default function ProductsPage() {
                     </span>
 
                     <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                      S/. {product.price.toFixed(2)}
+                      {currencySymbol} {['CLP', 'COP', 'ARS'].includes(currencyCode) ? Math.round(product.price).toLocaleString('es') : product.price.toFixed(2)}
                     </span>
                   </div>
 
@@ -521,7 +527,7 @@ export default function ProductsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Precio (S/.) *
+                    Precio ({currencySymbol}) *
                   </label>
                   <input
                     type="number"
@@ -622,7 +628,7 @@ export default function ProductsPage() {
         onClose={() => setCustomizingProduct(null)}
         onAddToCart={(customized) => {
           setRecentCustomizedAlert(
-            `¡${customized.productName} personalizado! (${customized.baseSauces.join(', ')}${customized.isSalchibroaster ? ' + Salchibroaster' : ''}) • S/. ${customized.totalPrice.toFixed(2)}`
+            `¡${customized.productName} personalizado! (${customized.baseSauces.join(', ')}${customized.isSalchibroaster ? ' + Salchibroaster' : ''}) • ${currencySymbol} ${customized.totalPrice.toFixed(2)}`
           );
           setTimeout(() => setRecentCustomizedAlert(null), 6000);
         }}

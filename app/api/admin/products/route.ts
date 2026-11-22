@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { apiLogger, logError } from '@/lib/logger'
+import { PRODUCT_PRICES } from '@/lib/currencyCatalog'
 
 // GET /api/admin/products - Listar productos (con filtro opcional por categoría o búsqueda)
 export async function GET(request: NextRequest) {
@@ -36,7 +37,24 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json({ success: true, products })
+    const business = await prisma.businessProfile.findFirst()
+    const activeCurrency = ((business?.currency || 'PEN').toUpperCase()) as 'PEN' | 'CLP' | 'ARS'
+
+    const adaptedProducts = products.map((p) => {
+      const multi = PRODUCT_PRICES[p.name]
+      const finalPrice = multi ? (multi[activeCurrency] ?? p.price) : p.price
+      return {
+        ...p,
+        price: finalPrice,
+      }
+    })
+
+    return NextResponse.json({ 
+      success: true, 
+      products: adaptedProducts,
+      currency: business?.currency || 'PEN',
+      currencySymbol: business?.currencySymbol || 'S/.'
+    })
   } catch (error) {
     logError(apiLogger, error, { stage: 'get-products' })
     return NextResponse.json(
