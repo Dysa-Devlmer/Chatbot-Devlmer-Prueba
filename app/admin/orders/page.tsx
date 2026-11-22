@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { 
   Bell, 
   Flame, 
@@ -186,6 +187,9 @@ export default function LiveOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [currencySymbol, setCurrencySymbol] = useState('S/.');
   const [currencyCode, setCurrencyCode] = useState('PEN');
+  const [isKitchenOpen, setIsKitchenOpen] = useState<boolean>(true);
+  const [todayHours, setTodayHours] = useState<string>('');
+  const [businessName, setBusinessName] = useState<string>("Churu's Comida Rápida");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all'); // 'all' or column id for mobile
@@ -335,6 +339,9 @@ export default function LiveOrdersPage() {
         if (data.success && Array.isArray(data.orders)) {
           if (data.currencySymbol) setCurrencySymbol(data.currencySymbol);
           if (data.currency) setCurrencyCode(data.currency);
+          if (data.businessName) setBusinessName(data.businessName);
+          if (data.isKitchenOpen !== undefined) setIsKitchenOpen(data.isKitchenOpen);
+          if (data.todayHours) setTodayHours(data.todayHours);
           const currentOrders: Order[] = data.orders;
           const pendingCount = currentOrders.filter(o => o.status === 'pending').length;
           
@@ -485,13 +492,20 @@ export default function LiveOrdersPage() {
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
                   Pedidos en Vivo
                 </h1>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  Cocina Activa
-                </span>
+                {isKitchenOpen ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    Cocina Abierta • {todayHours || 'Atendiendo'}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    Cocina Cerrada (Fuera de Horario)
+                  </span>
+                )}
               </div>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Churu&apos;s Comida Rápida • Actualización automática cada 8s
+                {businessName} • Actualización automática cada 7s
               </p>
             </div>
           </div>
@@ -652,6 +666,29 @@ export default function LiveOrdersPage() {
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Banner de Cocina Cerrada si el local está fuera de horario */}
+        {!isKitchenOpen && (
+          <div className="mt-3 p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-800 dark:text-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
+              <div>
+                <p className="font-bold text-xs sm:text-sm">
+                  🌙 La cocina se encuentra actualmente CERRADA según la programación de horarios {todayHours ? `(${todayHours})` : ''}.
+                </p>
+                <p className="text-[11px] opacity-80 mt-0.5">
+                  Los clientes que escriban a WhatsApp recibirán el mensaje automático con el horario y el catálogo digital. Las comandas de cocina permanecen en pausa.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/admin/business"
+              className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shrink-0 active:scale-95 transition-all shadow-xs"
+            >
+              Ajustar Horario
+            </Link>
           </div>
         )}
 

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { apiLogger, logError } from '@/lib/logger'
 import { sendWhatsAppMessage } from '@/lib/whatsapp'
 import { ConversationService } from '@/lib/conversation'
+import { HorariosService } from '@/lib/horarios'
 
 // GET /api/admin/orders - Listar reservas y pedidos
 export async function GET(request: NextRequest) {
@@ -28,12 +29,17 @@ export async function GET(request: NextRequest) {
     })
 
     const business = await prisma.businessProfile.findFirst()
+    const hoursStatus = HorariosService.estaAbierto()
 
     return NextResponse.json({ 
       success: true, 
       orders,
       currency: business?.currency || 'PEN',
-      currencySymbol: business?.currencySymbol || 'S/.'
+      currencySymbol: business?.currencySymbol || 'S/.',
+      businessName: business?.name || "Churu's Comida Rápida",
+      isKitchenOpen: hoursStatus.abierto,
+      todayHours: hoursStatus.horarioHoy,
+      statusMode: hoursStatus.modo,
     })
   } catch (error) {
     logError(apiLogger, error, { stage: 'get-orders' })
