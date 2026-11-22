@@ -15,7 +15,6 @@ import {
   Zap, 
   X, 
   Phone, 
-  Video,
   MoreVertical,
   Paperclip,
   Smile,
@@ -860,15 +859,7 @@ function InboxInner() {
                   <Search className="w-4 h-4" />
                 </button>
 
-                {/* Videollamada */}
-                <button
-                  className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors hidden sm:block"
-                  title="Videollamada"
-                >
-                  <Video className="w-4 h-4" />
-                </button>
-
-                {/* Llamada directa */}
+                {/* Llamada directa / WhatsApp */}
                 <a
                   href={`https://wa.me/${selectedConversation.user.phoneNumber.replace(/\+/g, '')}`}
                   target="_blank"

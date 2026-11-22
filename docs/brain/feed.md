@@ -148,3 +148,16 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
     - Cuando está cerrado: `🔴 Cocina Cerrada (Fuera de Horario)` en rojo/ámbar, acompañado de un banner explicativo y botón directo a `/admin/business`.
   - **Motor de Horarios y Respuestas Automáticas:** Implementado en `config-horarios.json` y `HorariosService` con soporte de zona horaria local (`America/Lima`, `America/Santiago`, `America/Argentina/Buenos_Aires`).
   - **Despliegue Certificado:** Sincronizado en Git y desplegado en VPS `64.176.21.229` (PM2 PID `3890725`).
+
+---
+
+### [2026-11-22] 💎 Auditoría Integral del Sistema: Multidivisa, Transcripción de Audio WhatsApp, Paletas de Marca y Roles
+- **Agente:** Antigravity (Google DeepMind)
+- **Actividades:**
+  - **Reparación de Notas de Voz en WhatsApp:** El bot dejó de responder audios porque en el VPS el script `whisper-transcribe-enhanced.py` fallaba al no contar con `faster_whisper` ni `ffmpeg`. Se implementó transcripción multimodal nativa directa con Gemini (`gemini-2.5-flash` / `inlineData` base64 de audio Ogg Opus) en `GeminiService.transcribeAudio` y `AIService.transcribeAudio`, además de instalar `ffmpeg` en el VPS.
+  - **Botón "Inicio" / Dashboard en Navegación:** Añadido el botón de acceso directo a `/admin` en la barra horizontal superior de `AdminHeader` y en `AdminSidebar`, y el logo ahora enlaza a la raíz del panel administrativo `/admin`. El título del logo se volvió dinámico según el nombre del negocio configurado en la base de datos.
+  - **Eliminación del Icono Inoperativo de Videollamada:** Se removió el botón `<Video />` sin función en `/admin/inbox`, conservando únicamente las acciones de llamada telefónica y enlace directo a WhatsApp.
+  - **Paletas de Marca Disponibles para Arriendo (Multi-Tenant):** Se conectaron las tarjetas de temas en `/admin/settings` con persistencia en tiempo real en la base de datos (`AdminProfile.accentColor`), `localStorage` e inyección de variables CSS (`--brand-primary`) con indicador visual interactivo `✓ Activa`.
+  - **Control de Roles & Permisos:** Se erradicaron datos falsos mockeados (`Pierre Arturo`, `cocina@churus.com`) en la pestaña de Roles de Configuración. Ahora muestra la sesión real del administrador autenticado desde `AdminProfile` junto a los perfiles operativos del local (Estación Cocina KDS, Repartidor Delivery y Operador de Inbox).
+  - **Monedas y Precios Reales (Perú, Chile, Argentina):** Se validó que al cambiar el país en `/admin/business` el catálogo completo de 41 platos sincronice con los precios de mercado reales (PEN, CLP, ARS), evitando que se muestren precios de soles como dólares o miles de soles por desajuste de denominación.
+  - **Despliegue Certificado en Producción:** Compilado exitosamente en VPS `64.176.21.229` y reiniciado en PM2 (PID `3910658`). 100% operativo en `https://chatbot.zgamersa.com`.

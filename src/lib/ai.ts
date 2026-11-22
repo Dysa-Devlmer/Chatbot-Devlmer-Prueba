@@ -6,6 +6,7 @@ import * as os from 'os';
 import { exec } from 'child_process';
 import { TranscriptionCache, TTSCache } from './audio-cache';
 import { perplexityService } from '../services/PerplexityService';
+import { geminiService } from '../services/GeminiService';
 
 // Inicializar cliente de Ollama (local y gratuito!)
 const ollama = new Ollama({
@@ -711,6 +712,35 @@ SENTIMENT: [sentiment]`;
           success: true,
           cached: true,
         };
+      }
+
+      // 1. Intentar primero con Google Gemini Multimodal (Ultra rápido, soporte nativo de audios WhatsApp .ogg/.opus sin dependencias de Python ni FFmpeg)
+      if (geminiService.isConfigured()) {
+        try {
+          console.log(`🤖 Intentando transcripción multimodal con Google Gemini...`);
+          const fileBuffer = fs.readFileSync(audioFilePath);
+          const ext = path.extname(audioFilePath).toLowerCase().replace('.', '');
+          const mimeMap: Record<string, string> = {
+            ogg: 'audio/ogg',
+            opus: 'audio/ogg',
+            mp3: 'audio/mp3',
+            wav: 'audio/wav',
+            m4a: 'audio/m4a'
+          };
+          const mime = mimeMap[ext] || 'audio/ogg';
+          const text = await geminiService.transcribeAudio(fileBuffer, mime);
+          if (text && text.trim().length > 0) {
+            console.log(`✅ Transcripción Gemini completada exitosamente: "${text.substring(0, 100)}..."`);
+            TranscriptionCache.set(audioFilePath, text);
+            return {
+              text,
+              success: true,
+              cached: false,
+            };
+          }
+        } catch (geminiError) {
+          console.warn('⚠️ Falló transcripción Gemini, probando backends alternativos:', geminiError);
+        }
       }
 
       // Obtener configuración de Whisper

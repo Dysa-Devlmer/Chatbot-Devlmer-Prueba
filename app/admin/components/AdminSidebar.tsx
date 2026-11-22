@@ -95,7 +95,7 @@ export function AdminSidebar({
       items: [
         {
           href: '/admin',
-          label: 'Dashboard',
+          label: 'Inicio / Dashboard',
           icon: LayoutDashboard,
           exact: true,
         },

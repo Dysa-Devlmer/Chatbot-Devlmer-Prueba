@@ -481,6 +481,59 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
 
     return contents
   }
+
+  /**
+   * Transcribe un archivo de audio directamente usando la capacidad multimodal nativa de Gemini.
+   * Soporta audio/ogg (WhatsApp PTT/Voice), audio/mp3, audio/wav, audio/m4a sin requerir dependencias locales de Python ni FFmpeg.
+   */
+  async transcribeAudio(audioBuffer: Buffer, mimeType: string = 'audio/ogg'): Promise<string> {
+    if (!this.isConfigured()) {
+      throw new Error('GEMINI_API_KEY no configurada para transcripción de audio')
+    }
+
+    const base64Data = audioBuffer.toString('base64')
+    const cleanMime = mimeType.split(';')[0].trim() || 'audio/ogg'
+    const model = 'gemini-2.5-flash'
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`
+
+    const payload = {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                mimeType: cleanMime,
+                data: base64Data,
+              },
+            },
+            {
+              text: 'Escucha este audio y transcribe en español exactamente lo que dice la persona. Devuelve únicamente el texto transcrito palabra por palabra, sin agregar comentarios, sin comillas y sin introducciones.',
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 600,
+      },
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`Gemini Audio Transcription HTTP ${response.status}: ${errText}`)
+    }
+
+    const data = await response.json()
+    const transcribedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    return transcribedText.trim()
+  }
 }
 
 export const geminiService = new GeminiService()

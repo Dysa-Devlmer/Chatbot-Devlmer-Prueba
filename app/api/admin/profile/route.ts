@@ -14,10 +14,10 @@ async function getOrCreateAdminProfile() {
       data: {
         username: 'admin',
         password: hashedPassword,
-        name: 'Pierre Benites (Devlmer)',
-        email: 'bpier@zgamersa.com',
-        company: 'zgamersa.com',
-        role: 'CEO',
+        name: 'Administrador',
+        email: 'admin@negocio.com',
+        company: 'Mi Empresa',
+        role: 'Administrador',
       },
     });
   }

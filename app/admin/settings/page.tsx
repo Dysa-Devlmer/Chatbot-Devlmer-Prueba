@@ -280,16 +280,20 @@ function SettingsContent() {
           const data = await response.json();
           if (data.profile) {
             setProfile({
-              name: data.profile.name || 'Pierre Arturo',
-              email: data.profile.email || 'bpier@zgamersa.com',
-              phone: data.profile.phone || '+51 900 372 689',
-              company: data.profile.company || "Churu's Fast Food",
-              role: data.profile.role || 'CEO / SuperAdmin',
+              name: data.profile.name || 'Administrador',
+              email: data.profile.email || 'admin@negocio.com',
+              phone: data.profile.phone || '',
+              company: data.profile.company || 'Mi Negocio',
+              role: data.profile.role || 'Administrador',
               timezone: data.profile.timezone || 'America/Lima',
               language: data.profile.language || 'es',
             });
             if (data.profile.avatar) {
               setAvatar(data.profile.avatar);
+            }
+            if (data.profile.accentColor) {
+              const matchedPreset = BRAND_PRESETS.find(p => p.primary === data.profile.accentColor);
+              if (matchedPreset) setSelectedBrandPreset(matchedPreset.id);
             }
           }
         }
@@ -349,6 +353,31 @@ function SettingsContent() {
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 4000);
+  };
+
+  const handleSelectBrandPreset = async (preset: typeof BRAND_PRESETS[0]) => {
+    setSelectedBrandPreset(preset.id);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pithy_brand_preset', preset.id);
+      localStorage.setItem('pithy_accent_color', preset.primary);
+      document.documentElement.style.setProperty('--brand-primary', preset.primary);
+    }
+
+    try {
+      const res = await fetch('/api/admin/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accentColor: preset.primary }),
+      });
+      if (res.ok) {
+        showMessage('success', `¡Paleta ${preset.name} aplicada y guardada en base de datos!`);
+      } else {
+        showMessage('error', 'No se pudo guardar la paleta en el servidor.');
+      }
+    } catch (err) {
+      console.error(err);
+      showMessage('error', 'Error al sincronizar la paleta de marca.');
+    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -774,55 +803,85 @@ function SettingsContent() {
                 })}
               </div>
 
-              {/* Active Users Table */}
+              {/* Active Users Table & Operating Team */}
               <div className="pt-4 border-t border-slate-100 dark:border-stone-800/80">
-                <h3 className="text-sm font-black text-slate-900 dark:text-white mb-3">
-                  Usuarios del Sistema Activos
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                      Cuentas y Perfiles Activos del Sistema
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-stone-400">
+                      Integrantes y accesos autorizados en la plataforma de tu negocio.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                    Sincronizado con BD
+                  </span>
+                </div>
 
-                <div className="space-y-2">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-stone-950 border border-slate-200 dark:border-stone-800 flex items-center justify-between">
+                <div className="space-y-2.5">
+                  {/* Real Master Admin User from Database */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-stone-950 border border-slate-200 dark:border-stone-800 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-orange-600 text-white flex items-center justify-center font-bold text-xs">
-                        PA
+                      <div className="w-9 h-9 rounded-full bg-orange-600 text-white flex items-center justify-center font-black text-xs uppercase shadow-xs">
+                        {profile.name ? profile.name.slice(0, 2) : 'AD'}
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">Pierre Arturo (Devlmer)</p>
-                        <p className="text-[11px] text-slate-500 dark:text-stone-400">bpier@zgamersa.com</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">
+                            {profile.name || 'Administrador Principal'}
+                          </p>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                            En Línea
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-stone-400">
+                          {profile.email || 'admin@negocio.com'} • {profile.company || 'Mi Empresa'}
+                        </p>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 text-[10px] font-black">
-                      👑 SuperAdmin
+                    <span className="px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[10px] font-black">
+                      👑 {profile.role || 'SuperAdmin'}
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-stone-950 border border-slate-200 dark:border-stone-800 flex items-center justify-between">
+                  {/* Operador de Cocina */}
+                  <div className="p-3.5 rounded-xl bg-slate-50/60 dark:bg-stone-950/60 border border-slate-200 dark:border-stone-800 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-stone-800 text-stone-200 flex items-center justify-center font-bold text-xs">
-                        CC
+                      <div className="w-9 h-9 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black text-xs">
+                        👨‍🍳
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">Comanda Cocina Churu&apos;s</p>
-                        <p className="text-[11px] text-slate-500 dark:text-stone-400">cocina@churus.com</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">
+                          Estación de Cocina & Comandas
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-stone-400">
+                          Acceso táctil optimizado para preparación de platos y alerta sonora de comandas.
+                        </p>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-500 text-[10px] font-black">
+                    <span className="px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] font-bold">
                       👨‍🍳 Cocina
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-stone-950 border border-slate-200 dark:border-stone-800 flex items-center justify-between">
+                  {/* Despacho & Motorizado */}
+                  <div className="p-3.5 rounded-xl bg-slate-50/60 dark:bg-stone-950/60 border border-slate-200 dark:border-stone-800 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-stone-800 text-stone-200 flex items-center justify-center font-bold text-xs">
-                        DM
+                      <div className="w-9 h-9 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs">
+                        🛵
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">Despacho & Motorizado</p>
-                        <p className="text-[11px] text-slate-500 dark:text-stone-400">delivery@churus.com</p>
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">
+                          Despacho & Rutas de Reparto
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-stone-400">
+                          Acceso a seguimiento GPS, direcciones de entrega y confirmación de recepción.
+                        </p>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500 text-[10px] font-black">
-                      🛵 Repartidor
+                    <span className="px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-bold">
+                      🛵 Delivery
                     </span>
                   </div>
                 </div>
@@ -916,22 +975,24 @@ function SettingsContent() {
                     return (
                       <div
                         key={preset.id}
-                        onClick={() => {
-                          setSelectedBrandPreset(preset.id);
-                          showMessage('success', `Paleta de marca ${preset.name} aplicada al tenant.`);
-                        }}
+                        onClick={() => handleSelectBrandPreset(preset)}
                         className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                           isSelected
-                            ? 'border-orange-500 bg-orange-500/5 ring-2 ring-orange-500/30'
+                            ? 'border-orange-500 bg-orange-500/10 ring-2 ring-orange-500/30 shadow-md shadow-orange-500/5'
                             : 'border-slate-200 dark:border-stone-800 hover:border-slate-300 dark:hover:border-stone-700'
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-900 dark:text-white">
-                            {preset.name}
+                          <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            {isSelected && <span className="text-orange-500 font-black">✓</span>}
+                            <span>{preset.name}</span>
                           </span>
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 dark:bg-stone-800 text-slate-700 dark:text-stone-300">
-                            {preset.badge}
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            isSelected 
+                              ? 'bg-orange-500 text-white' 
+                              : 'bg-slate-100 dark:bg-stone-800 text-slate-700 dark:text-stone-300'
+                          }`}>
+                            {isSelected ? 'Activa' : preset.badge}
                           </span>
                         </div>
 

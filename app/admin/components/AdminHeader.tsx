@@ -20,7 +20,8 @@ import {
   MessageSquare,
   UtensilsCrossed,
   Store,
-  TrendingUp
+  TrendingUp,
+  LayoutDashboard
 } from 'lucide-react';
 
 interface AdminProfile {
@@ -50,6 +51,7 @@ export function AdminHeader() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [businessName, setBusinessName] = useState("Churu's");
   const [isDark, setIsDark] = useState(true);
   
   const menuRef = useRef<HTMLDivElement>(null);
@@ -83,16 +85,27 @@ export function AdminHeader() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const response = await fetch('/api/admin/profile');
+        const [response, busRes] = await Promise.all([
+          fetch('/api/admin/profile'),
+          fetch('/api/admin/business'),
+        ]);
+
         if (response.ok) {
           const data = await response.json();
           if (data.profile) {
             setProfile({
               name: data.profile.name || 'Admin',
-              email: data.profile.email || 'bpier@zgamersa.com',
+              email: data.profile.email || 'admin@negocio.com',
               avatar: data.profile.avatar || null,
-              role: data.profile.role || 'CEO',
+              role: data.profile.role || 'Administrador',
             });
+          }
+        }
+
+        if (busRes.ok) {
+          const busData = await busRes.json();
+          if (busData.profile?.name) {
+            setBusinessName(busData.profile.name);
           }
         }
       } catch (error) {
@@ -152,8 +165,14 @@ export function AdminHeader() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // The 5 essential, high-conversion modules of Churu's Fast Food
+  // The Essential Modules of the Multi-Tenant Platform
   const navItems = [
+    { 
+      href: '/admin', 
+      label: 'Inicio', 
+      icon: LayoutDashboard,
+      exact: true
+    },
     { 
       href: '/admin/orders', 
       label: 'Pedidos', 
@@ -197,16 +216,16 @@ export function AdminHeader() {
     <header className="sticky top-0 z-50 w-full bg-white/95 dark:bg-[#141312]/95 backdrop-blur-md border-b border-slate-200 dark:border-stone-800 text-slate-900 dark:text-white shadow-xs transition-colors duration-200">
       <div className="w-full px-3 sm:px-6 h-16 flex items-center justify-between gap-4">
         
-        {/* Left Section: Brand Logo */}
+        {/* Left Section: Brand Logo (Links to Inicio /admin) */}
         <div className="flex items-center gap-3 shrink-0">
-          <Link href="/admin/orders" className="flex items-center gap-2.5 group">
+          <Link href="/admin" className="flex items-center gap-2.5 group" title="Ir a Inicio / Panel General">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center font-black text-white text-lg shadow-md group-hover:scale-105 transition-transform">
               🍗
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-black text-base text-slate-900 dark:text-white tracking-tight">
-                  Churu&apos;s
+                <span className="font-black text-base text-slate-900 dark:text-white tracking-tight truncate max-w-[160px]">
+                  {businessName}
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20">
                   SaaS
@@ -219,14 +238,16 @@ export function AdminHeader() {
           </Link>
         </div>
 
-        {/* Center: The 5 High-Conversion Essential Horizontal Tabs (Full Screen) */}
+        {/* Center: The Essential Horizontal Navigation Tabs */}
         <nav 
           aria-label="Navegación principal"
           className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-stone-900/90 p-1.5 rounded-2xl border border-slate-200 dark:border-stone-800 shadow-inner"
         >
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || (item.href !== '/admin' && pathname?.startsWith(item.href));
+            const isActive = (item as any).exact 
+              ? pathname === item.href 
+              : (pathname === item.href || (item.href !== '/admin' && pathname?.startsWith(item.href)));
             return (
               <Link
                 key={item.href}
