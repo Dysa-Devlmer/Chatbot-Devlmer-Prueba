@@ -135,3 +135,16 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
     3. Efectivo contraentrega con cálculo de vuelto sobre billetes chilenos reales ($10.000 / $20.000).
   - **Despliegue y Validación E2E en VPS Producción:** Desplegado en `https://chatbot.zgamersa.com/menu` y `https://chatbot.zgamersa.com/checkout` (PM2 PID `3861573`).
 - **Siguiente Hito:** Pruebas de campo con comensales reales.
+
+
+---
+
+### [2026-11-22] ⏰ Horarios de Atención Semanal, Mensaje Automático Fuera de Horario y Estado Dinámico de Cocina
+- **Agente:** Antigravity (Google DeepMind)
+- **Actividades:**
+  - **Detección y Corrección de "Cocina Activa":** Se eliminó el texto estático `Cocina Activa` que figuraba siempre en verde en el encabezado de [app/admin/orders/page.tsx](file:///e:/prueba/app/admin/orders/page.tsx).
+  - **Sincronización con `HorariosService`:** Se conectó el backend de pedidos (`/api/admin/orders`) con el motor de horarios. El encabezado de **Pedidos en Vivo** ahora refleja con exactitud el estado en tiempo real:
+    - Cuando está abierto: `🟢 Cocina Abierta • [Horario]` con pulso verde.
+    - Cuando está cerrado: `🔴 Cocina Cerrada (Fuera de Horario)` en rojo/ámbar, acompañado de un banner explicativo y botón directo a `/admin/business`.
+  - **Motor de Horarios y Respuestas Automáticas:** Implementado en `config-horarios.json` y `HorariosService` con soporte de zona horaria local (`America/Lima`, `America/Santiago`, `America/Argentina/Buenos_Aires`).
+  - **Despliegue Certificado:** Sincronizado en Git y desplegado en VPS `64.176.21.229` (PM2 PID `3890725`).
