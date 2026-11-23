@@ -16,6 +16,7 @@ export async function PUT(
     }
 
     const isSuperAdmin = (session.user as any)?.role === 'superadmin' || 
+                         (session.user as any)?.role === 'Administrador' ||
                          session.user?.email === 'admin@zgamersa.com' || 
                          (session.user as any)?.name === 'Admin Devlmer';
     if (!isSuperAdmin) {

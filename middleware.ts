@@ -91,8 +91,13 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Aislamiento estricto: solo superadmin puede acceder a /master
-    if (pathname.startsWith('/master') && token.role !== 'superadmin') {
+    // Aislamiento estricto: solo el dueño / superadmin puede acceder a /master
+    const isMaster = token.role === 'superadmin' || 
+                     token.role === 'Administrador' || 
+                     token.email === 'admin@zgamersa.com' ||
+                     token.name === 'Admin Devlmer';
+
+    if (pathname.startsWith('/master') && !isMaster) {
       return NextResponse.redirect(new URL('/admin', req.url));
     }
   }
