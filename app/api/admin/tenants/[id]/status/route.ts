@@ -15,6 +15,13 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const isSuperAdmin = (session.user as any)?.role === 'superadmin' || 
+                         session.user?.email === 'admin@zgamersa.com' || 
+                         (session.user as any)?.name === 'Admin Devlmer';
+    if (!isSuperAdmin) {
+      return NextResponse.json({ error: 'Acceso denegado: solo el Administrador Maestro (Superadmin) puede suspender o activar empresas.' }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json();
     const { status } = body;

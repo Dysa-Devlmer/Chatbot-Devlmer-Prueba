@@ -16,6 +16,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const isSuperAdmin = (session.user as any)?.role === 'superadmin' || 
+                         session.user?.email === 'admin@zgamersa.com' || 
+                         (session.user as any)?.name === 'Admin Devlmer';
+    if (!isSuperAdmin) {
+      return NextResponse.json({ error: 'Acceso denegado: solo el Administrador Maestro (Superadmin) puede ver las empresas.' }, { status: 403 });
+    }
+
     const tenants = await prisma.tenant.findMany({
       orderBy: { createdAt: 'desc' },
     });
@@ -52,6 +59,13 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const isSuperAdmin = (session.user as any)?.role === 'superadmin' || 
+                         session.user?.email === 'admin@zgamersa.com' || 
+                         (session.user as any)?.name === 'Admin Devlmer';
+    if (!isSuperAdmin) {
+      return NextResponse.json({ error: 'Acceso denegado: solo el Administrador Maestro (Superadmin) puede registrar nuevas empresas.' }, { status: 403 });
     }
 
     const body = await request.json();

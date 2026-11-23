@@ -173,13 +173,6 @@ export function AdminHeader() {
   // The Essential Modules of the Multi-Tenant Platform
   const navItems = [
     { 
-      href: '/admin/tenants', 
-      label: 'Empresas SaaS', 
-      icon: Building2,
-      badge: '👑',
-      badgeColor: 'bg-amber-400 text-stone-950 font-black'
-    },
-    { 
       href: '/admin', 
       label: 'Inicio', 
       icon: LayoutDashboard,
@@ -217,7 +210,6 @@ export function AdminHeader() {
   ];
 
   const userMenuItems = [
-    { href: '/admin/tenants', label: 'Empresas SaaS (Dueño)', icon: Building2 },
     { href: '/admin/settings?tab=profile', label: 'Mi Perfil', icon: User },
     { href: '/admin/settings?tab=security', label: 'Seguridad & Contraseña', icon: Lock },
   ];
@@ -237,14 +229,9 @@ export function AdminHeader() {
                 <span className="font-black text-xs sm:text-base text-slate-900 dark:text-white tracking-tight truncate max-w-[150px] xs:max-w-[180px] sm:max-w-[240px]">
                   {businessName}
                 </span>
-                <Link 
-                  href="/admin/tenants"
-                  className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase bg-amber-500 text-stone-950 hover:bg-amber-400 border border-amber-600/30 shrink-0 shadow-xs cursor-pointer transition-transform hover:scale-105 flex items-center gap-0.5"
-                  title="Abrir Panel Maestro de Empresas SaaS (Dueño)"
-                >
-                  <span>SaaS</span>
-                  <span className="text-[10px]">👑</span>
-                </Link>
+                <span className="px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20 shrink-0">
+                  {businessName.includes("Churu") ? "Piloto" : "Local"}
+                </span>
               </div>
               <p className="text-[10px] text-slate-500 dark:text-stone-400 -mt-0.5 font-medium hidden sm:block">
                 WhatsApp Business Platform
