@@ -21,6 +21,8 @@ export interface BaseProduct {
   description: string | null;
   price: number;
   imageUrl?: string | null;
+  category?: string | { id?: string; name?: string } | null;
+  categoryName?: string;
 }
 
 interface ProductModifierDrawerProps {
@@ -126,9 +128,18 @@ export function ProductModifierDrawer({
   };
 
   // Price calculations
-  const basePrice = product.price || 18.50;
-  const salchibroasterPrice = isSalchibroaster ? 5.00 : 0;
-  const premiumSaucesTotal = selectedPremiumSauces.length * 2.00;
+  const categoryStr = typeof product.category === 'string' 
+    ? product.category 
+    : (product.category?.name || product.categoryName || '');
+  const isBroasterProduct = Boolean(
+    categoryStr.toLowerCase().includes('broaster') ||
+    product.name.toLowerCase().includes('broaster')
+  );
+  const isHighDenomination = currencySymbol === '$' || currencySymbol === 'CLP' || currencySymbol === 'COP' || currencySymbol === 'ARS';
+  const salchibroasterAddPrice = isHighDenomination ? 1800 : 5.00;
+  const basePrice = product.price || (isHighDenomination ? 5900 : 18.50);
+  const salchibroasterPrice = (isSalchibroaster && isBroasterProduct) ? salchibroasterAddPrice : 0;
+  const premiumSaucesTotal = selectedPremiumSauces.length * (isHighDenomination ? 600 : 2.00);
   const extrasTotal = Object.entries(extrasQuantities).reduce((acc, [id, qty]) => {
     const item = EXTRAS_LIST.find(e => e.id === id);
     return acc + (item ? item.price * qty : 0);
@@ -248,50 +259,53 @@ export function ProductModifierDrawer({
             </div>
           </div>
 
-          <div className="h-px bg-stone-200 dark:bg-stone-800/80 w-full" />
-
-          {/* 2. Feature Card: CONVIÉRTELO EN SALCHIBROASTER */}
-          <div 
-            onClick={() => setIsSalchibroaster(!isSalchibroaster)}
-            className={`relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border-2 transition-all cursor-pointer select-none active:scale-[0.99] ${
-              isSalchibroaster 
-                ? 'border-orange-500 bg-orange-500/15 shadow-md' 
-                : 'border-orange-500/30 dark:border-orange-500/40 hover:border-orange-500/50'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-11 h-11 rounded-xl bg-orange-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-600/30">
-                  <Sparkles className="w-6 h-6 animate-pulse" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-black text-sm sm:text-base text-stone-900 dark:text-white leading-snug">
-                      ¿Conviértelo en Salchibroaster?
-                    </span>
-                    <span className="inline-flex items-center text-[9px] font-black uppercase bg-red-500 text-white px-1.5 py-0.5 rounded-md tracking-wider">
-                      PROMO
-                    </span>
+          {/* 2. Feature Card: CONVIÉRTELO EN SALCHIBROASTER (Solo para platos Broaster según carta oficial) */}
+          {isBroasterProduct && (
+            <>
+              <div className="h-px bg-stone-200 dark:bg-stone-800/80 w-full" />
+              <div 
+                onClick={() => setIsSalchibroaster(!isSalchibroaster)}
+                className={`relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border-2 transition-all cursor-pointer select-none active:scale-[0.99] ${
+                  isSalchibroaster 
+                    ? 'border-orange-500 bg-orange-500/15 shadow-md' 
+                    : 'border-orange-500/30 dark:border-orange-500/40 hover:border-orange-500/50'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-orange-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-600/30">
+                      <Sparkles className="w-6 h-6 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-sm sm:text-base text-stone-900 dark:text-white leading-snug">
+                          ¿Conviértelo en Salchibroaster?
+                        </span>
+                        <span className="inline-flex items-center text-[9px] font-black uppercase bg-red-500 text-white px-1.5 py-0.5 rounded-md tracking-wider">
+                          PROMO
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5">
+                        Añade abundantes rodajas de salchicha parrillera doradita sobre tus papas.
+                      </p>
+                      <span className="inline-block mt-1 font-black text-xs text-orange-600 dark:text-orange-400">
+                        + {formatPrice(salchibroasterAddPrice)}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5">
-                    Añade abundantes rodajas de salchicha parrillera doradita sobre tus papas.
-                  </p>
-                  <span className="inline-block mt-1 font-black text-xs text-orange-600 dark:text-orange-400">
-                    + {formatPrice(5)}
-                  </span>
+
+                  {/* Custom Switch Toggle */}
+                  <div className={`w-12 h-7 rounded-full transition-colors relative flex items-center px-1 shrink-0 ${
+                    isSalchibroaster ? 'bg-orange-600' : 'bg-stone-300 dark:bg-stone-700'
+                  }`}>
+                    <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow-md ${
+                      isSalchibroaster ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </div>
                 </div>
               </div>
-
-              {/* Custom Switch Toggle */}
-              <div className={`w-12 h-7 rounded-full transition-colors relative flex items-center px-1 shrink-0 ${
-                isSalchibroaster ? 'bg-orange-600' : 'bg-stone-300 dark:bg-stone-700'
-              }`}>
-                <div className={`w-5 h-5 rounded-full bg-white transition-transform shadow-md ${
-                  isSalchibroaster ? 'translate-x-5' : 'translate-x-0'
-                }`} />
-              </div>
-            </div>
-          </div>
+            </>
+          )}
 
           {/* 3. Salsas y Cremas Base (Obligatorio, elige hasta 3 incluidas) */}
           <div className="space-y-3">

@@ -21,7 +21,9 @@ import {
   HelpCircle,
   FileText,
   RefreshCw,
-  Store
+  Store,
+  Printer,
+  QrCode
 } from 'lucide-react';
 
 interface OrderItem {
@@ -614,78 +616,170 @@ function OrderTrackingContent() {
 
       </main>
 
-      {/* Invoice Modal Dinámico */}
+      {/* Invoice Modal Completo y Formal - Boleta de Venta Electrónica */}
       {showInvoiceModal && (
         <div 
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={() => setShowInvoiceModal(false)}
         >
           <div 
-            className="w-full max-w-sm bg-white dark:bg-stone-900 text-slate-900 dark:text-white rounded-3xl p-6 border border-stone-200 dark:border-stone-800 shadow-2xl space-y-4"
+            className="w-full max-w-md bg-white dark:bg-[#18181b] text-slate-900 dark:text-stone-100 rounded-3xl p-5 sm:p-7 border border-stone-200 dark:border-stone-800 shadow-2xl space-y-4 my-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
-              <div>
-                <h3 className="font-black text-base">Boleta Electrónica B001-{orderNumber.replace(/[^0-9]/g, '') || '1004'}</h3>
-                <span className="text-[11px] text-slate-500 dark:text-stone-400">RUC 20608934512 • Churu&apos;s Comida Rápida S.A.C.</span>
+            {/* Encabezado Fiscal SUNAT */}
+            <div className="text-center border-b border-dashed border-stone-300 dark:border-stone-700 pb-4">
+              <div className="w-12 h-12 mx-auto mb-2 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center text-2xl font-black">
+                🍗
               </div>
-              <button 
-                type="button" 
-                onClick={() => setShowInvoiceModal(false)}
-                className="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center"
-              >
-                ✕
-              </button>
+              <h2 className="font-black text-sm sm:text-base tracking-tight text-slate-900 dark:text-white uppercase">
+                {orderData?.business?.name || "Churu's Comida Rápida S.A.C."}
+              </h2>
+              <p className="text-[11px] font-bold text-slate-600 dark:text-stone-400 mt-0.5">
+                RUC: {orderData?.business?.ruc || "20608934512"}
+              </p>
+              <p className="text-[10px] text-slate-500 dark:text-stone-400 max-w-xs mx-auto mt-0.5 leading-tight">
+                {orderData?.business?.address || "Jr. Los Libertadores 142 • Delivery Express & Salón"}
+              </p>
+
+              {/* Badge Boleta Electrónica */}
+              <div className="mt-3 inline-block px-3 py-1 rounded-xl bg-stone-100 dark:bg-stone-800/80 border border-stone-300 dark:border-stone-700">
+                <span className="text-[11px] font-black uppercase text-orange-600 dark:text-orange-400 tracking-wider block">
+                  BOLETA DE VENTA ELECTRÓNICA
+                </span>
+                <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                  B001-{orderNumber.replace(/[^0-9]/g, '').padStart(6, '0') || '001004'}
+                </span>
+              </div>
             </div>
 
-            <div className="space-y-2 text-xs">
+            {/* Datos del Cliente y Operación */}
+            <div className="space-y-1.5 text-xs border-b border-dashed border-stone-300 dark:border-stone-700 pb-3">
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-stone-400">Fecha de Emisión:</span>
-                <span className="font-bold">
-                  {orderData ? new Date(orderData.createdAt).toLocaleDateString('es-PE') : new Date().toLocaleDateString('es-PE')}
+                <span className="text-slate-500 dark:text-stone-400">Fecha y Hora:</span>
+                <span className="font-semibold text-slate-800 dark:text-stone-200">
+                  {orderData ? new Date(orderData.createdAt).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }) : new Date().toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 dark:text-stone-400">Cliente:</span>
-                <span className="font-bold">{orderData?.customerName || 'Cliente WhatsApp'}</span>
+                <span className="text-slate-500 dark:text-stone-400">Señor(a):</span>
+                <span className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]">
+                  {orderData?.customerName || 'Cliente WhatsApp'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 dark:text-stone-400">Modalidad:</span>
-                <span className="font-bold text-[#84cc16] dark:text-[#94de2d]">
-                  {isDelivery ? '🛵 Delivery a Domicilio' : '🏬 Retiro en Tienda'}
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {isDelivery ? '🛵 Delivery a Domicilio' : '🏬 Retiro en Local'}
                 </span>
               </div>
+              {orderData?.address && isDelivery && (
+                <div className="flex justify-between items-start gap-2 pt-0.5">
+                  <span className="text-slate-500 dark:text-stone-400 shrink-0">Dirección:</span>
+                  <span className="text-[11px] font-medium text-slate-700 dark:text-stone-300 text-right leading-tight">
+                    {orderData.address}
+                  </span>
+                </div>
+              )}
+            </div>
 
-              {/* Items Breakdown */}
-              <div className="border-t border-stone-100 dark:border-stone-800 pt-2 space-y-1">
+            {/* Detalle Ítems de la Boleta */}
+            <div>
+              <div className="grid grid-cols-12 text-[10px] font-black uppercase text-slate-400 dark:text-stone-500 pb-1.5 border-b border-stone-200 dark:border-stone-800">
+                <span className="col-span-2 text-center">Cant</span>
+                <span className="col-span-6">Descripción</span>
+                <span className="col-span-2 text-right">P. Unit</span>
+                <span className="col-span-2 text-right">Total</span>
+              </div>
+
+              <div className="divide-y divide-stone-100 dark:divide-stone-800/60 max-h-48 overflow-y-auto no-scrollbar">
                 {orderData?.items && orderData.items.length > 0 ? (
                   orderData.items.map((it, idx) => (
-                    <div key={idx} className="flex justify-between text-[11px]">
-                      <span>{it.quantity}x {it.name}</span>
-                      <span className="font-semibold">{curr} {it.subtotal.toFixed(2)}</span>
+                    <div key={idx} className="grid grid-cols-12 py-1.5 text-xs items-center">
+                      <span className="col-span-2 text-center font-bold text-slate-700 dark:text-stone-300">
+                        {it.quantity}
+                      </span>
+                      <div className="col-span-6 pr-1">
+                        <span className="font-semibold text-slate-900 dark:text-stone-100 block leading-tight truncate">
+                          {it.name}
+                        </span>
+                      </div>
+                      <span className="col-span-2 text-right text-slate-500 dark:text-stone-400 text-[11px]">
+                        {it.unitPrice.toFixed(2)}
+                      </span>
+                      <span className="col-span-2 text-right font-bold text-slate-900 dark:text-white text-xs">
+                        {it.subtotal.toFixed(2)}
+                      </span>
                     </div>
                   ))
                 ) : (
-                  <div className="flex justify-between text-[11px]">
-                    <span>Consumo General</span>
-                    <span className="font-semibold">{curr} {total.toFixed(2)}</span>
+                  <div className="grid grid-cols-12 py-2 text-xs items-center">
+                    <span className="col-span-2 text-center font-bold">1</span>
+                    <span className="col-span-6 font-semibold">Consumo Gastronómico</span>
+                    <span className="col-span-2 text-right">{total.toFixed(2)}</span>
+                    <span className="col-span-2 text-right font-bold">{total.toFixed(2)}</span>
                   </div>
                 )}
               </div>
+            </div>
 
-              <div className="border-t border-stone-200 dark:border-stone-800 pt-2 flex justify-between font-black text-sm">
-                <span>TOTAL A PAGAR:</span>
+            {/* Desglose Contable e Impuestos */}
+            <div className="border-t border-dashed border-stone-300 dark:border-stone-700 pt-3 space-y-1.5 text-xs">
+              <div className="flex justify-between text-slate-600 dark:text-stone-400">
+                <span>Op. Gravada (Base imponible):</span>
+                <span>{curr} {(total / 1.18).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-slate-600 dark:text-stone-400">
+                <span>I.G.V. (18%):</span>
+                <span>{curr} {(total - (total / 1.18)).toFixed(2)}</span>
+              </div>
+              {isDelivery && (
+                <div className="flex justify-between text-slate-600 dark:text-stone-400">
+                  <span>Servicio de Delivery:</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Incluido</span>
+                </div>
+              )}
+              <div className="flex justify-between text-base font-black text-slate-900 dark:text-white pt-1.5 border-t border-stone-200 dark:border-stone-800">
+                <span>IMPORTE TOTAL:</span>
                 <span className="text-orange-600 dark:text-orange-400">{curr} {total.toFixed(2)}</span>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowInvoiceModal(false)}
-              className="w-full py-3 rounded-xl bg-orange-600 text-white font-bold text-xs shadow-md"
-            >
-              Cerrar Comprobante
-            </button>
+            {/* Código Hash y QR de Validación Fiscal */}
+            <div className="p-2.5 rounded-2xl bg-stone-50 dark:bg-stone-900/90 border border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-stone-500 block">
+                  Código Hash SUNAT:
+                </span>
+                <span className="text-[10px] font-mono text-slate-600 dark:text-stone-300 block truncate">
+                  4a8f9c12b7e53f19d20c4e88b6f3a09c
+                </span>
+                <span className="text-[9px] text-slate-400 dark:text-stone-500 block mt-0.5">
+                  Representación impresa de la Boleta de Venta Electrónica
+                </span>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 flex items-center justify-center shrink-0">
+                <QrCode className="w-7 h-7 text-slate-800 dark:text-stone-200" />
+              </div>
+            </div>
+
+            {/* Acciones: Imprimir / Descargar & Cerrar */}
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex-1 py-3 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-slate-900 dark:text-white font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <Printer className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                <span>Imprimir / PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowInvoiceModal(false)}
+                className="flex-1 py-3 px-4 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs shadow-md shadow-orange-600/25 transition-all active:scale-95"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}

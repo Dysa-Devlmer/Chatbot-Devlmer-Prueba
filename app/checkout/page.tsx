@@ -60,9 +60,9 @@ export default function CheckoutPage() {
     todayHours?: string;
   }>({
     name: "Churu's Comida Rápida",
-    currency: 'CLP',
-    currencySymbol: '$',
-    phone: '+56912345678',
+    currency: 'PEN',
+    currencySymbol: 'S/.',
+    phone: '+51 987 654 321',
     address: 'Av. Los Próceres 458',
   });
 
@@ -156,12 +156,12 @@ export default function CheckoutPage() {
     updateCartState(updated);
   };
 
-  const isHighDenomination = business.currency === 'CLP' || business.currency === 'COP' || business.currency === 'ARS';
+  const isHighDenomination = ['CLP', 'COP', 'ARS'].includes((business.currency || 'PEN').toUpperCase());
 
   const formatPrice = (val: number) => {
-    const sym = business.currencySymbol || '$';
-    const curr = (business.currency || 'CLP').toUpperCase();
-    if (curr === 'CLP' || curr === 'COP' || curr === 'ARS' || sym === '$') {
+    const curr = (business.currency || 'PEN').toUpperCase();
+    const sym = business.currencySymbol || (curr === 'PEN' ? 'S/.' : '$');
+    if (curr === 'CLP' || curr === 'ARS' || curr === 'COP') {
       return `${sym} ${Math.round(val).toLocaleString('es-CL')}`;
     }
     return `${sym} ${val.toFixed(2)}`;

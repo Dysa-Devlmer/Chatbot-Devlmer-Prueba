@@ -49,9 +49,9 @@ export default function PublicMenuPage() {
   const [business, setBusiness] = useState<BusinessInfo>({
     name: "Churu's Comida Rápida",
     industry: 'fast_food',
-    currency: 'CLP',
-    currencySymbol: '$',
-    phone: '+56912345678',
+    currency: 'PEN',
+    currencySymbol: 'S/.',
+    phone: '+51 987 654 321',
     address: 'Av. Los Próceres 458',
     description: '',
     policies: '',

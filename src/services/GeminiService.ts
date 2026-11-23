@@ -317,7 +317,7 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
             .trim()
 
           if (!cleanedResponse.includes(reservation.orderNumber)) {
-            cleanedResponse += `\n\n📝 *Pedido Confirmado en Cocina:* Código *${reservation.orderNumber}* por un total de *${currSymbol} ${reservation.totalAmount?.toFixed(2)}*.\n\n🛵 *Seguimiento en Vivo:*\nPuedes seguir la preparación de tus platos y la ruta de tu entrega aquí:\n👉 https://chatbot.zgamersa.com/tracking?order=${reservation.orderNumber}\n\n¡En breve te iremos notificando cada avance por aquí!`
+            cleanedResponse += `\n\n✅ *¡Pedido #${reservation.orderNumber} recibido con éxito!* 🍗✨\nTotal a abonar: *${currSymbol} ${reservation.totalAmount?.toFixed(2)}*\n\nTu orden ya ingresó al sistema de cocina. Apenas nuestros cocineros confirmen e inicien la preparación, te compartiremos el enlace para seguir tu entrega en vivo. ¡Muchas gracias!`
           }
 
           return {

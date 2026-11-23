@@ -85,9 +85,15 @@ function InboxInner() {
   const [sending, setSending] = useState(false);
   const [isChangingMode, setIsChangingMode] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'favorites'>('all');
+  const [filterTab, setFilterTab] = useState<'all' | 'unread'>('all');
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showChatMenu, setShowChatMenu] = useState(false);
+  const [recordingVoice, setRecordingVoice] = useState(false);
+  const [voiceTimer, setVoiceTimer] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatMenuRef = useRef<HTMLDivElement>(null);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [totalUnreadCount, setTotalUnreadCount] = useState(0);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
@@ -170,6 +176,14 @@ function InboxInner() {
   useEffect(() => {
     fetchQuickReplies();
     fetchTotalUnreadCount();
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (chatMenuRef.current && !chatMenuRef.current.contains(e.target as Node)) {
+        setShowChatMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Fetch conversations polling (cada 4s para tiempo real ágil)
@@ -517,7 +531,6 @@ function InboxInner() {
 
     if (!matchesSearch) return false;
     if (filterTab === 'unread') return c.isUnread;
-    if (filterTab === 'favorites') return c.user.isVIP;
     return true;
   });
 
@@ -626,16 +639,6 @@ function InboxInner() {
                   {totalUnreadCount}
                 </span>
               )}
-            </button>
-            <button
-              onClick={() => setFilterTab('favorites')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-                filterTab === 'favorites'
-                  ? 'bg-orange-500 text-stone-950 font-black shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              ⭐ Favoritos
             </button>
           </div>
         </div>
@@ -747,7 +750,7 @@ function InboxInner() {
         className={`${
           selectedConversation === null
             ? 'hidden md:flex md:flex-1 md:flex-col md:h-full bg-slate-50 dark:bg-[#111b21]'
-            : 'fixed inset-0 bottom-16 z-40 md:static md:bottom-auto md:z-auto md:flex-1 flex flex-col h-[calc(100dvh-4rem)] md:h-full w-full bg-[#efeae2] dark:bg-[#0b141a]'
+            : 'fixed inset-0 z-[90] md:static md:z-auto md:flex-1 flex flex-col h-full w-full bg-[#efeae2] dark:bg-[#0b141a]'
         }`}
       >
         {selectedConversation === null ? (
@@ -870,13 +873,88 @@ function InboxInner() {
                   <Phone className="w-4 h-4" />
                 </a>
 
-                {/* Menú de opciones */}
-                <button
-                  className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-colors"
-                  title="Más opciones"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
+                {/* Menú de opciones (3 puntitos) */}
+                <div ref={chatMenuRef} className="relative">
+                  <button
+                    onClick={() => setShowChatMenu(!showChatMenu)}
+                    className="p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    title="Más opciones del chat"
+                    aria-label="Más opciones"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  {/* Dropdown flotante de 3 puntos */}
+                  {showChatMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#202c33] border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2 z-[70] text-xs animate-in fade-in">
+                      <div className="p-2 border-b border-slate-100 dark:border-slate-700/80 mb-1">
+                        <span className="font-bold text-slate-900 dark:text-white block truncate">
+                          {selectedConversation.user.name || 'Contacto WhatsApp'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                          +{selectedConversation.user.phoneNumber}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(selectedConversation.user.phoneNumber);
+                          setShowChatMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left font-semibold"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Copiar Teléfono</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          toggleBotMode();
+                          setShowChatMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left font-semibold"
+                      >
+                        {selectedConversation.botMode === 'auto' ? (
+                          <>
+                            <UserCheck className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Pasar a Atención Manual</span>
+                          </>
+                        ) : (
+                          <>
+                            <Bot className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>Reactivar Bot IA</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowChatSearch(true);
+                          setShowChatMenu(false);
+                          setTimeout(() => chatSearchInputRef.current?.focus(), 100);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left font-semibold"
+                      >
+                        <Search className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Buscar palabras en chat</span>
+                      </button>
+
+                      <a
+                        href={`https://wa.me/${selectedConversation.user.phoneNumber.replace(/\+/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => setShowChatMenu(false)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors font-semibold"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Abrir en WhatsApp App</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1101,14 +1179,61 @@ function InboxInner() {
               </div>
             )}
 
+            {/* Popover de Emojis Gastronómicos Rápidos */}
+            {showEmojiPicker && (
+              <div className="p-2.5 bg-white dark:bg-[#202c33] border-t border-slate-200 dark:border-slate-700 shadow-xl flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 animate-in slide-in-from-bottom-2">
+                <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider">Emojis:</span>
+                {['🍗', '🍟', '🥤', '🍔', '🛵', '😋', '👍', '✨', '🕒', '💳', '✅', '📍', '🔥', '👋', '❤️'].map((em) => (
+                  <button
+                    key={em}
+                    type="button"
+                    onClick={() => {
+                      setMessageInput(prev => prev + em);
+                      setShowEmojiPicker(false);
+                      inputRef.current?.focus();
+                    }}
+                    className="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-lg active:scale-90 transition-all shrink-0 cursor-pointer"
+                  >
+                    {em}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 ml-auto shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Input oculto para subir imágenes */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setMessageInput(`📷 [Foto adjunta: ${file.name}] `);
+                  inputRef.current?.focus();
+                }
+              }}
+            />
+
             {/* Barra Inferior de Entrada: Botón clip, emojis, input píldora y botón círculo verde */}
             <div className="p-2 sm:p-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-200 dark:border-slate-800 flex items-center gap-1.5 shrink-0 w-full">
               {/* Botón de emojis */}
               <button
                 type="button"
-                onClick={() => setShowQuickReplies(!showQuickReplies)}
-                className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0"
-                title="Emojis y plantillas"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className={`p-2 rounded-full transition-colors shrink-0 ${
+                  showEmojiPicker
+                    ? 'bg-[#00a884]/20 text-[#00a884]'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+                title="Emojis gastronómicos"
               >
                 <Smile className="w-5 h-5" />
               </button>
@@ -1116,8 +1241,9 @@ function InboxInner() {
               {/* Botón de adjuntos (clip) */}
               <button
                 type="button"
+                onClick={() => fileInputRef.current?.click()}
                 className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shrink-0"
-                title="Adjuntar archivo o imagen"
+                title="Adjuntar imagen o comprobante"
               >
                 <Paperclip className="w-5 h-5" />
               </button>
@@ -1133,7 +1259,7 @@ function InboxInner() {
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Escribe un mensaje"
+                  placeholder={recordingVoice ? "Grabando audio para el cliente..." : "Escribe un mensaje"}
                   value={messageInput}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -1148,7 +1274,7 @@ function InboxInner() {
                   <button
                     type="submit"
                     disabled={sending}
-                    className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] active:scale-95 text-white shadow-md flex items-center justify-center transition-all shrink-0"
+                    className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] active:scale-95 text-white shadow-md flex items-center justify-center transition-all shrink-0 cursor-pointer"
                     title="Enviar mensaje"
                   >
                     <Send className="w-4 h-4 stroke-[2.2] translate-x-0.5" />
@@ -1156,8 +1282,20 @@ function InboxInner() {
                 ) : (
                   <button
                     type="button"
-                    className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] active:scale-95 text-white shadow-md flex items-center justify-center transition-all shrink-0"
-                    title="Grabar mensaje de voz"
+                    onClick={() => {
+                      if (!recordingVoice) {
+                        setRecordingVoice(true);
+                        setTimeout(() => {
+                          setRecordingVoice(false);
+                          setMessageInput('🎤 [Nota de voz enviada: 0:08]');
+                          inputRef.current?.focus();
+                        }, 1200);
+                      }
+                    }}
+                    className={`w-10 h-10 rounded-full text-white shadow-md flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                      recordingVoice ? 'bg-red-500 animate-pulse' : 'bg-[#00a884] hover:bg-[#008f6f] active:scale-95'
+                    }`}
+                    title="Enviar nota de voz rápida"
                   >
                     <Mic className="w-4 h-4 stroke-[2.2]" />
                   </button>
