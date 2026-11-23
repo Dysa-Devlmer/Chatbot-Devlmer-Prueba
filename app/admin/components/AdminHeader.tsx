@@ -40,6 +40,7 @@ interface Notification {
   time: string;
   relativeTime: string;
   isUnread: boolean;
+  url?: string;
 }
 
 export function AdminHeader() {
@@ -325,22 +326,52 @@ export function AdminHeader() {
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-3 z-[100] text-xs animate-in fade-in">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-stone-800 mb-2 font-bold text-slate-900 dark:text-slate-200">
-                  <span>Notificaciones</span>
-                  {unreadCount > 0 && (
-                    <Link href="/admin/inbox" className="text-amber-500 dark:text-amber-400 hover:underline">
-                      Ver en inbox
-                    </Link>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <span>Notificaciones</span>
+                    {unreadCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-stone-950 font-black">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <Link 
+                    href="/admin/inbox" 
+                    onClick={() => setShowNotifications(false)}
+                    className="text-orange-600 dark:text-orange-400 font-extrabold hover:underline text-[11px]"
+                  >
+                    Ver en inbox →
+                  </Link>
                 </div>
-                <div className="max-h-60 overflow-y-auto space-y-1.5 no-scrollbar">
+                <div className="max-h-72 overflow-y-auto space-y-1.5 no-scrollbar">
                   {notifications.length === 0 ? (
-                    <div className="py-4 text-center text-slate-400 dark:text-stone-500">Sin nuevas notificaciones</div>
+                    <div className="py-6 text-center text-slate-400 dark:text-stone-500 font-medium">
+                      No tienes notificaciones pendientes
+                    </div>
                   ) : (
-                    notifications.slice(0, 5).map((n) => (
-                      <div key={n.id} className="p-2 rounded-xl bg-slate-50 dark:bg-stone-900/60 hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">{n.title || n.text}</div>
-                        <div className="text-[10px] text-slate-400 dark:text-stone-500 mt-0.5">{n.relativeTime}</div>
-                      </div>
+                    notifications.slice(0, 6).map((n) => (
+                      <Link
+                        key={n.id}
+                        href={n.url || '/admin/inbox'}
+                        onClick={() => setShowNotifications(false)}
+                        className="flex items-start gap-2.5 p-2 rounded-xl bg-slate-50 dark:bg-stone-900/60 hover:bg-orange-50 dark:hover:bg-stone-800 transition-colors group cursor-pointer border border-transparent hover:border-orange-500/20"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 font-bold text-xs mt-0.5">
+                          {n.icon || '💬'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-extrabold text-slate-900 dark:text-slate-100 truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 text-xs">
+                              {n.title}
+                            </span>
+                            <span className="text-[10px] text-slate-400 dark:text-stone-500 shrink-0">
+                              {n.relativeTime}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-stone-400 truncate mt-0.5 leading-tight">
+                            {n.text}
+                          </p>
+                        </div>
+                      </Link>
                     ))
                   )}
                 </div>

@@ -27,7 +27,9 @@ import {
   MessageSquare,
   Lock as LockIcon,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  ChevronRight,
+  Copy
 } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -99,6 +101,8 @@ function InboxInner() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatPhone, setNewChatPhone] = useState('');
   const [newChatName, setNewChatName] = useState('');
+  const [showMobileCallMenu, setShowMobileCallMenu] = useState(false);
+  const [copiedPhoneToast, setCopiedPhoneToast] = useState(false);
 
   // Buscador de palabras en la conversación activa (In-Chat Search)
   const [showChatSearch, setShowChatSearch] = useState(false);
@@ -270,7 +274,13 @@ function InboxInner() {
         const convs: Conversation[] = data.conversations || [];
         setConversations(convs);
 
-        if (selectedConversation) {
+        const targetConvId = searchParams?.get('conversationId') || searchParams?.get('id');
+        if (targetConvId) {
+          const target = convs.find(c => c.id === targetConvId);
+          if (target && selectedConversation?.id !== target.id) {
+            selectConversation(target);
+          }
+        } else if (selectedConversation) {
           const updated = convs.find(c => c.id === selectedConversation.id);
           if (updated) setSelectedConversation(updated);
         }
@@ -862,16 +872,25 @@ function InboxInner() {
                   <Search className="w-4 h-4" />
                 </button>
 
-                {/* Llamada directa / WhatsApp */}
-                <a
-                  href={`https://wa.me/${selectedConversation.user.phoneNumber.replace(/\+/g, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl transition-colors"
-                  title="Llamar o chatear por WhatsApp"
+                {/* Botón de Llamada: Deshabilitado en Desktop, Activo en Móvil */}
+                <button
+                  disabled
+                  className="hidden md:flex items-center justify-center p-2 text-slate-400 dark:text-stone-600 opacity-40 cursor-not-allowed rounded-xl"
+                  title="Llamada directa disponible solo en versión móvil"
+                  aria-label="Llamada deshabilitada en escritorio"
                 >
                   <Phone className="w-4 h-4" />
-                </a>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowMobileCallMenu(true)}
+                  className="flex md:hidden items-center justify-center p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl transition-all active:scale-95"
+                  title="Opciones de llamada móvil"
+                  aria-label="Llamar al cliente"
+                >
+                  <Phone className="w-4 h-4" />
+                </button>
 
                 {/* Menú de opciones (3 puntitos) */}
                 <div ref={chatMenuRef} className="relative">
@@ -1369,6 +1388,91 @@ function InboxInner() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal / Bottom Sheet de Llamada Móvil */}
+      {showMobileCallMenu && selectedConversation && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => setShowMobileCallMenu(false)}
+        >
+          <div 
+            className="w-full sm:max-w-sm bg-white dark:bg-[#1f2c34] rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-stone-800 p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200 pb-8 sm:pb-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-stone-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white truncate max-w-[200px]">
+                    {selectedConversation.user.name || 'Cliente'}
+                  </h3>
+                  <span className="text-xs text-slate-500 dark:text-stone-400 font-mono">
+                    +{selectedConversation.user.phoneNumber}
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowMobileCallMenu(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-stone-300 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 pt-1">
+              {/* Opción A: Llamar por WhatsApp */}
+              <a
+                href={`https://wa.me/${selectedConversation.user.phoneNumber.replace(/\+/g, '')}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setShowMobileCallMenu(false)}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-bold text-xs transition-all active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <div className="flex flex-col text-left">
+                    <span>Llamar por WhatsApp</span>
+                    <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-normal">Abre tu app oficial para llamada VoIP</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
+              </a>
+
+              {/* Opción B: Llamar por Teléfono Directo */}
+              <a
+                href={`tel:+${selectedConversation.user.phoneNumber.replace(/\+/g, '')}`}
+                onClick={() => setShowMobileCallMenu(false)}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-stone-800/80 dark:hover:bg-stone-800 border border-slate-200 dark:border-stone-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Phone className="w-4 h-4 text-slate-600 dark:text-stone-400 shrink-0" />
+                  <div className="flex flex-col text-left">
+                    <span>Llamar por Teléfono Celular</span>
+                    <span className="text-[10px] text-slate-500 dark:text-stone-400 font-normal">Abre el marcador de tu móvil</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+              </a>
+
+              {/* Opción C: Copiar Número */}
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(selectedConversation.user.phoneNumber);
+                  setCopiedPhoneToast(true);
+                  setTimeout(() => setCopiedPhoneToast(false), 2000);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-slate-600 dark:text-stone-400 hover:text-slate-900 dark:hover:text-white"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{copiedPhoneToast ? '¡Número copiado!' : 'Copiar número al portapapeles'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
