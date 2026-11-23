@@ -40,30 +40,30 @@ export default function MasterLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        {/* Right Section: Status, Demo Switch & Controls (Controlled wrap on medium screens) */}
-        <div className="flex items-center flex-wrap gap-2 sm:gap-3 shrink-0">
+        {/* Right Section: Status, Demo Switch & Controls (Adaptive & Clean) */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* VPS Infrastructure Live Indicator */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold shrink-0">
+          <div className="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span className="whitespace-nowrap">Infraestructura VPS Online</span>
+            <span className="whitespace-nowrap">VPS Online</span>
           </div>
 
           <Link
             href="/admin"
             target="_blank"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-all shrink-0"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-all shrink-0"
             title="Abrir panel operativo del cliente demo Churu's"
           >
-            <span className="whitespace-nowrap">Ver Local Demo</span>
+            <span className="whitespace-nowrap">Ver Demo</span>
             <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
           </Link>
 
-          <div className="h-6 w-px bg-slate-800 hidden sm:block" />
+          <div className="h-5 w-px bg-slate-800 hidden lg:block" />
 
           <div className="flex items-center gap-2 shrink-0">
-            <div className="text-right hidden sm:block">
-              <div className="text-xs font-black text-white">{session?.user?.name || 'Master CEO'}</div>
-              <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Super Administrador</div>
+            <div className="text-right hidden lg:block">
+              <div className="text-xs font-black text-white truncate max-w-[140px]">{session?.user?.name || 'Master CEO'}</div>
+              <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Super Admin</div>
             </div>
 
             <button

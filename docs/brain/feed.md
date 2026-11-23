@@ -248,3 +248,16 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
   - **Aprovisionador Remoto en Python ([scripts/provision-tenant-remote.py](file:///e:/prueba/scripts/provision-tenant-remote.py)):** Permite lanzar aprovisionamientos desde la consola local conectándose directamente al VPS.
   - **Guía Maestra en Segundo Cerebro:** Publicada la especificación completa en [[SAAS_TENANT_PROVISIONING_GUIDE]].
   - **Despliegue y Validación:** Scripts cargados y verificados en `/var/www/chatbot/` en el VPS `64.176.21.229`. Repo git actualizado.
+
+---
+
+### [2026-11-23] 🛡️ Activación del Centinela Activo de Seguridad y Riesgos (You Should Know)
+- **Agente:** Antigravity (Google DeepMind)
+- **Actividades:**
+  - **Subagente Especializado `security-sentinel`:** Registrado nativamente en Antigravity para auditorías continuas de seguridad, detección de fugas de credenciales, protección de base de datos y control de regresiones en endpoints.
+  - **Reglas Maestras del Proyecto ([AGENTS.md](file:///e:/prueba/AGENTS.md)):** Archivo de políticas estrictas que rige todas las acciones del equipo técnico:
+    - Política de Cero Exposición de Secretos (`WHATSAPP_TOKEN`, Gemini API, claves SSH).
+    - Enforzamiento del Puerto 7847 en entorno local (prohibido puerto 3000).
+    - Aislamiento estricto de datos multi-tenant para empresas arrendatarias.
+    - Control de calidad pre-despliegue con `npx tsc --noEmit`.
+  - **Documentación en Segundo Cerebro:** Publicada especificación en [[SECURITY_SENTINEL_YOU_SHOULD_KNOW]].

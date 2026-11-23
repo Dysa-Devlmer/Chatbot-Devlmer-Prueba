@@ -219,17 +219,17 @@ export function AdminHeader() {
       <div className="w-full max-w-full px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4">
         
         {/* Left Section: Brand Logo (Links to Inicio /admin) */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <Link href="/admin" className="flex items-center gap-2 group shrink-0" title="Ir a Inicio / Panel General">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center font-black text-white text-base sm:text-lg shadow-md group-hover:scale-105 transition-transform shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-shrink-0">
+          <Link href="/admin" className="flex items-center gap-2 group shrink-0 flex-shrink-0" title="Ir a Inicio / Panel General">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center font-black text-white text-base sm:text-lg shadow-md group-hover:scale-105 transition-transform shrink-0 flex-shrink-0">
               🍗
             </div>
-            <div className="flex flex-col justify-center shrink-0">
+            <div className="flex flex-col justify-center shrink-0 flex-shrink-0">
               <div className="flex items-center gap-1 sm:gap-1.5">
                 <span className="font-black text-xs sm:text-base text-slate-900 dark:text-white tracking-tight truncate max-w-[120px] xs:max-w-[150px] sm:max-w-[220px]">
                   {businessName}
                 </span>
-                <span className="px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20 shrink-0">
+                <span className="px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20 shrink-0 flex-shrink-0">
                   {businessName.includes("Churu") ? "Piloto" : "Local"}
                 </span>
               </div>
@@ -243,7 +243,7 @@ export function AdminHeader() {
         {/* Center: The Essential Horizontal Navigation Tabs (Responsive & Scalable) */}
         <nav 
           aria-label="Navegación principal"
-          className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-stone-900/90 p-1 rounded-2xl border border-slate-200 dark:border-stone-800 shadow-inner shrink min-w-0 overflow-hidden"
+          className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-stone-900/90 p-1 rounded-2xl border border-slate-200 dark:border-stone-800 shadow-inner flex-1 min-w-0 justify-center overflow-x-auto no-scrollbar mx-1"
         >
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -276,28 +276,28 @@ export function AdminHeader() {
         </nav>
 
         {/* Right Section: Direct Menu Link, AI Indicator, Theme, Notifications & Profile */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0 flex-shrink-0">
           
-          {/* Public Menu Direct Link */}
+          {/* Public Menu Direct Link (Only visible on >= 1280px / xl) */}
           <Link
             href="/menu"
             target="_blank"
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 transition-all hover:scale-105"
+            className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 transition-all hover:scale-105 shrink-0 flex-shrink-0"
             title="Abrir menú digital público de comensales"
           >
             <span>Ver Carta</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
 
-          {/* Official AI Indicator (Gemini Flash 🟢) */}
-          <div className="hidden sm:block">
+          {/* Official AI Indicator (Gemini Flash) (Only visible on >= 1280px / xl) */}
+          <div className="hidden xl:block shrink-0 flex-shrink-0">
             <AIIndicator />
           </div>
 
           {/* Theme Switcher Button (Dark / Light) */}
           <button
             onClick={toggleTheme}
-            className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors shrink-0 flex-shrink-0 cursor-pointer"
             title={isDark ? 'Cambiar a modo Claro' : 'Cambiar a modo Oscuro'}
             aria-label="Cambiar tema"
           >
@@ -309,10 +309,10 @@ export function AdminHeader() {
           </button>
 
           {/* Notifications Button & Dropdown */}
-          <div ref={notifRef} className="relative">
+          <div ref={notifRef} className="relative shrink-0 flex-shrink-0">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors relative"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors relative cursor-pointer"
               title="Notificaciones"
               aria-label="Notificaciones"
             >
@@ -382,32 +382,55 @@ export function AdminHeader() {
           </div>
 
           {/* User Profile Avatar & Menu */}
-          <div ref={menuRef} className="relative">
+          <div ref={menuRef} className="relative shrink-0 flex-shrink-0">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-stone-800 transition-all text-left"
+              className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-stone-800 transition-all text-left cursor-pointer shrink-0 flex-shrink-0"
               aria-label="Menú de usuario"
             >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-stone-950 flex items-center justify-center text-xs font-black overflow-hidden shrink-0 shadow-xs">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-stone-950 flex items-center justify-center text-xs font-black overflow-hidden shrink-0 flex-shrink-0 shadow-xs">
                 {profile?.avatar ? (
                   <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <span>{profile?.name?.charAt(0).toUpperCase() || 'A'}</span>
                 )}
               </div>
-              <div className="hidden lg:flex flex-col leading-none">
+              <div className="hidden lg:flex flex-col leading-none shrink-0">
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{profile?.name || 'Admin'}</span>
                 <span className="text-[10px] text-slate-500 dark:text-stone-400">{profile?.role || 'CEO'}</span>
               </div>
-              <ChevronDown className={`hidden sm:inline w-3.5 h-3.5 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`hidden sm:inline w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${showUserMenu ? 'rotate-180' : ''}`} />
             </button>
 
             {/* User Dropdown */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-2 z-[100] text-xs animate-in fade-in">
-                <div className="p-2 border-b border-slate-100 dark:border-stone-800 mb-1">
+              <div className="absolute right-0 mt-2 w-60 sm:w-64 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-2.5 z-[100] text-xs animate-in fade-in">
+                <div className="p-2 border-b border-slate-100 dark:border-stone-800 mb-2">
                   <div className="font-bold text-slate-900 dark:text-slate-200">{profile?.name || 'Administrador'}</div>
                   <div className="text-[11px] text-slate-500 dark:text-stone-400 truncate">{profile?.email || 'admin@churus.pe'}</div>
+                </div>
+
+                {/* Relocated Secondary Controls (Hidden on >= 1280px / xl, Visible on < 1280px) */}
+                <div className="block xl:hidden space-y-1.5 pb-2 mb-2 border-b border-slate-100 dark:border-stone-800">
+                  <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-stone-900/60 border border-slate-200/60 dark:border-stone-800">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-stone-400">
+                      Motor IA
+                    </span>
+                    <AIIndicator />
+                  </div>
+
+                  <Link
+                    href="/menu"
+                    target="_blank"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 transition-all"
+                  >
+                    <div className="flex items-center gap-2">
+                      <UtensilsCrossed className="w-3.5 h-3.5" />
+                      <span>Ver Carta Pública</span>
+                    </div>
+                    <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+                  </Link>
                 </div>
 
                 <div className="space-y-0.5">
@@ -430,7 +453,7 @@ export function AdminHeader() {
                 <div className="pt-1 mt-1 border-t border-slate-100 dark:border-stone-800">
                   <button
                     onClick={() => signOut({ callbackUrl: '/login' })}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors font-semibold"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors font-semibold cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>Cerrar Sesión</span>
