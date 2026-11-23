@@ -218,9 +218,9 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
         </div>
       )}
 
-      {/* Hero SaaS Control Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-[#151a22] to-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden">
-        <div className="space-y-2 z-10">
+      {/* Hero SaaS Control Header with controlled two-row layout & min-h */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-gradient-to-r from-slate-900 via-[#151a22] to-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden min-h-[140px]">
+        <div className="space-y-2 z-10 max-w-3xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4" />
             Acceso Privado Maestro &bull; Modo CEO
@@ -233,10 +233,10 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
           </p>
         </div>
 
-        <div className="flex items-center gap-3 z-10 shrink-0">
+        <div className="flex items-center flex-wrap gap-3 z-10 shrink-0">
           <button
             onClick={loadTenants}
-            className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all"
+            className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all shrink-0 cursor-pointer"
             title="Refrescar lista"
           >
             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
@@ -257,7 +257,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
               });
               setShowModal(true);
             }}
-            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-sm shadow-xl shadow-amber-500/20 transition-all flex items-center gap-2 active:scale-95"
+            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-sm shadow-xl shadow-amber-500/20 transition-all flex items-center gap-2 active:scale-95 shrink-0 cursor-pointer"
           >
             <Plus className="w-5 h-5 stroke-[3]" />
             <span>+ Registrar Nueva Empresa</span>
@@ -269,7 +269,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
       </div>
 
       {/* MRR & Business Health Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total MRR Card */}
         <div className="bg-[#12161c] border border-amber-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">

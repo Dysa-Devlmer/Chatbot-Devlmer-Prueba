@@ -17,10 +17,11 @@ export default function MasterLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#0d0f12] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-stone-950">
-      {/* Top SuperAdmin Header */}
-      <header className="sticky top-0 z-50 bg-[#12161c]/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-stone-950 font-black shadow-lg shadow-amber-500/20">
+      {/* Top SuperAdmin Header with pt-4 / pt-safe & responsive two-row wrap */}
+      <header className="sticky top-0 z-50 bg-[#12161c]/95 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 min-h-[4.5rem] pt-4 pb-3 sm:pt-4 sm:pb-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-4 transition-all">
+        {/* Left Section: Brand & Master Title */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-stone-950 font-black shadow-lg shadow-amber-500/20 shrink-0">
             <Building2 className="w-5 h-5 stroke-[2.5]" />
           </div>
           <div>
@@ -39,26 +40,27 @@ export default function MasterLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        {/* Right Section: Status, Demo switch & Logout */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Infraestructura VPS Online</span>
+        {/* Right Section: Status, Demo Switch & Controls (Controlled wrap on medium screens) */}
+        <div className="flex items-center flex-wrap gap-2 sm:gap-3 shrink-0">
+          {/* VPS Infrastructure Live Indicator */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="whitespace-nowrap">Infraestructura VPS Online</span>
           </div>
 
           <Link
             href="/admin"
             target="_blank"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-all shrink-0"
             title="Abrir panel operativo del cliente demo Churu's"
           >
-            <span>Ver Local Demo</span>
+            <span className="whitespace-nowrap">Ver Local Demo</span>
             <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
           </Link>
 
-          <div className="h-6 w-px bg-slate-800" />
+          <div className="h-6 w-px bg-slate-800 hidden sm:block" />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="text-right hidden sm:block">
               <div className="text-xs font-black text-white">{session?.user?.name || 'Master CEO'}</div>
               <div className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Super Administrador</div>
@@ -66,7 +68,7 @@ export default function MasterLayout({ children }: { children: ReactNode }) {
 
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
               title="Cerrar sesión maestra"
             >
               <LogOut className="w-4 h-4" />
