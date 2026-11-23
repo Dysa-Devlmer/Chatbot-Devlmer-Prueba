@@ -174,3 +174,24 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
   - **Dashboard y Catálogo 100% Dinámicos:** Se eliminaron los textos residuales hardcodeados (`Churu's Comida Rápida`, `en S/.`) en `/admin` y `/admin/products`, reemplazándolos con los datos reales del negocio (`business.name`, `business.currencySymbol`).
   - **Banner de Horarios y Filtros Táctiles:** En `/admin/orders`, el banner de cocina cerrada se compactó para móviles con botones accesibles, y los filtros de estado cuentan con desplazamiento táctil horizontal fluido.
   - **Despliegue Certificado en Producción:** Compilado con 0 errores en las 51 rutas y reiniciado en PM2 (PID `273823`) en VPS `64.176.21.229`. Sincronizado en `https://chatbot.zgamersa.com`.
+
+---
+
+### [2026-11-23] 📞 WhatsApp Calling API Nativa de Meta & Agente de Voz Autónomo
+- **Agente:** Antigravity (Google DeepMind)
+- **Actividades:**
+  - **Estudio & Adopción de la Calling API de Meta:** Implementado el canal oficial de llamadas VoIP de WhatsApp Cloud API, permitiendo a los clientes llamar directamente al presionar el icono de teléfono en el chat de WhatsApp.
+  - **Desarrollo de `WhatsAppCallingService` ([WhatsAppCallingService.ts](file:///e:/prueba/src/services/WhatsAppCallingService.ts)):**
+    - Intercepta eventos de llamada entrante en el webhook (`calls`).
+    - Integra validación con `HorariosService`: Si llaman fuera de horario comercial, rechaza la llamada con elegancia y envía inmediatamente una respuesta interactiva al chat con el enlace a la carta digital `/menu`.
+    - Si el local está abierto, negocia y acepta la sesión VoIP (`acceptCall`).
+  - **Desarrollo de `VoiceAgentService` ([VoiceAgentService.ts](file:///e:/prueba/src/services/VoiceAgentService.ts)):**
+    - Prompt conversacional adaptado para audio humano: respuestas breves (2-3 oraciones), sin markdown, pronunciación explícita de divisas en palabras y confirmación paso a paso.
+    - Acceso a carta en tiempo real vía SQLite y function calling para crear órdenes reales con `ReservationService.createReservation()`.
+    - Disparo automático de mensaje al chat de WhatsApp con el link de seguimiento `/tracking?order=ORD-XXXX` en cuanto se cierra el pedido por llamada.
+  - **Ampliación de `GeminiService`:** Incorporado método de baja latencia `generateRawText` para turnos rápidos de diálogo oral.
+  - **Actualización de Webhook:** [app/api/whatsapp/webhook/route.ts](file:///e:/prueba/app/api/whatsapp/webhook/route.ts) enruta automáticamente payloads de llamadas hacia `WhatsAppCallingService`.
+  - **Pruebas Automatizadas:** Creado y ejecutado `scripts/test_whatsapp_calling.ts` validando detección de llamadas, formateo de catálogo oral y procesamiento conversacional.
+  - **Documentación en Segundo Cerebro:** Creado documento maestro [[WHATSAPP_CALLING_API_VOICE_AGENT|📞 Arquitectura Técnica: WhatsApp Calling API & Agente de Voz en Tiempo Real]].
+  - **Despliegue Certificado en Producción:** Compilado exitosamente en VPS `64.176.21.229` (52 rutas estáticas/dinámicas) y reiniciado en PM2 (PID `383974`). 100% operativo en `https://chatbot.zgamersa.com`.
+  - **Sincronización Bidireccional de Perfil WhatsApp Business (Meta Graph API):** Conectado el endpoint `/api/admin/business` con `POST /v21.0/{PHONE_NUMBER_ID}/whatsapp_business_profile` para que al guardar cambios en el panel administrativo se actualicen de inmediato la descripción, dirección física, categoría comercial y enlaces a la carta digital directamente en el perfil oficial de WhatsApp que ven los clientes. Desplegado y verificado en VPS (PM2 PID `404055`).

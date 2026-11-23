@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { webhookAuthMiddleware, getHttpStatus } from '@/middleware/webhook-auth';
 import { whatsAppService } from '@/services/WhatsAppService';
+import { whatsAppCallingService } from '@/services/WhatsAppCallingService';
 import { whatsappLogger, logError } from '@/lib/logger';
 
 // Verificación del webhook (GET)
@@ -50,6 +51,18 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Empty request body' },
         { status: 400 }
       );
+    }
+
+    // Interceptar llamadas VoIP entrantes de Meta WhatsApp Calling API
+    if (whatsAppCallingService.isCallEvent(body)) {
+      const callResult = await whatsAppCallingService.handleIncomingCallWebhook(body);
+      return NextResponse.json({
+        success: callResult.handled,
+        type: 'whatsapp_calling',
+        callId: callResult.callId,
+        action: callResult.action,
+        message: callResult.message,
+      });
     }
 
     const result = await whatsAppService.processWebhookPayload(body);

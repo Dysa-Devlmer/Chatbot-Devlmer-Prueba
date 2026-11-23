@@ -148,6 +148,13 @@ export default function BusinessProfilePage() {
   });
 
   const [hoursStatus, setHoursStatus] = useState<HoursStatus | null>(null);
+  const [metaProfile, setMetaProfile] = useState<{
+    profile_picture_url?: string;
+    description?: string;
+    address?: string;
+    websites?: string[];
+    vertical?: string;
+  } | null>(null);
 
   // Load business profile and hours on mount
   useEffect(() => {
@@ -183,6 +190,10 @@ export default function BusinessProfilePage() {
             setSelectedCountry(matched.id);
           } else if (loadedCurrency === 'CLP' || loadedSymbol === '$') {
             setSelectedCountry('CL');
+          }
+
+          if (busData.metaProfile) {
+            setMetaProfile(busData.metaProfile);
           }
         }
 
@@ -463,16 +474,39 @@ export default function BusinessProfilePage() {
           <div className="space-y-5 animate-in fade-in duration-150">
             
             {/* Banner de Sincronización con WhatsApp Empresa */}
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-3 shadow-xs">
-              <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              <div>
-                <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 block">
-                  Sincronización Oficial con WhatsApp Business & Carta
-                </span>
-                <span className="text-[11px] text-slate-600 dark:text-stone-300 block mt-0.5 leading-relaxed">
-                  El nombre, teléfono oficial, dirección física, moneda y políticas configuradas aquí se presentarán a los comensales tanto en las respuestas del bot como en el catálogo digital.
-                </span>
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
+                      Sincronización en Vivo con WhatsApp Business Profile
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                      Meta Cloud API
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-600 dark:text-stone-300 block mt-0.5 leading-relaxed">
+                    Al guardar cambios en este formulario, se actualizan automáticamente tu biografía, dirección, enlaces y catálogo en el perfil de WhatsApp que ven los clientes.
+                  </span>
+                </div>
               </div>
+
+              {metaProfile?.profile_picture_url && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shrink-0">
+                  <img 
+                    src={metaProfile.profile_picture_url} 
+                    alt="WhatsApp Profile" 
+                    className="w-7 h-7 rounded-full object-cover border border-emerald-500/40"
+                  />
+                  <div className="flex flex-col text-left">
+                    <span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">Foto WhatsApp</span>
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">Vinculada</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Selector de País y Moneda Oficial */}

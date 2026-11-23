@@ -3,10 +3,88 @@ import { prisma } from '@/lib/prisma'
 import { apiLogger, logError } from '@/lib/logger'
 import { syncCatalogPricesToCurrency } from '@/lib/currencyCatalog'
 
+/**
+ * Sincroniza los datos del negocio con el perfil oficial de WhatsApp Business (Meta Graph API)
+ */
+async function syncToMetaWhatsAppProfile(profileData: {
+  description?: string | null;
+  address?: string | null;
+  email?: string | null;
+  industry?: string | null;
+}) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId) return { synced: false, reason: 'Credentials missing' };
+
+  try {
+    const verticalMap: Record<string, string> = {
+      restaurant: 'RESTAURANT',
+      fast_food: 'RESTAURANT',
+      food_and_beverage: 'RESTAURANT',
+      technology: 'ENTERTAINMENT',
+      retail: 'RETAIL',
+      services: 'PROF_SERVICES',
+    };
+
+    const payload: Record<string, any> = {
+      messaging_product: 'whatsapp',
+      websites: ['https://chatbot.zgamersa.com/menu'],
+    };
+
+    if (profileData.description) payload.description = profileData.description.slice(0, 512);
+    if (profileData.address) payload.address = profileData.address.slice(0, 256);
+    if (profileData.email) payload.email = profileData.email.slice(0, 128);
+    if (profileData.industry && verticalMap[profileData.industry.toLowerCase()]) {
+      payload.vertical = verticalMap[profileData.industry.toLowerCase()];
+    }
+
+    const res = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/whatsapp_business_profile`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    return { synced: res.ok, data };
+  } catch (e) {
+    return { synced: false, error: String(e) };
+  }
+}
+
+/**
+ * Consulta el perfil actual en vivo desde Meta WhatsApp Cloud API
+ */
+async function getMetaWhatsAppProfile() {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId) return null;
+
+  try {
+    const url = `https://graph.facebook.com/v21.0/${phoneId}/whatsapp_business_profile?fields=about,address,description,email,profile_picture_url,websites,vertical`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data?.data?.[0] || null;
+    }
+  } catch (e) {
+    // Silencioso para no romper GET
+  }
+  return null;
+}
+
 // GET /api/admin/business - Obtener perfil del negocio
 export async function GET() {
   try {
-    let profile = await prisma.businessProfile.findFirst()
+    let [profile, metaProfile] = await Promise.all([
+      prisma.businessProfile.findFirst(),
+      getMetaWhatsAppProfile(),
+    ])
 
     if (!profile) {
       profile = await prisma.businessProfile.create({
@@ -22,7 +100,7 @@ export async function GET() {
       })
     }
 
-    return NextResponse.json({ success: true, profile })
+    return NextResponse.json({ success: true, profile, metaProfile })
   } catch (error) {
     logError(apiLogger, error, { stage: 'get-business-profile' })
     return NextResponse.json(
@@ -98,7 +176,15 @@ export async function PUT(request: NextRequest) {
       await syncCatalogPricesToCurrency(currency)
     }
 
-    return NextResponse.json({ success: true, profile })
+    // Sincronizar automáticamente hacia el perfil de WhatsApp Business en Meta
+    const metaSync = await syncToMetaWhatsAppProfile({
+      description: profile.description,
+      address: profile.address,
+      email: profile.email,
+      industry: profile.industry,
+    });
+
+    return NextResponse.json({ success: true, profile, metaSync })
   } catch (error) {
     logError(apiLogger, error, { stage: 'update-business-profile' })
     return NextResponse.json(

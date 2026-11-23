@@ -534,6 +534,40 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
     const transcribedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
     return transcribedText.trim()
   }
+
+  /**
+   * Genera texto crudo rápido para agentes de voz en llamadas o flujos directos.
+   */
+  async generateRawText(prompt: string, maxTokens: number = 300): Promise<string> {
+    if (!this.isConfigured()) {
+      return 'Bienvenido. ¿En qué puedo ayudarte hoy con tu pedido?'
+    }
+
+    const model = this.primaryModel || 'gemini-3.5-flash'
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`
+
+    const payload = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: maxTokens,
+      },
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`Gemini generateRawText HTTP ${response.status}: ${errText}`)
+    }
+
+    const data = await response.json()
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  }
 }
 
 export const geminiService = new GeminiService()
