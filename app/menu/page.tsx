@@ -17,7 +17,8 @@ import {
   ArrowRight,
   Loader2,
   Store,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from 'lucide-react';
 import { ProductModifierDrawer, BaseProduct, CustomizedItem } from '../admin/components/ProductModifierDrawer';
 
@@ -242,18 +243,28 @@ export default function PublicMenuPage() {
               </div>
             </div>
 
-            <Link
-              href="/checkout"
-              className="relative p-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-slate-700 dark:text-stone-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
-              title="Ver Carrito"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              {totalItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-orange-600 text-white font-black text-[10px] flex items-center justify-center shadow-xs animate-in zoom-in">
-                  {totalItemCount}
-                </span>
-              )}
-            </Link>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Link
+                href="/login"
+                className="p-2 sm:p-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-slate-500 hover:text-slate-900 dark:text-stone-400 dark:hover:text-white transition-colors"
+                title="Acceso Administración / Negocio"
+              >
+                <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
+              </Link>
+
+              <Link
+                href="/checkout"
+                className="relative p-2 sm:p-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-slate-700 dark:text-stone-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+                title="Ver Carrito"
+              >
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+                {totalItemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-orange-600 text-white font-black text-[10px] flex items-center justify-center shadow-xs animate-in zoom-in">
+                    {totalItemCount}
+                  </span>
+                )}
+              </Link>
+            </div>
           </div>
 
           {/* Search Bar */}

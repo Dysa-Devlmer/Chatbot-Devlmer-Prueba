@@ -1,5 +1,5 @@
-import ClientHome from './components/ClientHome';
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return <ClientHome />;
+  redirect('/menu');
 }
