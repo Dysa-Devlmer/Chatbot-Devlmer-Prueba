@@ -44,6 +44,7 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [currencySymbol, setCurrencySymbol] = useState('S/.');
   const [currencyCode, setCurrencyCode] = useState('PEN');
+  const [businessName, setBusinessName] = useState("Mi Negocio");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -67,9 +68,10 @@ export default function ProductsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [prodRes, catRes] = await Promise.all([
+      const [prodRes, catRes, busRes] = await Promise.all([
         fetch(`/api/admin/products?search=${encodeURIComponent(search)}`),
         fetch('/api/admin/categories'),
+        fetch('/api/admin/business'),
       ]);
 
       const prodData = await prodRes.json();
@@ -81,6 +83,10 @@ export default function ProductsPage() {
         if (prodData.currency) setCurrencyCode(prodData.currency);
       }
       if (catData.success) setCategories(catData.categories);
+      if (busRes.ok) {
+        const bData = await busRes.json();
+        if (bData.profile?.name) setBusinessName(bData.profile.name);
+      }
     } catch (err) {
       console.error('Error cargando catálogo:', err);
     } finally {
@@ -259,7 +265,7 @@ export default function ProductsPage() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Churu&apos;s Comida Rápida • Control táctil de platos y stock en {currencySymbol}
+                {businessName} • Control táctil de platos y stock en {currencySymbol}
               </p>
             </div>
           </div>

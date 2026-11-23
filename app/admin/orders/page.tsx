@@ -671,21 +671,21 @@ export default function LiveOrdersPage() {
 
         {/* Banner de Cocina Cerrada si el local está fuera de horario */}
         {!isKitchenOpen && (
-          <div className="mt-3 p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-800 dark:text-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
-            <div className="flex items-center gap-2.5">
+          <div className="mt-3 p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-800 dark:text-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2 min-w-0">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
-              <div>
+              <div className="min-w-0">
                 <p className="font-bold text-xs sm:text-sm">
-                  🌙 La cocina se encuentra actualmente CERRADA según la programación de horarios {todayHours ? `(${todayHours})` : ''}.
+                  🌙 Cocina CERRADA por horario {todayHours ? `(${todayHours})` : ''}
                 </p>
-                <p className="text-[11px] opacity-80 mt-0.5">
-                  Los clientes que escriban a WhatsApp recibirán el mensaje automático con el horario y el catálogo digital. Las comandas de cocina permanecen en pausa.
+                <p className="text-[11px] opacity-80 mt-0.5 line-clamp-2 sm:line-clamp-none">
+                  Los clientes que escriban a WhatsApp recibirán el mensaje automático y catálogo digital.
                 </p>
               </div>
             </div>
             <Link
               href="/admin/business"
-              className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shrink-0 active:scale-95 transition-all shadow-xs"
+              className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shrink-0 self-end sm:self-auto active:scale-95 transition-all shadow-xs"
             >
               Ajustar Horario
             </Link>
@@ -702,7 +702,7 @@ export default function LiveOrdersPage() {
               placeholder="Buscar por ORD-XXXX, cliente o teléfono..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
             />
             {search && (
               <button 
@@ -715,10 +715,10 @@ export default function LiveOrdersPage() {
           </div>
 
           {/* Status Tabs for Mobile / Quick Filter */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 no-scrollbar -mx-1 px-1">
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
                 activeTab === 'all'
                   ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
@@ -732,7 +732,7 @@ export default function LiveOrdersPage() {
                 <button
                   key={col.id}
                   onClick={() => setActiveTab(col.id)}
-                  className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                  className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
                     activeTab === col.id
                       ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'

@@ -213,21 +213,21 @@ export function AdminHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/95 dark:bg-[#141312]/95 backdrop-blur-md border-b border-slate-200 dark:border-stone-800 text-slate-900 dark:text-white shadow-xs transition-colors duration-200">
-      <div className="w-full px-3 sm:px-6 h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-50 w-full max-w-full overflow-x-hidden bg-white/95 dark:bg-[#141312]/95 backdrop-blur-md border-b border-slate-200 dark:border-stone-800 text-slate-900 dark:text-white shadow-xs transition-colors duration-200">
+      <div className="w-full max-w-full px-2.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4">
         
         {/* Left Section: Brand Logo (Links to Inicio /admin) */}
-        <div className="flex items-center gap-3 shrink-0">
-          <Link href="/admin" className="flex items-center gap-2.5 group" title="Ir a Inicio / Panel General">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center font-black text-white text-lg shadow-md group-hover:scale-105 transition-transform">
+        <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0">
+          <Link href="/admin" className="flex items-center gap-2 group min-w-0" title="Ir a Inicio / Panel General">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center font-black text-white text-base sm:text-lg shadow-md group-hover:scale-105 transition-transform shrink-0">
               🍗
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-base text-slate-900 dark:text-white tracking-tight truncate max-w-[160px]">
+            <div className="min-w-0 flex flex-col justify-center">
+              <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                <span className="font-black text-xs sm:text-base text-slate-900 dark:text-white tracking-tight truncate max-w-[105px] xs:max-w-[140px] sm:max-w-[200px]">
                   {businessName}
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                <span className="px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20 shrink-0">
                   SaaS
                 </span>
               </div>
@@ -273,7 +273,7 @@ export function AdminHeader() {
         </nav>
 
         {/* Right Section: Direct Menu Link, AI Indicator, Theme, Notifications & Profile */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           
           {/* Public Menu Direct Link */}
           <Link
@@ -294,7 +294,7 @@ export function AdminHeader() {
           {/* Theme Switcher Button (Dark / Light) */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors"
             title={isDark ? 'Cambiar a modo Claro' : 'Cambiar a modo Oscuro'}
             aria-label="Cambiar tema"
           >
@@ -309,13 +309,13 @@ export function AdminHeader() {
           <div ref={notifRef} className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors relative"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-stone-300 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors relative"
               title="Notificaciones"
               aria-label="Notificaciones"
             >
               <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-amber-500 text-stone-950 text-[10px] font-black rounded-full flex items-center justify-center animate-pulse shadow-xs">
+                <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-amber-500 text-stone-950 text-[9px] sm:text-[10px] font-black rounded-full flex items-center justify-center animate-pulse shadow-xs">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -323,7 +323,7 @@ export function AdminHeader() {
 
             {/* Notification Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-3 z-50 text-xs animate-in fade-in">
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-3 z-50 text-xs animate-in fade-in">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-stone-800 mb-2 font-bold text-slate-900 dark:text-slate-200">
                   <span>Notificaciones</span>
                   {unreadCount > 0 && (
@@ -352,10 +352,10 @@ export function AdminHeader() {
           <div ref={menuRef} className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 p-1 sm:px-2 sm:py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-stone-800 transition-all text-left"
+              className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-stone-800 transition-all text-left"
               aria-label="Menú de usuario"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-stone-950 flex items-center justify-center text-xs font-black overflow-hidden shrink-0 shadow-xs">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-stone-950 flex items-center justify-center text-xs font-black overflow-hidden shrink-0 shadow-xs">
                 {profile?.avatar ? (
                   <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -366,7 +366,7 @@ export function AdminHeader() {
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{profile?.name || 'Admin'}</span>
                 <span className="text-[10px] text-slate-500 dark:text-stone-400">{profile?.role || 'CEO'}</span>
               </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`hidden sm:inline w-3.5 h-3.5 text-slate-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
             </button>
 
             {/* User Dropdown */}

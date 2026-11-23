@@ -561,7 +561,7 @@ function InboxInner() {
             <button
               onClick={() => setShowNewChatModal(true)}
               title="Iniciar nuevo chat"
-              className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-sm transition-all flex items-center justify-center"
+              className="p-2 rounded-xl bg-orange-500 hover:bg-orange-400 active:scale-95 text-stone-950 shadow-sm transition-all flex items-center justify-center font-bold"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
             </button>
@@ -586,7 +586,7 @@ function InboxInner() {
               placeholder="Buscar un chat o iniciar uno nuevo"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 border-none transition-all"
+              className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 border-none transition-all"
             />
             {search && (
               <button 
@@ -604,7 +604,7 @@ function InboxInner() {
               onClick={() => setFilterTab('all')}
               className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                 filterTab === 'all'
-                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                  ? 'bg-orange-500 text-stone-950 font-black shadow-xs'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
@@ -614,14 +614,14 @@ function InboxInner() {
               onClick={() => setFilterTab('unread')}
               className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap flex items-center gap-1 transition-all ${
                 filterTab === 'unread'
-                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                  ? 'bg-orange-500 text-stone-950 font-black shadow-xs'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               <span>No leídos</span>
               {totalUnreadCount > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                  filterTab === 'unread' ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white'
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  filterTab === 'unread' ? 'bg-stone-950 text-orange-400' : 'bg-orange-500 text-stone-950'
                 }`}>
                   {totalUnreadCount}
                 </span>
@@ -631,7 +631,7 @@ function InboxInner() {
               onClick={() => setFilterTab('favorites')}
               className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                 filterTab === 'favorites'
-                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                  ? 'bg-orange-500 text-stone-950 font-black shadow-xs'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >

@@ -73,9 +73,9 @@ export function MobileBottomNav() {
   return (
     <nav 
       aria-label="Navegación móvil"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_25px_rgba(0,0,0,0.07)] pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#141312]/95 backdrop-blur-md border-t border-slate-200 dark:border-stone-800 shadow-[0_-4px_25px_rgba(0,0,0,0.12)] pb-[env(safe-area-inset-bottom)]"
     >
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
+      <div className="flex items-center justify-around h-14 sm:h-16 w-full max-w-lg mx-auto px-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/admin' && pathname?.startsWith(item.href));
           const IconComponent = item.icon;
@@ -84,31 +84,31 @@ export function MobileBottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center flex-1 py-1 px-0.5 rounded-xl transition-all duration-200 active:scale-95 ${
                 isActive
-                  ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                  ? 'text-orange-500 dark:text-orange-400 font-extrabold'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-stone-400 dark:hover:text-stone-200 font-medium'
               }`}
             >
               <div className="relative">
                 <IconComponent 
-                  className={`w-6 h-6 transition-transform duration-200 ${
+                  className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200 ${
                     isActive ? 'scale-110 stroke-[2.5]' : 'stroke-[1.8]'
                   }`} 
                 />
                 {item.badge !== null && (
                   <span
-                    className={`absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm ${item.badgeColor}`}
+                    className={`absolute -top-1 -right-2 min-w-[16px] h-[16px] px-1 text-[9px] font-black rounded-full flex items-center justify-center shadow-xs ${item.badgeColor}`}
                   >
                     {item.badge > 99 ? '99+' : item.badge}
                   </span>
                 )}
               </div>
-              <span className="text-[11px] mt-1 tracking-tight leading-none">
+              <span className="text-[10px] sm:text-[11px] mt-0.5 tracking-tight leading-none truncate max-w-[56px] text-center">
                 {item.label}
               </span>
               {isActive && (
-                <span className="absolute bottom-1 w-1 h-1 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-orange-400 shadow-xs" />
               )}
             </Link>
           );
