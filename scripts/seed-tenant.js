@@ -18,7 +18,7 @@ if (!tenantId) {
   process.exit(1);
 }
 
-process.env.DATABASE_URL = `file:./prisma/tenants/${tenantId}.db`;
+process.env.DATABASE_URL = `file:/var/www/chatbot/prisma/tenants/${tenantId}.db`;
 
 console.log(`🌱 Sembrando tenant: ${tenantId}`);
 console.log(`📁 Base de datos: ${process.env.DATABASE_URL}`);

@@ -40,7 +40,7 @@ mkdir -p prisma/tenants
 
 # 2. Inicializar base de datos SQLite aislada para el tenant
 echo "📦 [1/5] Creando y sincronizando base de datos aislada..."
-DATABASE_URL="file:./prisma/tenants/${TENANT_ID}.db" npx prisma db push --skip-generate
+DATABASE_URL="file:/var/www/chatbot/prisma/tenants/${TENANT_ID}.db" npx prisma db push --skip-generate
 
 # 3. Sembrar datos iniciales (Admin, Empresa, Catálogo)
 echo "🌱 [2/5] Sembrando datos de inicio y catálogo..."
@@ -100,7 +100,7 @@ PM2_NAME="tenant-${TENANT_ID}"
 # Si ya existe, detenerlo y relanzarlo con el nuevo entorno
 pm2 delete "$PM2_NAME" 2>/dev/null || true
 
-DATABASE_URL="file:./prisma/tenants/${TENANT_ID}.db" \
+DATABASE_URL="file:/var/www/chatbot/prisma/tenants/${TENANT_ID}.db" \
 PORT="${PORT}" \
 NEXTAUTH_URL="https://${DOMAIN}" \
 pm2 start npm --name "$PM2_NAME" -- start -- -p "${PORT}"

@@ -101,13 +101,21 @@ export async function DELETE(
       });
     }
 
-    // 3. Archivar o eliminar base de datos aislada
+    // 3. Archivar base de datos aislada
     try {
-      const dbPath = path.join(process.cwd(), 'prisma', 'tenants', `${tenant.slug}.db`);
-      if (fs.existsSync(dbPath)) {
-        // Renombrar a .db.archived para respaldo de seguridad sin ocupar espacio activo
-        const archivePath = path.join(process.cwd(), 'prisma', 'tenants', `${tenant.slug}.db.archived_${Date.now()}`);
-        fs.renameSync(dbPath, archivePath);
+      const candidates = [
+        path.join(process.cwd(), 'prisma', 'tenants', `${tenant.slug}.db`),
+        path.join(process.cwd(), 'prisma', 'prisma', 'tenants', `${tenant.slug}.db`),
+        `/var/www/chatbot/prisma/tenants/${tenant.slug}.db`,
+      ];
+      for (const cand of candidates) {
+        if (fs.existsSync(cand)) {
+          const archiveDir = path.join(process.cwd(), 'prisma', 'tenants');
+          if (!fs.existsSync(archiveDir)) fs.mkdirSync(archiveDir, { recursive: true });
+          const archivePath = path.join(archiveDir, `${tenant.slug}.db.archived_${Date.now()}`);
+          fs.renameSync(cand, archivePath);
+          console.log(`📦 Base de datos aislada archivada: ${archivePath}`);
+        }
       }
     } catch (fsErr) {
       console.warn('⚠️ No se pudo archivar el archivo .db:', fsErr);
