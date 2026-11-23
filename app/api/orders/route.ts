@@ -65,7 +65,9 @@ export async function POST(request: NextRequest) {
 
       if (matched) {
         const multi = PRODUCT_PRICES[matched.name];
-        const unitPrice = parseFloat(item.price) || (multi ? (multi[activeCurrency] ?? matched.price) : matched.price);
+        // SEGURIDAD FINANCIERA (OWASP): El precio unitario SIEMPRE se calcula en el servidor desde la base de datos oficial.
+        // NUNCA se confía en item.price enviado por el cliente para evitar manipulación de montos.
+        const unitPrice = multi ? (multi[activeCurrency] ?? matched.price) : matched.price;
         const lineTotal = unitPrice * qty;
         totalAmount += lineTotal;
 

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { apiLogger, logError } from '@/lib/logger';
 import fs from 'fs';
 import path from 'path';
@@ -30,6 +32,11 @@ async function getMetaWhatsAppProfile(token: string, phoneId: string) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+    }
+
     const token = process.env.WHATSAPP_TOKEN;
     const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
     const appId = process.env.WHATSAPP_APP_ID || '1135645411975012';
@@ -68,6 +75,16 @@ export async function POST(request: NextRequest) {
     if (fileSize > 5 * 1024 * 1024) {
       return NextResponse.json(
         { success: false, error: 'El archivo excede el tamaño máximo permitido de 5 MB.' },
+        { status: 400 }
+      );
+    }
+
+    // SEGURIDAD (ASVS): Validar magic bytes reales (firma de archivo) para prevenir spoofing de MIME
+    const isJpeg = buffer.length > 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+    const isPng = buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+    if (!isJpeg && !isPng) {
+      return NextResponse.json(
+        { success: false, error: 'Archivo rechazado. El contenido no coincide con una imagen legítima JPEG o PNG.' },
         { status: 400 }
       );
     }

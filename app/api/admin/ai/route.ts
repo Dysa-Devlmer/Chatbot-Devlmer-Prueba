@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -26,6 +28,11 @@ export interface ConversationInsights {
 
 // GET - Obtener configuracion de IA y estado
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const action = searchParams.get('action');
 
@@ -75,6 +82,11 @@ export async function GET(request: NextRequest) {
 // PATCH - Actualizar configuracion de IA
 export async function PATCH(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       aiEnabled,

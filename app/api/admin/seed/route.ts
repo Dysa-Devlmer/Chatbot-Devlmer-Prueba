@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'No autorizado para ejecutar seed' }, { status: 401 });
+    }
     console.log('🌱 Iniciando seed de la base de datos...');
 
     // Crear comandos predeterminados

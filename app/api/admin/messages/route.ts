@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -6,6 +8,11 @@ const prisma = new PrismaClient();
 // GET - Obtener mensajes de una conversación específica
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const conversationId = searchParams.get('conversationId');
 
@@ -43,6 +50,11 @@ export async function GET(request: NextRequest) {
 // POST - Enviar un mensaje manual desde el panel admin
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { conversationId, content, phoneNumber } = body;
 

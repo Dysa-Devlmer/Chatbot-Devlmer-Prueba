@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -71,6 +73,11 @@ export interface AnalyticsData {
 // GET - Obtener analytics completos
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const period = searchParams.get('period') || '7d'; // 24h, 7d, 30d
 

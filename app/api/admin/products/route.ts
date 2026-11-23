@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiLogger, logError } from '@/lib/logger'
 import { PRODUCT_PRICES } from '@/lib/currencyCatalog'
@@ -6,6 +8,11 @@ import { PRODUCT_PRICES } from '@/lib/currencyCatalog'
 // GET /api/admin/products - Listar productos (con filtro opcional por categoría o búsqueda)
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get('search') || ''
     const categoryId = searchParams.get('categoryId')
@@ -69,6 +76,11 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/products - Crear un nuevo producto
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+    }
+
     const body = await request.json()
     const { name, description, price, stock, sku, categoryId, allowBackorder, imageUrl } = body
 

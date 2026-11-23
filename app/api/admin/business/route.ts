@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { apiLogger, logError } from '@/lib/logger'
 import { syncCatalogPricesToCurrency } from '@/lib/currencyCatalog'
@@ -113,6 +115,11 @@ export async function GET() {
 // PUT /api/admin/business - Actualizar perfil del negocio (rubro, políticas, nombre)
 export async function PUT(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+    }
+
     const body = await request.json()
     const {
       name,

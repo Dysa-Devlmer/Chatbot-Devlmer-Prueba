@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -6,6 +8,11 @@ const prisma = new PrismaClient();
 // GET - Obtener todas las conversaciones con información del usuario
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || 'active';
     const botMode = searchParams.get('botMode');
@@ -67,6 +74,11 @@ export async function GET(request: NextRequest) {
 // PUT - Acciones en lote (marcar todo como leído, etc.)
 export async function PUT(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { action } = body;
 
@@ -100,6 +112,11 @@ export async function PUT(request: NextRequest) {
 // PATCH - Actualizar una conversación (cambiar modo bot, marcar como leído, etc.)
 export async function PATCH(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { conversationId, botMode, isUnread, assignedTo, status } = body;
 

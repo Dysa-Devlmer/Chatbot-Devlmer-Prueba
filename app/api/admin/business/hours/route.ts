@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { HorariosService, ConfigHorarios } from '@/lib/horarios';
 import { apiLogger, logError } from '@/lib/logger';
 
@@ -34,6 +36,11 @@ export async function GET() {
 // PUT /api/admin/business/hours - Guardar configuración de horarios
 export async function PUT(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { horarios, mensajes, configuracion } = body;
 

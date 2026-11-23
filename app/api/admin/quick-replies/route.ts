@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -93,6 +95,10 @@ const DEFAULT_QUICK_REPLIES = [
 // GET - Obtener todas las respuestas rápidas
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
     // Verificar si existen templates, si no, crearlos
     const existingCount = await prisma.messageTemplate.count();
 
@@ -160,6 +166,11 @@ export async function GET() {
 // POST - Crear nueva respuesta rápida
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { title, shortcut, content, category, emoji } = body;
 
@@ -206,6 +217,11 @@ export async function POST(request: NextRequest) {
 // PATCH - Actualizar respuesta rápida
 export async function PATCH(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { id, title, shortcut, content, category, emoji, isActive, incrementUsage } = body;
 
@@ -271,6 +287,11 @@ export async function PATCH(request: NextRequest) {
 // DELETE - Eliminar respuesta rápida o resetear todas
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const reset = searchParams.get('reset');
