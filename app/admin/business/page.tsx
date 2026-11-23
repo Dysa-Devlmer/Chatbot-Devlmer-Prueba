@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { 
   Store, 
   Save, 
@@ -20,7 +20,12 @@ import {
   Check, 
   Power,
   ShieldCheck,
-  Send
+  Send,
+  Camera,
+  Upload,
+  ImageIcon,
+  Loader2,
+  X
 } from 'lucide-react';
 
 interface DiaKey {
@@ -155,6 +160,12 @@ export default function BusinessProfilePage() {
     websites?: string[];
     vertical?: string;
   } | null>(null);
+
+  // WhatsApp Profile Picture Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   // Load business profile and hours on mount
   useEffect(() => {
@@ -298,6 +309,77 @@ export default function BusinessProfilePage() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  // Profile Picture Handlers (Meta WhatsApp Cloud API)
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+      setMessage({ type: 'error', text: 'El formato de imagen debe ser JPG o PNG.' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'La imagen no debe superar los 5 MB de tamaño.' });
+      return;
+    }
+
+    setSelectedPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleCancelPhoto = () => {
+    setSelectedPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleUploadPhoto = async () => {
+    if (!selectedPhotoFile) return;
+    setUploadingPhoto(true);
+    setMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedPhotoFile);
+
+      const res = await fetch('/api/admin/business/profile-picture', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.metaProfile) {
+          setMetaProfile(data.metaProfile);
+        } else if (data.profilePictureUrl) {
+          setMetaProfile(prev => ({
+            ...(prev || {}),
+            profile_picture_url: data.profilePictureUrl,
+          }));
+        }
+        setSelectedPhotoFile(null);
+        setPhotoPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        setMessage({
+          type: 'success',
+          text: '¡Foto de perfil de WhatsApp Business actualizada exitosamente en Meta!'
+        });
+        setTimeout(() => setMessage(null), 6000);
+      } else {
+        setMessage({
+          type: 'error',
+          text: data.error || 'No se pudo subir la foto a WhatsApp Business.'
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: 'error', text: 'Error de conexión al transferir la foto a Meta.' });
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -507,6 +589,114 @@ export default function BusinessProfilePage() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Módulo de Foto de Perfil Oficial de WhatsApp Business */}
+            <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-stone-800">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                    Foto de Perfil Oficial de WhatsApp Business
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-stone-400">
+                    Sube el logo o avatar de la empresa. Se sincroniza directamente con Meta para que tus clientes lo vean en su celular.
+                  </p>
+                </div>
+                <span className="px-2 py-0.5 text-[10px] font-black uppercase rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  Meta Resumable Upload
+                </span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-5 pt-1">
+                {/* Avatar Preview */}
+                <div className="relative group shrink-0">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-3 border-orange-500/30 p-1 bg-slate-50 dark:bg-stone-950 overflow-hidden shadow-inner flex items-center justify-center">
+                    {photoPreview || metaProfile?.profile_picture_url ? (
+                      <img 
+                        src={photoPreview || metaProfile?.profile_picture_url} 
+                        alt="Logo WhatsApp Empresa" 
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-full bg-orange-500/10 flex flex-col items-center justify-center text-orange-600 dark:text-orange-400">
+                        <ImageIcon className="w-8 h-8 opacity-60" />
+                        <span className="text-[9px] font-bold mt-1">Sin foto</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-1 right-1 p-2 rounded-full bg-orange-600 hover:bg-orange-500 text-white shadow-md transition-all cursor-pointer border-2 border-white dark:border-stone-900"
+                    title="Seleccionar foto de perfil"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Controles de Carga */}
+                <div className="flex-1 space-y-3 text-center sm:text-left">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
+
+                  {selectedPhotoFile ? (
+                    <div className="space-y-2">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-xs font-bold">
+                        <Camera className="w-3.5 h-3.5 shrink-0" />
+                        <span>Nueva imagen seleccionada: {selectedPhotoFile.name} ({(selectedPhotoFile.size / 1024).toFixed(0)} KB)</span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleUploadPhoto}
+                          disabled={uploadingPhoto}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-md shadow-emerald-600/25 transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                          {uploadingPhoto ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Subiendo a Meta WhatsApp...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4" />
+                              <span>Subir a WhatsApp Business</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelPhoto}
+                          disabled={uploadingPhoto}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-slate-700 dark:text-stone-300 font-bold text-xs transition-all cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Cancelar</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-50 dark:bg-stone-800 hover:bg-orange-100 dark:hover:bg-stone-700 text-orange-600 dark:text-orange-400 border border-orange-500/30 font-bold text-xs transition-all cursor-pointer"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>Elegir Nueva Foto de Perfil</span>
+                      </button>
+                      <p className="text-[11px] text-slate-500 dark:text-stone-400">
+                        Formato recomendado: Cuadrado (ej. 640 x 640 px), máximo 5 MB. Formatos admitidos: JPG o PNG.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Selector de País y Moneda Oficial */}

@@ -166,44 +166,90 @@ function SettingsContent() {
     }
   };
 
+  // Helper para procesar, recortar al centro y comprimir el avatar en el cliente
+  const processAvatarImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo seleccionado'));
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('La imagen seleccionada no es válida'));
+        img.onload = () => {
+          try {
+            const maxDim = 400;
+            const width = img.width;
+            const height = img.height;
+
+            // Recorte cuadrado centrado
+            const minSide = Math.min(width, height);
+            const sx = (width - minSide) / 2;
+            const sy = (height - minSide) / 2;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.min(minSide, maxDim);
+            canvas.height = Math.min(minSide, maxDim);
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              resolve(e.target?.result as string);
+              return;
+            }
+
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, canvas.width, canvas.height);
+
+            // Generar JPEG optimizado de 50KB-80KB
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.88);
+            resolve(compressedBase64);
+          } catch {
+            resolve(e.target?.result as string);
+          }
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
       showMessage('error', 'Por favor selecciona una imagen válida (JPG, PNG o WebP)');
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      showMessage('error', 'La imagen es demasiado grande. Máximo 2MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setUploadingAvatar(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64 = e.target?.result as string;
-        const response = await fetch('/api/admin/profile/avatar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ avatar: base64 }),
-        });
+      // Comprime y escala automáticamente cualquier imagen (incluso de 10MB+)
+      const base64 = await processAvatarImage(file);
 
-        if (response.ok) {
-          const data = await response.json();
-          setAvatar(data.avatar);
-          showMessage('success', 'Foto de perfil actualizada con éxito');
-        } else {
-          throw new Error('Error al subir avatar');
-        }
-        setUploadingAvatar(false);
-      };
-      reader.readAsDataURL(file);
+      const response = await fetch('/api/admin/profile/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: base64 }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setAvatar(data.avatar);
+        showMessage('success', '¡Foto de perfil actualizada con éxito!');
+        window.dispatchEvent(new Event('admin-profile-updated'));
+      } else {
+        throw new Error(data.error || 'Error al guardar foto en el servidor');
+      }
     } catch (err: any) {
-      showMessage('error', err.message || 'Error al subir la imagen');
+      console.error('Error subiendo avatar:', err);
+      showMessage('error', err.message || 'Error al procesar la imagen');
+    } finally {
       setUploadingAvatar(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -217,6 +263,7 @@ function SettingsContent() {
       if (response.ok) {
         setAvatar(null);
         showMessage('success', 'Foto de perfil eliminada');
+        window.dispatchEvent(new Event('admin-profile-updated'));
       } else {
         throw new Error('Error al eliminar');
       }

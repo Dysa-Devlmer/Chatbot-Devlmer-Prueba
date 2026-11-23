@@ -5,9 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/utils/security';
 import { authLogger, logError } from '@/lib/logger';
 
-// Allowed MIME types for avatar uploads
-const ALLOWED_MIME_TYPES = ['data:image/jpeg;base64,', 'data:image/png;base64,', 'data:image/webp;base64,'];
-const MAX_BASE64_LENGTH = 2800000; // ~2MB raw image
+// Maximum allowed base64 length (approx 5MB to comfortably allow direct or resized uploads)
+const MAX_BASE64_LENGTH = 7000000;
 
 // POST - Upload avatar (base64)
 export async function POST(request: NextRequest) {
@@ -16,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     if (!session) {
       return NextResponse.json(
-        { error: 'No autorizado' },
+        { error: 'No autorizado. Por favor inicia sesión nuevamente.' },
         { status: 401 }
       );
     }
@@ -26,24 +25,24 @@ export async function POST(request: NextRequest) {
 
     if (!avatar || typeof avatar !== 'string') {
       return NextResponse.json(
-        { error: 'No se proporcionó imagen válida' },
+        { error: 'No se proporcionó una imagen válida.' },
         { status: 400 }
       );
     }
 
     // Validate allowed image types (strict whitelist against XSS/SVG injection)
-    const isAllowedType = ALLOWED_MIME_TYPES.some(prefix => avatar.startsWith(prefix));
+    const isAllowedType = /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(avatar);
     if (!isAllowedType) {
       return NextResponse.json(
-        { error: 'Formato de imagen no permitido. Solo se aceptan JPEG, PNG o WebP.' },
+        { error: 'Formato no permitido. Solo se aceptan imágenes JPG, PNG o WebP.' },
         { status: 400 }
       );
     }
 
-    // Check size limit (max 2MB)
+    // Check size limit
     if (avatar.length > MAX_BASE64_LENGTH) {
       return NextResponse.json(
-        { error: 'La imagen excede el tamaño máximo permitido de 2MB.' },
+        { error: 'La imagen excede el tamaño máximo permitido. Por favor elige una imagen más ligera.' },
         { status: 400 }
       );
     }
@@ -57,6 +56,8 @@ export async function POST(request: NextRequest) {
         data: {
           username: 'admin',
           password: defaultHashedPassword,
+          name: 'Admin Devlmer',
+          email: 'admin@zgamersa.com',
           avatar,
         },
       });
@@ -67,17 +68,17 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    authLogger.info('Avatar actualizado correctamente', { user: session.user?.name });
+    authLogger.info('Avatar actualizado correctamente en base de datos', { user: session.user?.name });
 
     return NextResponse.json({
       success: true,
       avatar: profile.avatar,
-      message: 'Avatar actualizado correctamente',
+      message: 'Foto de perfil actualizada correctamente',
     });
-  } catch (error) {
+  } catch (error: any) {
     logError(authLogger, error, { action: 'upload-avatar' });
     return NextResponse.json(
-      { error: 'Error al subir el avatar' },
+      { error: error?.message || 'Error interno al guardar la foto de perfil en el servidor' },
       { status: 500 }
     );
   }
@@ -106,7 +107,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Avatar eliminado correctamente',
+      message: 'Foto de perfil eliminada correctamente',
     });
   } catch (error) {
     console.error('Error deleting avatar:', error);

@@ -112,6 +112,11 @@ export function AdminHeader() {
       }
     };
     loadProfile();
+
+    window.addEventListener('admin-profile-updated', loadProfile);
+    return () => {
+      window.removeEventListener('admin-profile-updated', loadProfile);
+    };
   }, []);
 
   // Poll for notifications and pending orders count
