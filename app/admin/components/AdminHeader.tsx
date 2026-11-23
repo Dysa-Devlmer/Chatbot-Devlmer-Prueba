@@ -10,9 +10,7 @@ import {
   ChevronDown, 
   LogOut, 
   User, 
-  Shield, 
-  Palette,
-  Sliders,
+  Lock,
   Sun,
   Moon,
   ExternalLink,
@@ -206,11 +204,8 @@ export function AdminHeader() {
   ];
 
   const userMenuItems = [
-    { href: '/admin/settings', label: 'Mi Perfil', icon: User },
-    { href: '/admin/settings?tab=roles', label: 'Equipo & Roles', icon: Shield },
-    { href: '/admin/settings?tab=appearance', label: 'Apariencia & Marca', icon: Palette },
-    { href: '/admin/settings?tab=security', label: 'Seguridad', icon: Sliders },
-    { href: '/admin/settings?tab=notifications', label: 'Notificaciones', icon: Bell },
+    { href: '/admin/settings?tab=profile', label: 'Mi Perfil', icon: User },
+    { href: '/admin/settings?tab=security', label: 'Seguridad & Contraseña', icon: Lock },
   ];
 
   return (
