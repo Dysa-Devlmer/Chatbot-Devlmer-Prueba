@@ -195,3 +195,42 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
   - **Documentación en Segundo Cerebro:** Creado documento maestro [[WHATSAPP_CALLING_API_VOICE_AGENT|📞 Arquitectura Técnica: WhatsApp Calling API & Agente de Voz en Tiempo Real]].
   - **Despliegue Certificado en Producción:** Compilado exitosamente en VPS `64.176.21.229` (52 rutas estáticas/dinámicas) y reiniciado en PM2 (PID `383974`). 100% operativo en `https://chatbot.zgamersa.com`.
   - **Sincronización Bidireccional de Perfil WhatsApp Business (Meta Graph API):** Conectado el endpoint `/api/admin/business` con `POST /v21.0/{PHONE_NUMBER_ID}/whatsapp_business_profile` para que al guardar cambios en el panel administrativo se actualicen de inmediato la descripción, dirección física, categoría comercial y enlaces a la carta digital directamente en el perfil oficial de WhatsApp que ven los clientes. Desplegado y verificado en VPS (PM2 PID `404055`).
+  - **Gestión de Display Name en Meta & Carga Nativa de Foto de Perfil:**
+    - Solicitado el cambio de Display Name a `Churu's Comida Rápida` en Meta WhatsApp Manager para la línea `+56 9 6541 9765` (quedando En revisión para certificación de Meta).
+    - Creado el endpoint `POST /api/admin/business/profile-picture` con la API de Carga Reanudable de Meta (`/uploads` + binary stream + `whatsapp_business_profile`) e integrado el módulo de carga de foto con selector JPG/PNG y vista previa en `/admin/business` ("Mi Local"). Desplegado en VPS (PM2 PID `412723`).
+  - **Reporte Ejecutivo SaaS para el CEO:** Redactado el protocolo maestro de arriendo y onboarding en 4 fases ([[REPORTE_CEO_ONBOARDING_NUEVA_EMPRESA_SAAS]]) para activar nuevos clientes en menos de 15 minutos sin tocar código.
+
+---
+
+### [2026-11-23] 🛡️ Resolución de Incidente 502 en Login, Refactorización de Chatbot y Optimización de Mi Perfil
+- **Agente:** Antigravity (Google DeepMind)
+- **Actividades:**
+  - **Diagnóstico y Corrección de Error 502 Bad Gateway en Autenticación (`/api/auth/callback/credentials`):**
+    - Se identificó en `/var/log/nginx/error.log` el fallo `upstream sent too big header`. NextAuth intentaba serializar la imagen en base64 del avatar del administrador en la cookie `__Secure-next-auth.session-token`, excediendo el límite de cabeceras HTTP de Nginx.
+    - Se modificó [src/lib/auth.ts](file:///e:/prueba/src/lib/auth.ts) para evitar que los strings en base64 se almacenen en el JWT de sesión; la imagen se sirve exclusivamente vía base de datos / endpoint `/api/admin/profile`.
+    - Se reforzó la configuración de Nginx en `/etc/nginx/sites-available/chatbot` con `proxy_buffer_size 128k; proxy_buffers 4 256k; proxy_busy_buffers_size 256k; client_max_body_size 30M;`.
+    - Se verificó la prueba de login en producción obteniendo respuesta exitosa `HTTP/2 200 OK` con cookie compacta de ~400 bytes.
+  - **Refactorización del Flujo de Pedidos en Gemini (`GeminiService.ts` & `orders/route.ts`):**
+    - Erradicación de duplicidad y textos tipo spam: la IA ya no imprime dos veces la lista de platos en la toma del pedido.
+    - Cumplimiento de regla de negocio para tracking: al confirmar el pedido ("Sí"), el bot envía un acuse de recibo limpio y educado sin enlaces de tracking prematuros.
+    - El link oficial de seguimiento en vivo y boleta electrónica se despacha automáticamente cuando el personal de cocina presiona "Iniciar Preparación" (`confirmed`).
+  - **Limpieza de Catálogo y Carta Digital:**
+    - Desactivado el producto individual `"Adicional Salchibroaster"` de la tabla `Product` en SQLite (local y VPS) para eliminar relleno innecesario del menú.
+    - La opción "+ S/. 5.00 conviértelo en Salchibroaster" se preservó exclusivamente como modificador interactivo para la categoría Broaster en el drawer táctil.
+  - **Rediseño Profesional de "Mi Perfil & Seguridad" (`/admin/settings`):**
+    - Depuración del menú de usuario en `AdminHeader.tsx`: conservados únicamente *Mi Perfil*, *Seguridad & Contraseña* y *Cerrar Sesión*.
+    - Formulario con datos reales sincronizados en base de datos (`AdminProfile`).
+    - Compresión client-side con Canvas HTML5 a 400x400 px en JPEG de alta resolución (~60 KB), eliminando bloqueos en "Subiendo..." y permitiendo subidas instantáneas desde cualquier smartphone o cámara 4K.
+  - **Despliegue Certificado en Producción:** Compilado exitosamente en VPS `64.176.21.229` (53 rutas estáticas/dinámicas) y reiniciado en PM2 (PID `805090`). Operativo en `https://chatbot.zgamersa.com`.
+
+---
+
+### [2026-11-23] 🚀 Automatización del Aprovisionamiento SaaS de Nuevos Clientes (Multi-Tenant)
+- **Agente:** Antigravity (Backend, Sistemas & Seguridad)
+- **Actividades:**
+  - **Diseño de Arquitectura Multi-Tenant:** Implementado el modelo *Single Codebase, Database-per-tenant* para alojar decenas de empresas aisladas en el VPS actual consumiendo solo ~55 MB por cliente.
+  - **Script de Sembrado Dinámico ([scripts/seed-tenant.js](file:///e:/prueba/scripts/seed-tenant.js)):** Inicializa la base de datos exclusiva del cliente (`prisma/tenants/{tenant}.db`), genera el `AdminProfile` con contraseña segura encriptada, configura el `BusinessProfile` y precarga plantillas de catálogo completas según el rubro (`fast_food`, `pizzeria`, `retail`).
+  - **Script Maestro de Aprovisionamiento en 1 Comando ([scripts/provision-new-tenant.sh](file:///e:/prueba/scripts/provision-new-tenant.sh)):** Automatiza en menos de 60 segundos la creación de base de datos, sembrado, configuración de Nginx con buffers 128k/256k, certificado SSL y proceso dedicado en PM2.
+  - **Aprovisionador Remoto en Python ([scripts/provision-tenant-remote.py](file:///e:/prueba/scripts/provision-tenant-remote.py)):** Permite lanzar aprovisionamientos desde la consola local conectándose directamente al VPS.
+  - **Guía Maestra en Segundo Cerebro:** Publicada la especificación completa en [[SAAS_TENANT_PROVISIONING_GUIDE]].
+  - **Despliegue y Validación:** Scripts cargados y verificados en `/var/www/chatbot/` en el VPS `64.176.21.229`. Repo git actualizado.

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import AIIndicator from './AIIndicator';
 import { 
+  Building2,
   Bell, 
   ChevronDown, 
   LogOut, 
@@ -209,6 +210,7 @@ export function AdminHeader() {
   ];
 
   const userMenuItems = [
+    { href: '/admin/tenants', label: 'Empresas SaaS (Dueño)', icon: Building2 },
     { href: '/admin/settings?tab=profile', label: 'Mi Perfil', icon: User },
     { href: '/admin/settings?tab=security', label: 'Seguridad & Contraseña', icon: Lock },
   ];

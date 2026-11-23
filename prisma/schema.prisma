@@ -488,3 +488,35 @@ model OrderItem {
 
   createdAt   DateTime @default(now())
 }
+
+// Modelo Maestro de Empresas Arrendatarias SaaS (Multi-Tenant)
+model Tenant {
+  id                    String    @id @default(uuid())
+  slug                  String    @unique // subdominio, ej: "lapasion"
+  name                  String    // Nombre comercial, ej: "La Pasión Broaster"
+  plan                  String    @default("basic") // "basic" ($49) o "pro" ($99 con voz)
+  status                String    @default("active") // "active", "suspended", "trial"
+  currencySymbol        String    @default("S/.")
+  currency              String    @default("PEN")
+  port                  Int       @unique // Puerto interno, ej: 7848
+  domain                String    // "lapasion.zgamersa.com"
+  
+  // Integración Meta WhatsApp Cloud API
+  whatsappNumber        String?   // "+51987654321"
+  phoneNumberId         String?   // Meta Phone Number ID
+  wabaId                String?   // Meta WABA ID
+  metaSynced            Boolean   @default(false)
+  
+  // Facturación y administración
+  monthlyPrice          Float     @default(49.0)
+  billingDay            Int       @default(1)
+  nextBillingDate       DateTime?
+  adminEmail            String?
+  adminInitialPassword  String?   @default("pithy2024")
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([status])
+}
