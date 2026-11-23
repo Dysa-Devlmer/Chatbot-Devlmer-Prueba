@@ -89,5 +89,13 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  logger: {
+    error(code, metadata) {
+      // Registrar solo en servidor sin reenviar al cliente
+      authLogger.warn(`NextAuth [${code}]: ${JSON.stringify(metadata)}`);
+    },
+    warn(code) {},
+    debug(code, metadata) {},
+  },
   secret: process.env.NEXTAUTH_SECRET || 'pithy-chatbot-secret-key-2024',
 };
