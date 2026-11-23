@@ -147,6 +147,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Sincronización Automática de DNS en Cloudflare (Directrices de Seguridad & Automatización Total)
+    const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
+    const cfToken = process.env.CLOUDFLARE_API_TOKEN;
+    if (cfZoneId && cfToken) {
+      try {
+        const cfRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/dns_records`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cfToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'A',
+            name: slug,
+            content: '64.176.21.229',
+            ttl: 1,
+            proxied: true,
+            comment: `PITHY SaaS Tenant ${name}`,
+          }),
+        });
+        if (cfRes.ok) {
+          console.log(`✅ DNS en Cloudflare aprovisionado automáticamente para ${slug}.zgamersa.com`);
+        }
+      } catch (cfErr) {
+        console.warn('⚠️ Error aprovisionando DNS en Cloudflare:', cfErr);
+      }
+    }
+
     // Crear registro maestro en la base de datos central
     const tenant = await prisma.tenant.create({
       data: {
