@@ -50,6 +50,13 @@ export async function PUT(request: NextRequest) {
       customPrompt,
     } = body
 
+    let finalCurrency = currency ? currency.trim().toUpperCase() : undefined;
+    let finalSymbol = currencySymbol ? currencySymbol.trim() : undefined;
+    if (finalCurrency) {
+      if (finalCurrency === 'PEN' && (!finalSymbol || finalSymbol === '$')) finalSymbol = 'S/.';
+      if ((finalCurrency === 'CLP' || finalCurrency === 'ARS' || finalCurrency === 'COP') && (!finalSymbol || finalSymbol === 'S/.')) finalSymbol = '$';
+    }
+
     let profile = await prisma.businessProfile.findFirst()
 
     if (profile) {
@@ -59,8 +66,8 @@ export async function PUT(request: NextRequest) {
           ...(name !== undefined && { name: name.trim() }),
           ...(industry !== undefined && { industry: industry.trim() }),
           ...(description !== undefined && { description: description?.trim() || null }),
-          ...(currency !== undefined && { currency: currency.trim() }),
-          ...(currencySymbol !== undefined && { currencySymbol: currencySymbol.trim() }),
+          ...(finalCurrency !== undefined && { currency: finalCurrency }),
+          ...(finalSymbol !== undefined && { currencySymbol: finalSymbol }),
           ...(address !== undefined && { address: address?.trim() || null }),
           ...(phone !== undefined && { phone: phone?.trim() || null }),
           ...(email !== undefined && { email: email?.trim() || null }),
@@ -75,8 +82,8 @@ export async function PUT(request: NextRequest) {
           name: name || 'Mi Negocio',
           industry: industry || 'technology',
           description,
-          currency: currency || 'CLP',
-          currencySymbol: currencySymbol || '$',
+          currency: finalCurrency || 'CLP',
+          currencySymbol: finalSymbol || '$',
           address,
           phone,
           email,

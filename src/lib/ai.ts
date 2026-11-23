@@ -833,7 +833,8 @@ SENTIMENT: [sentiment]`;
         scriptPath = path.join(process.cwd(), 'whisper-transcribe.py');
       }
 
-      const command = `python "${scriptPath}" "${audioFilePath}" ${config.model} ${config.language}`;
+      const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
+      const command = `${pythonBin} "${scriptPath}" "${audioFilePath}" ${config.model} ${config.language}`;
 
       console.log(`🔄 Ejecutando transcripción con faster-whisper...`);
       console.log(`📁 Archivo a transcribir: ${audioFilePath}`);

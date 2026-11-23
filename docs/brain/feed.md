@@ -161,3 +161,16 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
   - **Control de Roles & Permisos:** Se erradicaron datos falsos mockeados (`Pierre Arturo`, `cocina@churus.com`) en la pestaña de Roles de Configuración. Ahora muestra la sesión real del administrador autenticado desde `AdminProfile` junto a los perfiles operativos del local (Estación Cocina KDS, Repartidor Delivery y Operador de Inbox).
   - **Monedas y Precios Reales (Perú, Chile, Argentina):** Se validó que al cambiar el país en `/admin/business` el catálogo completo de 41 platos sincronice con los precios de mercado reales (PEN, CLP, ARS), evitando que se muestren precios de soles como dólares o miles de soles por desajuste de denominación.
   - **Despliegue Certificado en Producción:** Compilado exitosamente en VPS `64.176.21.229` y reiniciado en PM2 (PID `3910658`). 100% operativo en `https://chatbot.zgamersa.com`.
+
+---
+
+### [2026-11-22] 📱 Optimización Integral de UI/UX Mobile (Frontend Architect & Design Visionary)
+- **Agente:** Antigravity (Google DeepMind)
+- **Actividades:**
+  - **Eliminación Total del Desbordamiento Horizontal (Overflow-X Leak):** Se solucionó la franja blanca lateral en pantallas móviles pequeñas (320px - 390px). Se aseguraron reglas estrictas de `overflow-x: hidden; max-width: 100vw;` en `html`, `body`, `app/admin/layout.tsx` y `AdminHeader`.
+  - **Header Móvil Ergonómico y Compacto:** Ajustado el tamaño del logo, padding responsive (`px-2.5 sm:px-6`), truncado seguro del nombre del negocio, y ocultación del icono de chevron en móvil para garantizar que el avatar de usuario y botones de acción nunca se corten en el borde derecho.
+  - **Barra de Navegación Inferior Móvil (`MobileBottomNav`):** Rediseñada con tipografía de alta fidelidad, padding adaptado y texto de longitud controlada para que la pestaña `Mi Local` y el resto de accesos nunca se corten ni salten de línea. Se unificó el estado activo con el color de marca (naranja cálido) y se añadió soporte de `safe-area-inset-bottom`.
+  - **Tipografía Nítida & Font-Smoothing:** Se incorporaron propiedades de optimización de legibilidad y suavizado antialiasing en `app/globals.css`, eliminando el efecto pixelado/pesado que se observaba en emuladores o pantallas táctiles.
+  - **Dashboard y Catálogo 100% Dinámicos:** Se eliminaron los textos residuales hardcodeados (`Churu's Comida Rápida`, `en S/.`) en `/admin` y `/admin/products`, reemplazándolos con los datos reales del negocio (`business.name`, `business.currencySymbol`).
+  - **Banner de Horarios y Filtros Táctiles:** En `/admin/orders`, el banner de cocina cerrada se compactó para móviles con botones accesibles, y los filtros de estado cuentan con desplazamiento táctil horizontal fluido.
+  - **Despliegue Certificado en Producción:** Compilado con 0 errores en las 51 rutas y reiniciado en PM2 (PID `273823`) en VPS `64.176.21.229`. Sincronizado en `https://chatbot.zgamersa.com`.

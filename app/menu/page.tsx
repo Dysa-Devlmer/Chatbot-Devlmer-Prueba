@@ -116,6 +116,30 @@ export default function PublicMenuPage() {
     fetchMenuData();
   }, []);
 
+  // Load saved cart from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem('pithy_cart');
+      if (savedCart) {
+        const parsed = JSON.parse(savedCart);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCartItems(parsed);
+        }
+      }
+    } catch (e) {
+      console.error('Error loading cart:', e);
+    }
+  }, []);
+
+  // Sync cart to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('pithy_cart', JSON.stringify(cartItems));
+    } catch (e) {
+      console.error('Error saving cart:', e);
+    }
+  }, [cartItems]);
+
   // Format price dynamically according to active country/currency
   const formatPrice = (val: number) => {
     const sym = business.currencySymbol || (business.currency === 'PEN' ? 'S/.' : '$');

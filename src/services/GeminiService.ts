@@ -493,7 +493,7 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
 
     const base64Data = audioBuffer.toString('base64')
     const cleanMime = mimeType.split(';')[0].trim() || 'audio/ogg'
-    const model = 'gemini-2.5-flash'
+    const model = process.env.GEMINI_AUDIO_MODEL || 'gemini-3.5-flash'
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`
 
     const payload = {

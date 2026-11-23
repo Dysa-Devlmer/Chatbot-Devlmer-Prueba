@@ -40,7 +40,7 @@ export class ReservationService {
    * 1. Consulta todas las órdenes y extrae el número entero más alto existente.
    * 2. Incrementa en 1 y verifica en bucle que no exista colisión en la DB.
    */
-  private async getNextOrderNumber(): Promise<string> {
+  public async getNextOrderNumber(): Promise<string> {
     const orders = await prisma.order.findMany({
       select: { orderNumber: true },
       orderBy: { createdAt: 'desc' },

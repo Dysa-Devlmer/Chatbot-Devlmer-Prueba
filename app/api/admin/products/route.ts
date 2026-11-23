@@ -39,9 +39,11 @@ export async function GET(request: NextRequest) {
 
     const business = await prisma.businessProfile.findFirst()
     const activeCurrency = ((business?.currency || 'PEN').toUpperCase()) as 'PEN' | 'CLP' | 'ARS'
+    const currencySymbol = business?.currencySymbol || (activeCurrency === 'PEN' ? 'S/.' : '$')
 
     const adaptedProducts = products.map((p) => {
-      const multi = PRODUCT_PRICES[p.name]
+      const multiKey = Object.keys(PRODUCT_PRICES).find(k => k.toLowerCase() === p.name.toLowerCase().trim())
+      const multi = multiKey ? PRODUCT_PRICES[multiKey] : null
       const finalPrice = multi ? (multi[activeCurrency] ?? p.price) : p.price
       return {
         ...p,
@@ -52,8 +54,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       products: adaptedProducts,
-      currency: business?.currency || 'PEN',
-      currencySymbol: business?.currencySymbol || 'S/.'
+      currency: activeCurrency,
+      currencySymbol
     })
   } catch (error) {
     logError(apiLogger, error, { stage: 'get-products' })

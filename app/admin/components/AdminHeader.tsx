@@ -213,8 +213,8 @@ export function AdminHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full max-w-full overflow-x-hidden bg-white/95 dark:bg-[#141312]/95 backdrop-blur-md border-b border-slate-200 dark:border-stone-800 text-slate-900 dark:text-white shadow-xs transition-colors duration-200">
-      <div className="w-full max-w-full px-2.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4">
+    <header className="sticky top-0 z-50 w-full max-w-full bg-white/95 dark:bg-[#141312]/95 backdrop-blur-md border-b border-slate-200 dark:border-stone-800 text-slate-900 dark:text-white shadow-xs transition-colors duration-200">
+      <div className="w-full max-w-full px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4">
         
         {/* Left Section: Brand Logo (Links to Inicio /admin) */}
         <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0">
@@ -323,7 +323,7 @@ export function AdminHeader() {
 
             {/* Notification Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-3 z-50 text-xs animate-in fade-in">
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-3 z-[100] text-xs animate-in fade-in">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-stone-800 mb-2 font-bold text-slate-900 dark:text-slate-200">
                   <span>Notificaciones</span>
                   {unreadCount > 0 && (
@@ -371,7 +371,7 @@ export function AdminHeader() {
 
             {/* User Dropdown */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-2 z-50 text-xs animate-in fade-in">
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#141312] border border-slate-200 dark:border-stone-800 rounded-2xl shadow-2xl p-2 z-[100] text-xs animate-in fade-in">
                 <div className="p-2 border-b border-slate-100 dark:border-stone-800 mb-1">
                   <div className="font-bold text-slate-900 dark:text-slate-200">{profile?.name || 'Administrador'}</div>
                   <div className="text-[11px] text-slate-500 dark:text-stone-400 truncate">{profile?.email || 'admin@churus.pe'}</div>
