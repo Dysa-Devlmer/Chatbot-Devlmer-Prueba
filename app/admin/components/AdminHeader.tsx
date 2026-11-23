@@ -213,7 +213,7 @@ export function AdminHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full max-w-full bg-white/95 dark:bg-[#141312]/95 backdrop-blur-md border-b border-slate-200 dark:border-stone-800 text-slate-900 dark:text-white shadow-xs transition-colors duration-200">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full bg-white/95 dark:bg-[#141312]/95 backdrop-blur-md border-b border-slate-200 dark:border-stone-800 text-slate-900 dark:text-white shadow-xs transition-colors duration-200">
       <div className="w-full max-w-full px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4">
         
         {/* Left Section: Brand Logo (Links to Inicio /admin) */}
@@ -224,7 +224,7 @@ export function AdminHeader() {
             </div>
             <div className="min-w-0 flex flex-col justify-center">
               <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-                <span className="font-black text-xs sm:text-base text-slate-900 dark:text-white tracking-tight truncate max-w-[105px] xs:max-w-[140px] sm:max-w-[200px]">
+                <span className="font-black text-xs sm:text-base text-slate-900 dark:text-white tracking-tight truncate max-w-[150px] xs:max-w-[180px] sm:max-w-[240px]">
                   {businessName}
                 </span>
                 <span className="px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20 shrink-0">

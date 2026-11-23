@@ -371,7 +371,7 @@ export default function BusinessProfilePage() {
       )}
 
       {/* 1. Header Estático (Sticky) con 1 Solo Botón de Guardar */}
-      <div className="sticky top-0 z-30 bg-slate-50/95 dark:bg-[#141312]/95 backdrop-blur-md pt-2 pb-3.5 border-b border-slate-200 dark:border-stone-800 -mx-3 px-3 sm:-mx-6 sm:px-6">
+      <div className="sticky top-14 sm:top-16 z-30 bg-slate-50/95 dark:bg-[#141312]/95 backdrop-blur-md pt-2 pb-3.5 border-b border-slate-200 dark:border-stone-800 -mx-3 px-3 sm:-mx-6 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="p-2 sm:p-2.5 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 shrink-0">
