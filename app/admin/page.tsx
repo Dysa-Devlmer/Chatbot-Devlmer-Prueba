@@ -15,7 +15,9 @@ import {
   ChevronRight,
   Sparkles,
   Flame,
-  CheckCircle2
+  CheckCircle2,
+  Building2,
+  ArrowRight
 } from 'lucide-react';
 
 interface Stats {
@@ -89,6 +91,36 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
+      {/* SuperAdmin SaaS Master Shortcut Banner */}
+      <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-purple-500/20 border border-amber-500/40 dark:border-amber-400/30 rounded-2xl p-3.5 sm:p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md backdrop-blur-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-stone-950 font-black shadow-md shrink-0">
+            <Building2 className="w-5 h-5 text-stone-950 stroke-[2.5]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500 text-stone-950">
+                👑 MODO DUEÑO SAAS
+              </span>
+              <span className="text-xs text-slate-500 dark:text-stone-400 font-semibold hidden xs:inline">
+                Administración de Empresas & Clientes Arrendatarios
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+              ¿Deseas registrar una nueva empresa, ver tus ingresos MRR o suspender clientes?
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/admin/tenants"
+          className="self-stretch sm:self-auto px-4 py-2.5 rounded-xl bg-stone-950 dark:bg-amber-500 text-white dark:text-stone-950 hover:bg-stone-800 dark:hover:bg-amber-400 font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95"
+        >
+          <Building2 className="w-4 h-4 text-amber-400 dark:text-stone-950" />
+          <span>Abrir Panel Maestro de Empresas</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+
       {/* Welcome Banner - Mobile-First & Gastro-Tech Identity */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-lg border border-slate-800">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
