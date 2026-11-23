@@ -70,6 +70,11 @@ export default function MasterDashboardPage() {
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Plan Change Modal State
+  const [planModalTenant, setPlanModalTenant] = useState<Tenant | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro'>('basic');
+  const [updatingPlan, setUpdatingPlan] = useState(false);
+
   // Form State
   const [formData, setFormData] = useState({
     name: '',
@@ -145,6 +150,37 @@ export default function MasterDashboardPage() {
     }
   };
 
+  const handleOpenPlanModal = (tenant: Tenant) => {
+    setPlanModalTenant(tenant);
+    setSelectedPlan(tenant.plan === 'pro' ? 'pro' : 'basic');
+  };
+
+  const handleUpdatePlan = async () => {
+    if (!planModalTenant) return;
+    try {
+      setUpdatingPlan(true);
+      const res = await fetch(`/api/admin/tenants/${planModalTenant.id}/plan`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: selectedPlan }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        showNotification('success', data.message || 'Plan de empresa actualizado con éxito.');
+        setPlanModalTenant(null);
+        loadTenants();
+      } else {
+        const err = await res.json();
+        showNotification('error', err.error || 'No se pudo actualizar el plan.');
+      }
+    } catch (err) {
+      showNotification('error', 'Error al comunicar con el servidor.');
+    } finally {
+      setUpdatingPlan(false);
+    }
+  };
+
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.slug.trim()) {
@@ -205,7 +241,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300 w-full min-w-0">
       {/* Toast Notification */}
       {message && (
         <div className={`p-4 rounded-2xl flex items-center gap-3 border shadow-xl ${
@@ -218,25 +254,25 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
         </div>
       )}
 
-      {/* Hero SaaS Control Header with controlled two-row layout & min-h */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-gradient-to-r from-slate-900 via-[#151a22] to-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden min-h-[140px]">
-        <div className="space-y-2 z-10 max-w-3xl">
+      {/* Hero SaaS Control Header with controlled responsive layout */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 bg-gradient-to-r from-slate-900 via-[#151a22] to-slate-900 p-5 sm:p-7 lg:p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden min-h-[140px] w-full min-w-0">
+        <div className="space-y-2 z-10 max-w-2xl min-w-0">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4" />
             Acceso Privado Maestro &bull; Modo CEO
           </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-black text-white tracking-tight break-words">
             Gestión de Empresas & Arriendos SaaS
           </h1>
-          <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
             Aprovisiona nuevas empresas en segundos con bases de datos aisladas, subdominios dedicados y sincronización automática de WhatsApp Cloud API en Meta.
           </p>
         </div>
 
-        <div className="flex items-center flex-wrap gap-3 z-10 shrink-0">
+        <div className="flex items-center flex-wrap gap-2.5 sm:gap-3 z-10 shrink-0 w-full sm:w-auto">
           <button
             onClick={loadTenants}
-            className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all shrink-0 cursor-pointer"
+            className="p-3 sm:p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all shrink-0 cursor-pointer"
             title="Refrescar lista"
           >
             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
@@ -257,9 +293,9 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
               });
               setShowModal(true);
             }}
-            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-sm shadow-xl shadow-amber-500/20 transition-all flex items-center gap-2 active:scale-95 shrink-0 cursor-pointer"
+            className="px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0 cursor-pointer flex-1 sm:flex-initial"
           >
-            <Plus className="w-5 h-5 stroke-[3]" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
             <span>+ Registrar Nueva Empresa</span>
           </button>
         </div>
@@ -269,7 +305,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
       </div>
 
       {/* MRR & Business Health Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
         {/* Total MRR Card */}
         <div className="bg-[#12161c] border border-amber-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
@@ -337,20 +373,20 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
         </div>
       </div>
 
-      {/* Tenants Table */}
-      <div className="bg-[#12161c] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+      {/* Tenants Table with contained horizontal scrolling */}
+      <div className="bg-[#12161c] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl w-full min-w-0">
+        <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-black text-white">Empresas Arrendatarias Registradas</h2>
+            <h2 className="text-base sm:text-lg font-black text-white">Empresas Arrendatarias Registradas</h2>
           </div>
           <span className="text-xs text-slate-400 font-bold">
             {tenants.length} {tenants.length === 1 ? 'empresa' : 'empresas'}
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
+        <div className="overflow-x-auto w-full min-w-0">
+          <table className="w-full min-w-[700px] text-left text-sm text-slate-300">
             <thead className="bg-[#0f1318] text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-800">
               <tr>
                 <th className="py-4 px-6">Empresa & Subdominio</th>
@@ -387,17 +423,25 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
 
                       {/* Plan */}
                       <td className="py-4 px-4">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wider border ${
-                          isPro 
-                            ? 'bg-purple-500/10 text-purple-300 border-purple-500/30' 
-                            : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
-                        }">
-                          {isPro ? <Sparkles className="w-3.5 h-3.5 text-purple-400" /> : null}
-                          <span>{t.plan}</span>
-                        </div>
-                        <div className="text-xs text-slate-400 font-semibold mt-1">
-                          ${t.monthlyPrice || (isPro ? 99 : 49)}/mes
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPlanModal(t)}
+                          className="group text-left cursor-pointer"
+                          title="Haga clic para cambiar de Plan"
+                        >
+                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wider border transition-all group-hover:scale-105 ${
+                            isPro 
+                              ? 'bg-purple-500/10 text-purple-300 border-purple-500/30 group-hover:bg-purple-500/20' 
+                              : 'bg-blue-500/10 text-blue-300 border-blue-500/30 group-hover:bg-blue-500/20'
+                          }`}>
+                            {isPro ? <Sparkles className="w-3.5 h-3.5 text-purple-400" /> : null}
+                            <span>{t.plan}</span>
+                            <span className="text-[10px] text-slate-400 opacity-60 group-hover:opacity-100">✏️</span>
+                          </div>
+                          <div className="text-xs text-slate-400 font-semibold mt-1">
+                            ${t.monthlyPrice || (isPro ? 99 : 49)}/mes
+                          </div>
+                        </button>
                       </td>
 
                       {/* WhatsApp & Meta */}
@@ -445,10 +489,20 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
                       {/* Actions */}
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {/* Change Plan Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPlanModal(t)}
+                            className="p-2 rounded-xl text-xs font-bold transition-all border bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border-purple-500/30 cursor-pointer"
+                            title="Cambiar Plan (Básico / Pro)"
+                          >
+                            <Sparkles className="w-4 h-4 text-purple-400" />
+                          </button>
+
                           {/* Toggle Active/Suspended */}
                           <button
                             onClick={() => handleToggleStatus(t)}
-                            className={`p-2 rounded-xl text-xs font-bold transition-all border ${
+                            className={`p-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                               isActive 
                                 ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30' 
                                 : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
@@ -714,6 +768,149 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Cambiar Plan de Suscripción */}
+      {planModalTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#141820] border border-slate-700/80 rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl relative">
+            <button
+              onClick={() => setPlanModalTenant(null)}
+              className="absolute top-6 right-6 p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                  <h3 className="text-xl font-black text-white">Modificar Plan de Arriendo</h3>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Empresa: <span className="font-bold text-white">{planModalTenant.name}</span> &bull; Subdominio: <span className="font-mono text-amber-400">{planModalTenant.domain}</span>
+                </p>
+              </div>
+
+              {/* Selector de Planes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Plan Básico */}
+                <div
+                  onClick={() => setSelectedPlan('basic')}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
+                    selectedPlan === 'basic'
+                      ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10'
+                      : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-blue-400">
+                      Plan Básico
+                    </span>
+                    {selectedPlan === 'basic' && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-400" />
+                    )}
+                  </div>
+                  <div className="text-xl font-black text-white mb-2">
+                    $49 <span className="text-xs text-slate-400 font-normal">USD/mes</span>
+                  </div>
+                  <ul className="text-[11px] text-slate-300 space-y-1.5">
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span>Chatbot WhatsApp IA</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span>Tablero Kanban de Cocina</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span>Menú Digital QR</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Plan Pro */}
+                <div
+                  onClick={() => setSelectedPlan('pro')}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
+                    selectedPlan === 'pro'
+                      ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/10'
+                      : 'border-slate-800 bg-slate-900/60 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-purple-400">
+                      Plan Pro (Voz IA)
+                    </span>
+                    {selectedPlan === 'pro' && (
+                      <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                    )}
+                  </div>
+                  <div className="text-xl font-black text-white mb-2">
+                    $99 <span className="text-xs text-slate-400 font-normal">USD/mes</span>
+                  </div>
+                  <ul className="text-[11px] text-slate-300 space-y-1.5">
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      <span>Todo lo del Plan Básico</span>
+                    </li>
+                    <li className="flex items-center gap-1.5 font-bold text-purple-300">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      <span>Agente de Llamadas IA</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      <span>Atención telefónica 24/7</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Dynamic Impact Notice (You Should Know) */}
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Impacto Operativo & Facturación (You Should Know):</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  {selectedPlan === 'pro' 
+                    ? 'Al activar el Plan Pro, se habilitará la recepción de llamadas de voz automáticas con Gemini y la facturación estimada mensual del cliente se actualizará a $99.00 USD.' 
+                    : 'Al cambiar a Plan Básico, se desactivará el módulo de llamadas telefónicas y el cliente operará únicamente con chatbot de mensajería y catálogo a $49.00 USD/mes.'}
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPlanModalTenant(null)}
+                  className="px-5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-bold text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUpdatePlan}
+                  disabled={updatingPlan || selectedPlan === planModalTenant.plan}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-purple-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {updatingPlan ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Actualizando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Guardar Nuevo Plan</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

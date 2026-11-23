@@ -16,34 +16,35 @@ export default function MasterLayout({ children }: { children: ReactNode }) {
   const { data: session } = useSession();
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-stone-950">
-      {/* Top SuperAdmin Header with pt-4 / pt-safe & responsive two-row wrap */}
-      <header className="sticky top-0 z-50 bg-[#12161c]/95 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 min-h-[4.5rem] pt-4 pb-3 sm:pt-4 sm:pb-3 flex flex-wrap items-center justify-between gap-y-3 gap-x-4 transition-all">
+    <div className="min-h-screen bg-[#0d0f12] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-stone-950 w-full max-w-full overflow-x-hidden">
+      {/* Top SuperAdmin Header with anti-overflow & compact flex layout */}
+      <header className="sticky top-0 z-50 bg-[#12161c]/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-6 lg:px-8 min-h-[4rem] py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full min-w-0 transition-all">
         {/* Left Section: Brand & Master Title */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-stone-950 font-black shadow-lg shadow-amber-500/20 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-stone-950 font-black shadow-lg shadow-amber-500/20 shrink-0">
             <Building2 className="w-5 h-5 stroke-[2.5]" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-black text-base tracking-tight text-white">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="font-black text-sm sm:text-base tracking-tight text-white whitespace-nowrap">
                 PITHY SAAS
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1">
+              <span className="px-1.5 py-0.5 sm:px-2 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1 shrink-0">
                 <ShieldCheck className="w-3 h-3" />
-                Master Owner Panel
+                <span className="hidden sm:inline">Master Owner Panel</span>
+                <span className="sm:hidden">Master</span>
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium hidden md:block truncate max-w-md">
               Centro de Control Global de Empresas Arrendatarias & Facturación
             </p>
           </div>
         </div>
 
-        {/* Right Section: Status, Demo Switch & Controls (Adaptive & Clean) */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Right Section: Status, Demo Switch & Controls */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 flex-shrink-0">
           {/* VPS Infrastructure Live Indicator */}
-          <div className="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold shrink-0">
+          <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <span className="whitespace-nowrap">VPS Online</span>
           </div>
@@ -77,13 +78,13 @@ export default function MasterLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {/* Main Master Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8">
+      {/* Main Master Content with min-w-0 and w-full */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
         {children}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/60 py-4 px-6 text-center text-xs text-slate-500">
+      <footer className="border-t border-slate-800/60 py-4 px-4 sm:px-6 text-center text-xs text-slate-500 w-full min-w-0 truncate">
         PITHY Multi-Tenant SaaS Engine &bull; Servidor Principal 64.176.21.229 &bull; Todos los derechos reservados
       </footer>
     </div>
