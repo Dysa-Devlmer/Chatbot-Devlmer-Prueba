@@ -33,13 +33,14 @@ export const authOptions: NextAuthOptions = {
             password: credentials.password,
           })
 
-          // Retornar usuario autenticado
+          // Retornar usuario autenticado (NUNCA incluir base64 en image para evitar cookies gigantes que rompen Nginx)
+          const isUrl = result.admin.avatar && !result.admin.avatar.startsWith('data:');
           return {
             id: result.admin.id,
             name: result.admin.name,
             email: result.admin.email,
             role: result.admin.role,
-            image: result.admin.avatar || undefined,
+            image: isUrl ? result.admin.avatar : undefined,
           }
         } catch (error) {
           // AuthService ya loguea el error, solo retornamos null
