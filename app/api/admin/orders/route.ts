@@ -97,7 +97,7 @@ export async function PUT(request: NextRequest) {
       const trackingUrl = `https://chatbot.zgamersa.com/tracking?order=${updated.orderNumber}`
 
       if (status === 'confirmed') {
-        notifyText = `👨‍🍳🔥 *¡Tu pedido #${updated.orderNumber} ya está en preparación!*\n\nNuestros cocineros en *Churu's Comida Rápida* ya están elaborando tus platos con los mejores ingredientes y todo el sabor.\n\n🛵 *Seguimiento en Vivo:*\n👉 ${trackingUrl}\n\n¡Te notificaremos apenas esté listo!`
+        notifyText = `👨‍🍳🔥 *¡Tu pedido #${updated.orderNumber} ya está en preparación en cocina!*\n\nNuestros cocineros ya están elaborando tus platos con los mejores ingredientes y todo el sabor.\n\n🛵 *Seguimiento en Vivo y Boleta Electrónica:*\nPuedes seguir la preparación de tus platos y descargar tu boleta completa aquí:\n👉 ${trackingUrl}\n\n¡Te avisaremos apenas esté listo!`
       } else if (status === 'ready') {
         if (isDelivery) {
           notifyText = `🛵💨 *¡Tu pedido #${updated.orderNumber} está listo y en camino!*\n\nNuestro repartidor Carlos Mendoza ya salió rumbo a tu dirección con tu pedido calientito.\n\n🛵 *Sigue al repartidor en vivo:*\n👉 ${trackingUrl}\n\n¡Por favor mantente atento para recibirlo! 🍗📦`
