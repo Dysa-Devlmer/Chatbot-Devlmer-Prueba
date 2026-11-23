@@ -219,14 +219,14 @@ export function AdminHeader() {
       <div className="w-full max-w-full px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4">
         
         {/* Left Section: Brand Logo (Links to Inicio /admin) */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0">
-          <Link href="/admin" className="flex items-center gap-2 group min-w-0" title="Ir a Inicio / Panel General">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <Link href="/admin" className="flex items-center gap-2 group shrink-0" title="Ir a Inicio / Panel General">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center font-black text-white text-base sm:text-lg shadow-md group-hover:scale-105 transition-transform shrink-0">
               🍗
             </div>
-            <div className="min-w-0 flex flex-col justify-center">
-              <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-                <span className="font-black text-xs sm:text-base text-slate-900 dark:text-white tracking-tight truncate max-w-[150px] xs:max-w-[180px] sm:max-w-[240px]">
+            <div className="flex flex-col justify-center shrink-0">
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <span className="font-black text-xs sm:text-base text-slate-900 dark:text-white tracking-tight truncate max-w-[120px] xs:max-w-[150px] sm:max-w-[220px]">
                   {businessName}
                 </span>
                 <span className="px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/20 shrink-0">
@@ -240,10 +240,10 @@ export function AdminHeader() {
           </Link>
         </div>
 
-        {/* Center: The Essential Horizontal Navigation Tabs */}
+        {/* Center: The Essential Horizontal Navigation Tabs (Responsive & Scalable) */}
         <nav 
           aria-label="Navegación principal"
-          className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-stone-900/90 p-1.5 rounded-2xl border border-slate-200 dark:border-stone-800 shadow-inner"
+          className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-stone-900/90 p-1 rounded-2xl border border-slate-200 dark:border-stone-800 shadow-inner shrink min-w-0 overflow-hidden"
         >
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -254,14 +254,15 @@ export function AdminHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all relative ${
+                title={item.label}
+                className={`flex items-center gap-1.5 px-2.5 xl:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all relative shrink-0 ${
                   isActive
                     ? 'bg-orange-500 text-stone-950 shadow-md shadow-orange-500/20 font-black'
                     : 'text-slate-600 dark:text-stone-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-stone-800'
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
-                <span className="whitespace-nowrap">{item.label}</span>
+                <span className="hidden xl:inline whitespace-nowrap">{item.label}</span>
                 {item.badge && (
                   <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                     isActive ? 'bg-stone-950 text-amber-400' : item.badgeColor
