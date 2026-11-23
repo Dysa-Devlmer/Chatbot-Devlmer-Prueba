@@ -23,7 +23,8 @@ import {
   X,
   RefreshCw,
   TrendingUp,
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from 'lucide-react';
 
 interface Tenant {
@@ -74,6 +75,11 @@ export default function MasterDashboardPage() {
   const [planModalTenant, setPlanModalTenant] = useState<Tenant | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro'>('basic');
   const [updatingPlan, setUpdatingPlan] = useState(false);
+
+  // Delete Tenant Modal State
+  const [deleteModalTenant, setDeleteModalTenant] = useState<Tenant | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletingTenant, setDeletingTenant] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -178,6 +184,35 @@ export default function MasterDashboardPage() {
       showNotification('error', 'Error al comunicar con el servidor.');
     } finally {
       setUpdatingPlan(false);
+    }
+  };
+
+  const handleDeleteTenant = async () => {
+    if (!deleteModalTenant) return;
+    if (deleteConfirmText.trim().toLowerCase() !== deleteModalTenant.slug.toLowerCase()) {
+      showNotification('error', `Debe escribir exactamente "${deleteModalTenant.slug}" para confirmar.`);
+      return;
+    }
+
+    try {
+      setDeletingTenant(true);
+      const res = await fetch(`/api/admin/tenants/${deleteModalTenant.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        showNotification('success', data.message || `Empresa ${deleteModalTenant.name} desprovisionada y eliminada.`);
+        setDeleteModalTenant(null);
+        setDeleteConfirmText('');
+        loadTenants();
+      } else {
+        showNotification('error', data.error || 'No se pudo eliminar la empresa.');
+      }
+    } catch (err) {
+      showNotification('error', 'Error al comunicar con el servidor.');
+    } finally {
+      setDeletingTenant(false);
     }
   };
 
@@ -504,13 +539,28 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
                             onClick={() => handleToggleStatus(t)}
                             className={`p-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                               isActive 
-                                ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30' 
+                                ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30' 
                                 : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                             }`}
-                            title={isActive ? 'Suspender cliente por falta de pago' : 'Reactivar servicio'}
+                            title={isActive ? 'Suspender cliente por falta de pago (Pausa temporal)' : 'Reactivar servicio'}
                           >
                             <Power className="w-4 h-4" />
                           </button>
+
+                          {/* Delete Tenant Button (Disabled for master demo 'churus') */}
+                          {t.slug !== 'churus' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDeleteModalTenant(t);
+                                setDeleteConfirmText('');
+                              }}
+                              className="p-2 rounded-xl text-xs font-bold transition-all border bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30 cursor-pointer"
+                              title="Eliminar y desprovisionar empresa permanentemente"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
 
                           {/* Open Admin link */}
                           <Link
@@ -906,6 +956,115 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
                     <>
                       <Check className="w-4 h-4 stroke-[3]" />
                       <span>Guardar Nuevo Plan</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal: Confirmar Eliminación Definitiva de Empresa */}
+      {deleteModalTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#141820] border border-rose-500/40 rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                if (!deletingTenant) {
+                  setDeleteModalTenant(null);
+                  setDeleteConfirmText('');
+                }
+              }}
+              className="absolute top-6 right-6 p-2 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/40 shrink-0">
+                  <AlertCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-white">¿Desmantelar y Eliminar Empresa?</h3>
+                  <p className="text-xs text-rose-400 font-semibold mt-0.5">
+                    Acción destructiva de desprovisionamiento de infraestructura
+                  </p>
+                </div>
+              </div>
+
+              {/* Warning Box (You Should Know) */}
+              <div className="p-4 rounded-2xl bg-rose-950/30 border border-rose-500/30 space-y-2 text-xs text-slate-300">
+                <div className="flex items-center gap-1.5 font-bold text-rose-400">
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <span>YOU SHOULD KNOW (Centinela Activo):</span>
+                </div>
+                <ul className="space-y-1.5 text-[11px] text-slate-300 list-disc list-inside">
+                  <li>
+                    Se respaldará la base de datos de <strong className="text-white">{deleteModalTenant.name}</strong> a un archivo histórico <code className="text-amber-400">.archived_{'{timestamp}'}</code>.
+                  </li>
+                  <li>
+                    Se detendrá y purgará el proceso PM2 <code className="text-white">tenant-{deleteModalTenant.slug}</code> del VPS.
+                  </li>
+                  <li>
+                    Se retirará la configuración Nginx y el subdominio <strong className="text-white">{deleteModalTenant.domain}</strong> dejará de responder de inmediato.
+                  </li>
+                  <li>
+                    Si solo desea interrumpir el acceso por falta de pago, use el botón <strong className="text-amber-400">Suspender</strong> (color naranja) en lugar de eliminar.
+                  </li>
+                </ul>
+              </div>
+
+              {/* Confirmation Input */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-300">
+                  Para confirmar, escriba el subdominio exacto de la empresa:
+                  <span className="block font-mono text-rose-400 text-sm mt-1 select-all bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800 inline-block">
+                    {deleteModalTenant.slug}
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={`Escriba ${deleteModalTenant.slug}`}
+                  disabled={deletingTenant}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-rose-500/30 text-white placeholder-slate-600 focus:outline-none focus:border-rose-500 font-mono text-sm"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteModalTenant(null);
+                    setDeleteConfirmText('');
+                  }}
+                  disabled={deletingTenant}
+                  className="px-5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-bold text-xs cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteTenant}
+                  disabled={
+                    deletingTenant || 
+                    deleteConfirmText.trim().toLowerCase() !== deleteModalTenant.slug.toLowerCase()
+                  }
+                  className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-600/30 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {deletingTenant ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Desmantelando VPS...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Destruir y Archivar Empresa</span>
                     </>
                   )}
                 </button>

@@ -261,3 +261,12 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
     - Aislamiento estricto de datos multi-tenant para empresas arrendatarias.
     - Control de calidad pre-despliegue con `npx tsc --noEmit`.
   - **Documentación en Segundo Cerebro:** Publicada especificación en [[SECURITY_SENTINEL_YOU_SHOULD_KNOW]].
+
+---
+
+### [2026-11-23] 🔄 Módulo de Cambio de Planes SaaS con Gobernanza de Seguridad
+- **Agente:** Antigravity (Backend, Sistemas & Seguridad)
+- **Actividades:**
+  - **Endpoint Protegido `PUT /api/admin/tenants/[id]/plan`:** Verificación estricta de sesión `superadmin`, validación de plan (`basic` o `pro`) y recalculo del precio de arriendo ($49 vs $99 USD).
+  - **Interfaz Táctil en `/master`:** Modal interactivo con tarjetas descriptivas de cada plan, selector visual, cálculo automático de impacto en el MRR global y advertencia activa "You Should Know" sobre las implicancias de activar/desactivar el agente de voz con IA Gemini.
+  - **Acceso Rápido:** Columna "Plan & Precio" y botón de acción con icono de chispas (`Sparkles`) para cambiar de plan en 1 clic.
