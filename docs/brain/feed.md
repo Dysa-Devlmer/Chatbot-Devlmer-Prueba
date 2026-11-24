@@ -4,6 +4,31 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
 
 ---
 
+## [2026-11-24 02:35] 🛡️ Directrices de Seguridad, Estandarización de RUT (11.111.111-K), Limpieza de Carta y Checkout
+- **Agente:** Arquitecto Principal de Backend, UI/UX & Centinela Activo
+- **Actividades y Directrices Cumplidas:**
+  1. **Estandarización y Formato Oficial de RUT Chileno (`11.111.111-K`):**
+     - Se creó la librería de utilidades en `src/utils/rut.ts` que implementa el algoritmo Módulo 11 y el auto-formateo en tiempo real con separadores de miles, guión y conversión automática de 'k' a 'K' mayúscula.
+     - **Sincronización Automática con CuentaRUT (Banco Estado):** Por normativa bancaria chilena, el número de cuenta de la CuentaRUT es el RUT sin puntos ni dígito verificador. Ahora, al seleccionar CuentaRUT e ingresar el RUT en `/admin/business`, el casillero de número de cuenta se auto-completa de inmediato con el cuerpo limpio del RUT.
+     - **Facturación Multi-País Adaptativa:** En `/checkout`, al operar con divisa chilena (CLP), la opción cambia automáticamente a **"Factura con RUT"** (en vez de "RUC de 11 dígitos" exclusivo de Perú) y valida el formato del RUT comercial (ej: `76.123.456-K`). En Argentina cambia dinámicamente a **"Factura con CUIT"**.
+     - **Atención por IA:** Se actualizó `GeminiService.ts` para que el bot de WhatsApp envíe las cuentas bancarias de Chile con el RUT formateado de manera profesional.
+  2. **Limpieza de Dirección Satelital y Experiencia de Checkout:**
+     - Se eliminó el volcado sucio de enlaces crudos `(GPS: https://maps.google.com/...)` dentro del input de texto de dirección.
+     - Se añadió un campo independiente y obligatorio para el número de domicilio: **"N° de Casa / Dpto / Block"**, resolviendo la imprecisión inherente al radio de 10 metros del GPS móvil. El enlace satelital se almacena en `gpsMapUrl` y se anexa al mensaje del motorizado sin ensuciar la interfaz.
+     - Se eliminó el campo técnico "Código de operación", reemplazándolo por una instrucción amigable que invita al cliente a adjuntar la foto o captura del comprobante al confirmar por WhatsApp.
+  3. **Carta Digital Limpia y Segmentación Estricta de Opciones (`/menu`):**
+     - **Eliminación de Métricas Falsas / Placeholder:** Se retiraron todas las calificaciones ficticias (`4.9 (500+ reseñas)` en la cabecera y `★ 4.7` en los platos) para garantizar honestidad comercial y pulcritud de diseño.
+     - **Bebidas Directas:** Se cambió el botón "Personalizar" por **`+ Agregar`** en las bebidas (Coca Cola, Inka Cola, Fanta) y complementos simples. Un solo toque añade el ítem al carrito con feedback visual inmediato sin exigir selecciones obligatorias de salsas ni acompañamientos fuera de contexto.
+     - **Personalización Real por Categoría:** Solo los platos principales salados (Broaster, Hamburguesas, Alitas, Salchipapas, Enchiladas) despliegan el selector de hasta 3 cremas incluidas y extras pertinentes.
+     - **Protección de Privacidad en Menú Público:** Se retiró el botón con ícono de candado 🔒 (`/login`) de la cabecera de la carta de comensales, restringiendo el acceso administrativo exclusivamente a las rutas autenticadas.
+     - **Corrección de Divisas:** Se eliminó la etiqueta fija `S/.` dentro del drawer de producto, mostrando el precio exacto en la moneda oficial de la empresa (`$ 1.500` en Chile, `S/. 4.50` en Perú).
+  4. **Control de Calidad Pre-Despliegue y Estado en Producción:**
+     - `npx tsc --noEmit`: 0 errores de compilación TypeScript.
+     - Next.js Turbopack: 57/57 rutas compiladas correctamente.
+     - Producción VPS `64.176.21.229`: PM2 `chatbot` reiniciado (PID `1163867`) y en estado `online` bajo puerto interno `7847` y proxy reverso Nginx con SSL.
+
+---
+
 ## [2026-11-24 00:50] 🛡️ Directrices de Seguridad, Configuración Bancaria Multi-País y Desbloqueo GPS
 - **Agente:** Arquitecto Principal de Backend, Seguridad & Centinela Activo
 - **Actividades y Directrices Cumplidas:**
