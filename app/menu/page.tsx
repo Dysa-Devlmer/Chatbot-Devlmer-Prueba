@@ -11,6 +11,7 @@ import {
   ShoppingBag, 
   Plus, 
   Trash2, 
+  Check, 
   ChevronRight, 
   MessageSquare, 
   X, 
@@ -41,7 +42,6 @@ interface MenuItem extends BaseProduct {
   category: string;
   badge?: string;
   prepTime?: string;
-  rating?: number;
   stock: number;
 }
 
@@ -97,8 +97,7 @@ export default function PublicMenuPage() {
               imageUrl: p.imageUrl || null,
               category: p.category || 'Varios',
               stock: p.stock ?? 10,
-              prepTime: '15-20 min',
-              rating: Number((4.7 + (idx % 4) * 0.1).toFixed(1)),
+              prepTime: (p.category || '').toLowerCase().includes('bebida') ? 'Instantáneo' : '15-20 min',
               badge: idx === 0 ? 'Más Vendido' : idx === 1 ? 'Favorito' : undefined,
             }));
             setProducts(mappedProducts);
@@ -165,9 +164,56 @@ export default function PublicMenuPage() {
   const totalItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const cartSubtotal = cartItems.reduce((acc, item) => acc + item.totalPrice, 0);
 
+  // Floating mini toast when adding direct items (e.g. Bebidas)
+  const [directToast, setDirectToast] = useState<string | null>(null);
+
   // Add customized item to cart
   const handleAddToCart = (customized: CustomizedItem) => {
     setCartItems(prev => [...prev, customized]);
+  };
+
+  // Add simple item directly (Bebidas, Complementos)
+  const handleDirectAddToCart = (item: MenuItem) => {
+    const isDrink = item.category.toLowerCase().includes('bebida') || item.name.toLowerCase().includes('cola') || item.name.toLowerCase().includes('fanta');
+    const directItem: CustomizedItem = {
+      productId: item.id,
+      productName: item.name,
+      quantity: 1,
+      unitBasePrice: item.price,
+      totalPrice: item.price,
+      baseSauces: [],
+      premiumSauces: [],
+      isSalchibroaster: false,
+      extras: [],
+      kitchenNotes: isDrink ? '[Bien Helada 🧊]' : ''
+    };
+
+    setCartItems(prev => {
+      const idx = prev.findIndex(p => p.productId === item.id && p.baseSauces.length === 0 && p.extras.length === 0 && !p.isSalchibroaster);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx].quantity += 1;
+        copy[idx].totalPrice = copy[idx].quantity * copy[idx].unitBasePrice;
+        return copy;
+      }
+      return [...prev, directItem];
+    });
+
+    setDirectToast(`✓ ${item.name} agregado`);
+    setTimeout(() => setDirectToast(null), 1800);
+  };
+
+  // Helper para saber si un plato tiene personalización de salsas
+  const isItemCustomizable = (item: MenuItem) => {
+    const cat = (typeof item.category === 'string' ? item.category : '').toLowerCase();
+    const name = item.name.toLowerCase();
+    if (cat.includes('bebida') || cat.includes('trago') || cat.includes('gaseosa') || name.includes('coca cola') || name.includes('inka cola') || name.includes('fanta')) {
+      return false;
+    }
+    if (cat.includes('complemento') || name.includes('complemento')) {
+      return false;
+    }
+    return true;
   };
 
   // Remove item from cart
@@ -230,10 +276,6 @@ export default function PublicMenuPage() {
                 <p className="text-xs text-slate-500 dark:text-stone-400 flex items-center gap-2 mt-0.5">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3 text-orange-500" /> 30-45 min
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1 text-amber-500 font-bold">
-                    <Star className="w-3 h-3 fill-amber-500" /> 4.9 (500+ reseñas)
                   </span>
                   <span>•</span>
                   <span className="font-bold text-orange-600 dark:text-orange-400">
@@ -393,11 +435,11 @@ export default function PublicMenuPage() {
                   )}
 
                   <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-white text-xs font-bold">
-                    <span className="flex items-center gap-1 bg-black/50 backdrop-blur-xs px-2 py-0.5 rounded-full text-[10px]">
+                    <span className="flex items-center gap-1 bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full text-[10px]">
                       <Clock className="w-3 h-3 text-amber-400" /> {item.prepTime}
                     </span>
-                    <span className="flex items-center gap-1 bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-md text-[11px]">
-                      <Star className="w-3 h-3 fill-stone-950" /> {item.rating}
+                    <span className="bg-black/60 backdrop-blur-xs text-amber-300 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                      {item.category}
                     </span>
                   </div>
                 </div>
@@ -420,17 +462,29 @@ export default function PublicMenuPage() {
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedProduct(item);
-                    setIsDrawerOpen(true);
-                  }}
-                  className="group/btn relative overflow-hidden py-2 px-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-orange-600/25 hover:shadow-orange-600/40 active:scale-90 hover:scale-105 active:ring-2 active:ring-orange-400 active:ring-offset-2 dark:active:ring-offset-[#141312] transition-all duration-200 cursor-pointer select-none"
-                >
-                  <Plus className="w-4 h-4 stroke-[3] transition-transform duration-200 group-hover/btn:rotate-90" />
-                  <span>Personalizar</span>
-                </button>
+                {isItemCustomizable(item) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedProduct(item);
+                      setIsDrawerOpen(true);
+                    }}
+                    className="group/btn relative overflow-hidden py-2 px-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-orange-600/25 hover:shadow-orange-600/40 active:scale-90 hover:scale-105 active:ring-2 active:ring-orange-400 active:ring-offset-2 dark:active:ring-offset-[#141312] transition-all duration-200 cursor-pointer select-none"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3] transition-transform duration-200 group-hover/btn:rotate-90" />
+                    <span>Personalizar</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleDirectAddToCart(item)}
+                    className="group/btn relative overflow-hidden py-2 px-3.5 rounded-xl bg-[#84cc16] hover:bg-[#72b513] dark:bg-[#94de2d] dark:hover:bg-[#83c923] text-stone-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-md active:scale-90 hover:scale-105 transition-all duration-200 cursor-pointer select-none"
+                    title={`Agregar ${item.name} directamente al pedido`}
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>+ Agregar</span>
+                  </button>
+                )}
               </div>
 
             </div>
@@ -475,6 +529,14 @@ export default function PublicMenuPage() {
         </div>
       )}
 
+      {/* Direct Add Quick Toast */}
+      {directToast && (
+        <div className="fixed top-20 inset-x-4 max-w-xs mx-auto z-50 bg-stone-900/95 border border-[#84cc16]/50 text-[#84cc16] dark:text-[#94de2d] px-4 py-2 rounded-2xl shadow-2xl flex items-center justify-center gap-2 font-black text-xs animate-in slide-in-from-top duration-200">
+          <Check className="w-4 h-4 stroke-[3]" />
+          <span>{directToast}</span>
+        </div>
+      )}
+
       {/* 4. Product Modifier Bottom-Sheet */}
       <ProductModifierDrawer 
         product={selectedProduct}
@@ -485,6 +547,7 @@ export default function PublicMenuPage() {
         }}
         onAddToCart={handleAddToCart}
         currencySymbol={business.currencySymbol}
+        currency={business.currency}
       />
 
       {/* 5. Cart Drawer Modal (Acción Rápida Dual) */}

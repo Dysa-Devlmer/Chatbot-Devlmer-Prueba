@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   X, 
   Plus, 
@@ -9,7 +9,6 @@ import {
   Check, 
   Sparkles, 
   ShoppingBag,
-  Star,
   Clock,
   CheckCircle2,
   MessageSquare
@@ -31,6 +30,7 @@ interface ProductModifierDrawerProps {
   onClose: () => void;
   onAddToCart?: (customizedItem: CustomizedItem) => void;
   currencySymbol?: string;
+  currency?: string;
 }
 
 export interface CustomizedItem {
@@ -56,15 +56,15 @@ const BASE_SAUCES = [
 ];
 
 const PREMIUM_SAUCES = [
-  { id: 'acevichada', name: 'Salsa Acevichada', price: 2.00, desc: 'Toque nikkei cítrico', emoji: '🐟' },
-  { id: 'bbq', name: 'BBQ Artesanal', price: 2.00, desc: 'Ahumada a la leña', emoji: '🔥' },
+  { id: 'acevichada', name: 'Salsa Acevichada', desc: 'Toque nikkei cítrico', emoji: '🐟' },
+  { id: 'bbq', name: 'BBQ Artesanal', desc: 'Ahumada a la leña', emoji: '🔥' },
 ];
 
 const EXTRAS_LIST = [
-  { id: 'papas', name: 'Porción de papas extra', price: 6.00, emoji: '🍟' },
-  { id: 'incakola', name: 'Gaseosa Inca Kola 500ml', price: 4.50, emoji: '🥤' },
-  { id: 'queso', name: 'Extra Queso derretido', price: 3.00, emoji: '🧀' },
-  { id: 'huevo', name: 'Huevo frito a la inglesa', price: 2.50, emoji: '🍳' },
+  { id: 'papas', name: 'Porción de papas extra', emoji: '🍟' },
+  { id: 'incakola', name: 'Gaseosa Inca Kola 500ml', emoji: '🥤' },
+  { id: 'queso', name: 'Extra Queso derretido', emoji: '🧀' },
+  { id: 'huevo', name: 'Huevo frito a la inglesa', emoji: '🍳' },
 ];
 
 export function ProductModifierDrawer({
@@ -73,6 +73,7 @@ export function ProductModifierDrawer({
   onClose,
   onAddToCart,
   currencySymbol = '$',
+  currency = 'PEN',
 }: ProductModifierDrawerProps) {
   const [quantity, setQuantity] = useState(1);
   const [selectedBaseSauces, setSelectedBaseSauces] = useState<string[]>(['tartara', 'aji']);
@@ -80,14 +81,62 @@ export function ProductModifierDrawer({
   const [isSalchibroaster, setIsSalchibroaster] = useState(false);
   const [extrasQuantities, setExtrasQuantities] = useState<Record<string, number>>({});
   const [kitchenNotes, setKitchenNotes] = useState('');
+  const [drinkTemp, setDrinkTemp] = useState<'helada' | 'clima'>('helada');
   const [showToast, setShowToast] = useState(false);
   const [animateLimit, setAnimateLimit] = useState(false);
 
-  const formatPrice = (val: number) => {
-    if (currencySymbol === '$' || currencySymbol === 'CLP' || currencySymbol === 'COP' || currencySymbol === 'ARS') {
-      return `${currencySymbol} ${Math.round(val).toLocaleString('es-CL')}`;
+  // Determinar categoría y tipo de producto
+  const categoryStr = typeof product?.category === 'string' 
+    ? product.category 
+    : (product?.category?.name || product?.categoryName || '');
+  const catLower = categoryStr.toLowerCase();
+  const nameLower = (product?.name || '').toLowerCase();
+
+  const isDrink = catLower.includes('bebida') || catLower.includes('trago') || catLower.includes('gaseosa') || catLower.includes('jugo') || catLower.includes('refresco') || nameLower.includes('coca cola') || nameLower.includes('inka cola') || nameLower.includes('fanta');
+  const isComplemento = catLower.includes('complemento') || catLower.includes('extra') || catLower.includes('postre') || nameLower.includes('complemento');
+  const isNonCustomizable = isDrink || isComplemento;
+
+  // Solo pollo broaster tiene la opción de Salchibroaster
+  const isBroasterProduct = !isNonCustomizable && (catLower.includes('broaster') || nameLower.includes('broaster'));
+  // Salsas solo para comida caliente
+  const allowsSauces = !isNonCustomizable;
+  // Acompañamientos extras solo para platos principales
+  const allowsExtras = !isNonCustomizable;
+
+  // Reset states when opening a new product
+  useEffect(() => {
+    if (product) {
+      setQuantity(1);
+      setKitchenNotes('');
+      setDrinkTemp('helada');
+      setExtrasQuantities({});
+      setIsSalchibroaster(false);
+      setSelectedPremiumSauces([]);
+      setSelectedBaseSauces(allowsSauces ? ['tartara', 'aji'] : []);
     }
-    return `${currencySymbol} ${val.toFixed(2)}`;
+  }, [product?.id, allowsSauces]);
+
+  const curr = (currency || 'PEN').toUpperCase();
+  const isCLP = curr === 'CLP' || currencySymbol === '$';
+  const isARS = curr === 'ARS';
+
+  const formatPrice = (val: number) => {
+    const sym = currencySymbol || (curr === 'PEN' ? 'S/.' : '$');
+    if (isCLP || isARS || curr === 'COP') {
+      return `${sym} ${Math.round(val).toLocaleString('es-CL')}`;
+    }
+    return `${sym} ${val.toFixed(2)}`;
+  };
+
+  // Precios dinámicos por divisa para extras
+  const getGourmetPrice = () => (isCLP ? 600 : (isARS ? 1000 : 2.00));
+  const getSalchibroasterPrice = () => (isCLP ? 1800 : (isARS ? 2800 : 5.00));
+  const getExtraPrice = (id: string) => {
+    if (id === 'papas') return isCLP ? 1800 : (isARS ? 2800 : 6.00);
+    if (id === 'incakola') return isCLP ? 1500 : (isARS ? 2500 : 4.50);
+    if (id === 'queso') return isCLP ? 1000 : (isARS ? 1500 : 3.00);
+    if (id === 'huevo') return isCLP ? 800 : (isARS ? 1200 : 2.50);
+    return 0;
   };
 
   if (!isOpen || !product) return null;
@@ -101,19 +150,17 @@ export function ProductModifierDrawer({
         setSelectedBaseSauces(prev => [...prev, id]);
       } else {
         setAnimateLimit(true);
-        setTimeout(() => setAnimateLimit(false), 300);
+        setTimeout(() => setAnimateLimit(false), 600);
       }
     }
   };
 
-  // Salsas premium toggle
   const togglePremiumSauce = (id: string) => {
     setSelectedPremiumSauces(prev => 
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
     );
   };
 
-  // Extras stepper
   const handleExtraDelta = (id: string, delta: number) => {
     setExtrasQuantities(prev => {
       const current = prev[id] || 0;
@@ -127,46 +174,41 @@ export function ProductModifierDrawer({
     });
   };
 
-  // Price calculations
-  const categoryStr = typeof product.category === 'string' 
-    ? product.category 
-    : (product.category?.name || product.categoryName || '');
-  const isBroasterProduct = Boolean(
-    categoryStr.toLowerCase().includes('broaster') ||
-    product.name.toLowerCase().includes('broaster')
-  );
-  const isHighDenomination = currencySymbol === '$' || currencySymbol === 'CLP' || currencySymbol === 'COP' || currencySymbol === 'ARS';
-  const salchibroasterAddPrice = isHighDenomination ? 1800 : 5.00;
-  const basePrice = product.price || (isHighDenomination ? 5900 : 18.50);
-  const salchibroasterPrice = (isSalchibroaster && isBroasterProduct) ? salchibroasterAddPrice : 0;
-  const premiumSaucesTotal = selectedPremiumSauces.length * (isHighDenomination ? 600 : 2.00);
-  const extrasTotal = Object.entries(extrasQuantities).reduce((acc, [id, qty]) => {
-    const item = EXTRAS_LIST.find(e => e.id === id);
-    return acc + (item ? item.price * qty : 0);
-  }, 0);
+  const basePrice = product.price || 0;
+  const salchibroasterPrice = (isSalchibroaster && isBroasterProduct) ? getSalchibroasterPrice() : 0;
+  const premiumSaucesTotal = allowsSauces ? selectedPremiumSauces.length * getGourmetPrice() : 0;
+  const extrasTotal = allowsExtras ? Object.entries(extrasQuantities).reduce((acc, [id, qty]) => {
+    return acc + (getExtraPrice(id) * qty);
+  }, 0) : 0;
 
   const unitTotal = basePrice + salchibroasterPrice + premiumSaucesTotal + extrasTotal;
   const grandTotal = unitTotal * quantity;
 
   const handleConfirm = () => {
+    let finalNotes = kitchenNotes.trim();
+    if (isDrink) {
+      const tempTag = drinkTemp === 'helada' ? 'Bien Helada 🧊' : 'Al Clima 🌡️';
+      finalNotes = finalNotes ? `[${tempTag}] ${finalNotes}` : `[${tempTag}]`;
+    }
+
     const customized: CustomizedItem = {
       productId: product.id,
       productName: product.name,
       quantity,
       unitBasePrice: basePrice,
       totalPrice: grandTotal,
-      baseSauces: selectedBaseSauces.map(id => BASE_SAUCES.find(s => s.id === id)?.name || id),
-      premiumSauces: selectedPremiumSauces.map(id => PREMIUM_SAUCES.find(s => s.id === id)?.name || id),
-      isSalchibroaster,
-      extras: Object.entries(extrasQuantities).map(([id, qty]) => {
+      baseSauces: allowsSauces ? selectedBaseSauces.map(id => BASE_SAUCES.find(s => s.id === id)?.name || id) : [],
+      premiumSauces: allowsSauces ? selectedPremiumSauces.map(id => PREMIUM_SAUCES.find(s => s.id === id)?.name || id) : [],
+      isSalchibroaster: isBroasterProduct ? isSalchibroaster : false,
+      extras: allowsExtras ? Object.entries(extrasQuantities).map(([id, qty]) => {
         const item = EXTRAS_LIST.find(e => e.id === id);
         return {
           name: item?.name || id,
           quantity: qty,
-          unitPrice: item?.price || 0,
+          unitPrice: getExtraPrice(id)
         };
-      }),
-      kitchenNotes: kitchenNotes.trim(),
+      }) : [],
+      kitchenNotes: finalNotes
     };
 
     if (onAddToCart) {
@@ -177,7 +219,7 @@ export function ProductModifierDrawer({
     setTimeout(() => {
       setShowToast(false);
       onClose();
-    }, 1200);
+    }, 1000);
   };
 
   return (
@@ -196,7 +238,7 @@ export function ProductModifierDrawer({
           <div className="w-full flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-black tracking-wider uppercase bg-orange-500/10 text-orange-600 dark:text-orange-400 px-3 py-1 rounded-full">
               <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
-              Más Pedido en Churu&apos;s
+              {categoryStr || 'Churu\'s'}
             </span>
 
             <button
@@ -215,9 +257,9 @@ export function ProductModifierDrawer({
           
           {/* 1. Hero Product Card */}
           <div className="space-y-3">
-            <div className="relative w-full h-48 sm:h-52 rounded-2xl overflow-hidden bg-stone-800 shadow-md group">
+            <div className="relative w-full h-44 sm:h-48 rounded-2xl overflow-hidden bg-stone-800 shadow-md group">
               <img 
-                src={product.imageUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuDA9Z5_4b9mAxHzlV4kS5yvR1I96PQ4JbVQyyO0_T8wrT4fvKfeqia4jAQj-eOeEzXblgwBAVL4L0qd0AG49bw_Figi97oMlTVFzQCvrf8bi_-X0LimcYeExN_BiHKrWJdM_ORGt9YFU_44wEJg5UlatUtXtbz05Xpgk2orEzZeXr-9cne1GOOB3vjMUKVIJ61Ov8tW-17N2tx2dJ5vF9qIFy5MxTX-MlTJwPCZB6-4"} 
+                src={product.imageUrl || "https://images.unsplash.com/photo-1562967914-608f82629710?w=800&auto=format&fit=crop&q=80"} 
                 alt={product.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
@@ -227,16 +269,16 @@ export function ProductModifierDrawer({
                 <div className="flex flex-wrap gap-1.5">
                   <span className="bg-red-600/90 backdrop-blur-md text-white text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1">
                     <Flame className="w-3 h-3 text-amber-300 fill-amber-300" />
-                    Broaster Crujiente
+                    {categoryStr || 'Especialidad'}
                   </span>
                   <span className="bg-black/60 backdrop-blur-md text-stone-200 text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Clock className="w-3 h-3 text-stone-300" />
-                    15-20 min
+                    {isDrink ? 'Instantáneo' : '15-20 min'}
                   </span>
                 </div>
-                <div className="bg-amber-400 text-stone-950 font-black text-xs px-2.5 py-1 rounded-xl shadow-lg flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />
-                  4.9
+                <div className="bg-black/60 backdrop-blur-md text-amber-300 font-bold text-xs px-2.5 py-1 rounded-xl shadow-lg flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Original
                 </div>
               </div>
             </div>
@@ -247,19 +289,61 @@ export function ProductModifierDrawer({
                   {product.name}
                 </h2>
                 <div className="text-right shrink-0">
-                  <span className="text-xl font-black text-orange-600 dark:text-orange-400">
-                    S/. {basePrice.toFixed(2)}
+                  <span className="text-xl font-black text-[#84cc16] dark:text-[#94de2d]">
+                    {formatPrice(basePrice)}
                   </span>
                   <span className="block text-[10px] text-stone-400 font-semibold">Precio base</span>
                 </div>
               </div>
               <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed font-normal">
-                {product.description || 'Crujiente presa de pecho marinada con receta secreta, acompañada de papas fritas artesanales y ensalada fresca.'}
+                {product.description || 'Preparado fresco al momento con la receta y calidad de Churu\'s.'}
               </p>
             </div>
           </div>
 
-          {/* 2. Feature Card: CONVIÉRTELO EN SALCHIBROASTER (Solo para platos Broaster según carta oficial) */}
+          {/* OPCIONES PARA BEBIDAS: Temperatura y servido */}
+          {isDrink && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Temperatura</h3>
+                <span className="text-xs text-stone-400 font-medium">¿Cómo prefieres tu bebida?</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDrinkTemp('helada')}
+                  className={`p-3.5 rounded-2xl border flex items-center gap-3 transition-all text-left ${
+                    drinkTemp === 'helada'
+                      ? 'border-cyan-500 bg-cyan-500/15 text-cyan-400 shadow-md ring-1 ring-cyan-500'
+                      : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 text-stone-400 hover:border-stone-700'
+                  }`}
+                >
+                  <span className="text-2xl">🧊</span>
+                  <div>
+                    <span className="block font-bold text-xs text-white">Bien Helada</span>
+                    <span className="text-[10px] text-stone-400">Recién salida del frío</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrinkTemp('clima')}
+                  className={`p-3.5 rounded-2xl border flex items-center gap-3 transition-all text-left ${
+                    drinkTemp === 'clima'
+                      ? 'border-amber-500 bg-amber-500/15 text-amber-400 shadow-md ring-1 ring-amber-500'
+                      : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 text-stone-400 hover:border-stone-700'
+                  }`}
+                >
+                  <span className="text-2xl">🌡️</span>
+                  <div>
+                    <span className="block font-bold text-xs text-white">Al Clima</span>
+                    <span className="text-[10px] text-stone-400">Sin refrigerar</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 2. Feature Card: CONVIÉRTELO EN SALCHIBROASTER (Exclusivo categoría Broaster) */}
           {isBroasterProduct && (
             <>
               <div className="h-px bg-stone-200 dark:bg-stone-800/80 w-full" />
@@ -289,12 +373,12 @@ export function ProductModifierDrawer({
                         Añade abundantes rodajas de salchicha parrillera doradita sobre tus papas.
                       </p>
                       <span className="inline-block mt-1 font-black text-xs text-orange-600 dark:text-orange-400">
-                        + {formatPrice(salchibroasterAddPrice)}
+                        + {formatPrice(getSalchibroasterPrice())}
                       </span>
                     </div>
                   </div>
 
-                  {/* Custom Switch Toggle */}
+                  {/* Switch Toggle */}
                   <div className={`w-12 h-7 rounded-full transition-colors relative flex items-center px-1 shrink-0 ${
                     isSalchibroaster ? 'bg-orange-600' : 'bg-stone-300 dark:bg-stone-700'
                   }`}>
@@ -307,181 +391,187 @@ export function ProductModifierDrawer({
             </>
           )}
 
-          {/* 3. Salsas y Cremas Base (Obligatorio, elige hasta 3 incluidas) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Salsas y Cremas</h3>
-                  <span className="bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
-                    Obligatorio
-                  </span>
+          {/* 3. Salsas y Cremas Base (Solo para comida caliente) */}
+          {allowsSauces && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Salsas y Cremas</h3>
+                    <span className="bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                      Incluidas
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">Elige hasta 3 cremas tradicionales incluidas</p>
                 </div>
-                <p className="text-xs text-stone-500 dark:text-stone-400">Elige hasta 3 cremas tradicionales incluidas</p>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full transition-all ${
+                  animateLimit ? 'scale-110 ring-2 ring-orange-500' : ''
+                } ${
+                  selectedBaseSauces.length === 3 
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' 
+                    : 'bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400'
+                }`}>
+                  {selectedBaseSauces.length}/3 seleccionadas
+                </span>
               </div>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full transition-all ${
-                animateLimit ? 'scale-110 ring-2 ring-orange-500' : ''
-              } ${
-                selectedBaseSauces.length === 3 
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300' 
-                  : 'bg-orange-100 dark:bg-orange-950/70 text-orange-600 dark:text-orange-400'
-              }`}>
-                {selectedBaseSauces.length}/3 seleccionadas
-              </span>
-            </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              {BASE_SAUCES.map((sauce) => {
-                const isSelected = selectedBaseSauces.includes(sauce.id);
-                return (
-                  <button
-                    key={sauce.id}
-                    type="button"
-                    onClick={() => toggleBaseSauce(sauce.id)}
-                    className={`relative flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left min-h-[54px] active:scale-[0.98] ${
-                      isSelected
-                        ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 shadow-xs'
-                        : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 hover:bg-stone-100/70 dark:hover:bg-stone-800/80'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
-                      isSelected 
-                        ? 'border-orange-500 bg-orange-500 text-white' 
-                        : 'border-stone-400 dark:border-stone-600'
-                    }`}>
-                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className={`font-bold text-xs truncate ${
-                        isSelected ? 'text-orange-600 dark:text-orange-400' : 'text-stone-800 dark:text-stone-200'
-                      }`}>
-                        {sauce.name}
-                      </div>
-                      <div className="text-[10px] text-stone-400 truncate">{sauce.desc}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 4. Salsas Especiales Gourmet (+S/. 2.00 opcionales) */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Salsas Especiales Gourmet</h3>
-              <span className="text-xs text-stone-400 font-medium">Opcional</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              {PREMIUM_SAUCES.map((sauce) => {
-                const isSelected = selectedPremiumSauces.includes(sauce.id);
-                return (
-                  <button
-                    key={sauce.id}
-                    type="button"
-                    onClick={() => togglePremiumSauce(sauce.id)}
-                    className={`relative flex items-center justify-between p-3 rounded-xl border transition-all text-left min-h-[54px] active:scale-[0.98] ${
-                      isSelected 
-                        ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 shadow-xs' 
-                        : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 hover:bg-stone-100/80 dark:hover:bg-stone-800/80'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+              <div className="grid grid-cols-2 gap-2.5">
+                {BASE_SAUCES.map((sauce) => {
+                  const isSelected = selectedBaseSauces.includes(sauce.id);
+                  return (
+                    <button
+                      key={sauce.id}
+                      type="button"
+                      onClick={() => toggleBaseSauce(sauce.id)}
+                      className={`relative flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left min-h-[54px] active:scale-[0.98] ${
+                        isSelected
+                          ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 shadow-xs'
+                          : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 hover:bg-stone-100/70 dark:hover:bg-stone-800/80'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
                         isSelected 
                           ? 'border-orange-500 bg-orange-500 text-white' 
                           : 'border-stone-400 dark:border-stone-600'
                       }`}>
-                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                       </div>
-                      <div className="min-w-0">
-                        <span className={`block font-bold text-xs truncate ${
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-bold text-xs truncate ${
                           isSelected ? 'text-orange-600 dark:text-orange-400' : 'text-stone-800 dark:text-stone-200'
                         }`}>
                           {sauce.name}
+                        </div>
+                        <div className="text-[10px] text-stone-400 truncate">{sauce.desc}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Salsas Especiales Gourmet (Opcionales para comida caliente) */}
+          {allowsSauces && (
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Salsas Especiales Gourmet</h3>
+                <span className="text-xs text-stone-400 font-medium">Opcional</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {PREMIUM_SAUCES.map((sauce) => {
+                  const isSelected = selectedPremiumSauces.includes(sauce.id);
+                  return (
+                    <button
+                      key={sauce.id}
+                      type="button"
+                      onClick={() => togglePremiumSauce(sauce.id)}
+                      className={`relative flex items-center justify-between p-3 rounded-xl border transition-all text-left min-h-[54px] active:scale-[0.98] ${
+                        isSelected 
+                          ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 shadow-xs' 
+                          : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 hover:bg-stone-100/80 dark:hover:bg-stone-800/80'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                          isSelected 
+                            ? 'border-orange-500 bg-orange-500 text-white' 
+                            : 'border-stone-400 dark:border-stone-600'
+                        }`}>
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </div>
+                        <div className="min-w-0">
+                          <span className={`block font-bold text-xs truncate ${
+                            isSelected ? 'text-orange-600 dark:text-orange-400' : 'text-stone-800 dark:text-stone-200'
+                          }`}>
+                            {sauce.name}
+                          </span>
+                          <span className="text-[11px] font-black text-orange-600 dark:text-orange-400">
+                            + {formatPrice(getGourmetPrice())}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 5. Acompañamientos y Extras (Steppers, solo para platos principales) */}
+          {allowsExtras && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Acompañamientos Extras</h3>
+                <span className="text-xs text-stone-400 font-medium">Agrega a tu gusto</span>
+              </div>
+
+              <div className="space-y-2">
+                {EXTRAS_LIST.map((extra) => {
+                  const qty = extrasQuantities[extra.id] || 0;
+                  const itemPrice = getExtraPrice(extra.id);
+                  return (
+                    <div 
+                      key={extra.id} 
+                      className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/80 dark:border-stone-800 min-h-[54px]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg">
+                          {extra.emoji}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-stone-100">
+                            {extra.name}
+                          </h4>
+                          <p className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                            + {formatPrice(itemPrice)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Stepper */}
+                      <div className="flex items-center gap-2 bg-stone-200/80 dark:bg-stone-700/80 rounded-xl p-1 shrink-0">
+                        <button 
+                          type="button" 
+                          onClick={() => handleExtraDelta(extra.id, -1)} 
+                          disabled={qty <= 0}
+                          className="w-8 h-8 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-100 disabled:opacity-40 flex items-center justify-center text-stone-700 dark:text-stone-200 transition-colors shadow-2xs"
+                        >
+                          <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </button>
+                        <span className="w-6 text-center font-black text-sm text-stone-900 dark:text-stone-100">
+                          {qty}
                         </span>
-                        <span className="text-[11px] font-black text-orange-600 dark:text-orange-400">
-                          + {formatPrice(sauce.price)}
-                        </span>
+                        <button 
+                          type="button" 
+                          onClick={() => handleExtraDelta(extra.id, 1)} 
+                          className="w-8 h-8 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-100 flex items-center justify-center text-stone-700 dark:text-stone-200 transition-colors shadow-2xs"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </button>
                       </div>
                     </div>
-                  </button>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-
-          {/* 5. Bebidas y Extras (Steppers) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Bebidas y Acompañamientos</h3>
-              <span className="text-xs text-stone-400 font-medium">Agrega a tu gusto</span>
-            </div>
-
-            <div className="space-y-2">
-              {EXTRAS_LIST.map((extra) => {
-                const qty = extrasQuantities[extra.id] || 0;
-                return (
-                  <div 
-                    key={extra.id} 
-                    className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/80 dark:border-stone-800 min-h-[54px]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg">
-                        {extra.emoji}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-stone-100">
-                          {extra.name}
-                        </h4>
-                        <p className="text-xs font-bold text-orange-600 dark:text-orange-400">
-                          + {formatPrice(extra.price)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Stepper */}
-                    <div className="flex items-center gap-2 bg-stone-200/80 dark:bg-stone-700/80 rounded-xl p-1 shrink-0">
-                      <button 
-                        type="button" 
-                        onClick={() => handleExtraDelta(extra.id, -1)} 
-                        disabled={qty <= 0}
-                        className="w-8 h-8 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-100 disabled:opacity-40 flex items-center justify-center text-stone-700 dark:text-stone-200 transition-colors shadow-2xs"
-                      >
-                        <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
-                      </button>
-                      <span className="w-6 text-center font-black text-sm text-stone-900 dark:text-stone-100">
-                        {qty}
-                      </span>
-                      <button 
-                        type="button" 
-                        onClick={() => handleExtraDelta(extra.id, 1)} 
-                        className="w-8 h-8 rounded-lg bg-white dark:bg-stone-800 hover:bg-stone-100 flex items-center justify-center text-stone-700 dark:text-stone-200 transition-colors shadow-2xs"
-                      >
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          )}
 
           {/* 6. Indicaciones Especiales de Cocina */}
           <div className="space-y-2">
             <label htmlFor="kitchen-notes" className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-stone-900 dark:text-white">
               <MessageSquare className="w-4 h-4 text-orange-500" />
-              Indicaciones Especiales de Cocina
+              {isDrink ? 'Instrucciones para la Bebida' : 'Indicaciones Especiales para Cocina'}
             </label>
             <textarea 
               id="kitchen-notes" 
               rows={2} 
               value={kitchenNotes}
               onChange={(e) => setKitchenNotes(e.target.value)}
-              placeholder="Ej: papas bien doradas, ají en bolsa aparte, sin ensalada..."
+              placeholder={isDrink ? "Ej: Enviar con vaso descartable y hielo..." : "Ej: Papas bien crocantes, sin ensalada, ají aparte..."}
               className="w-full rounded-2xl bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all resize-none"
             />
-            <p className="text-[11px] text-stone-400 text-right">Nos esforzamos por cumplir tus preferencias</p>
           </div>
 
         </div>
@@ -489,7 +579,7 @@ export function ProductModifierDrawer({
         {/* 7. STICKY BOTTOM ACTION BAR */}
         <div className="p-3.5 sm:p-4 pb-6 sm:pb-4 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center gap-3 shrink-0 shadow-2xl relative z-20">
           
-          {/* Quantity Stepper for Whole Item */}
+          {/* Quantity Stepper */}
           <div className="flex items-center justify-between bg-stone-100 dark:bg-stone-800 rounded-2xl p-1.5 border border-stone-200 dark:border-stone-700 h-[52px]">
             <button 
               type="button" 
@@ -511,11 +601,11 @@ export function ProductModifierDrawer({
             </button>
           </div>
 
-          {/* Prominent Primary Action Button with Gradient & Total */}
+          {/* Primary Action Button */}
           <button 
             type="button"
             onClick={handleConfirm}
-            className="flex-1 h-[52px] bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold rounded-2xl shadow-lg shadow-orange-600/30 flex items-center justify-between px-5 active:scale-[0.98] transition-all"
+            className="flex-1 h-[52px] bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold rounded-2xl shadow-lg shadow-orange-600/30 flex items-center justify-between px-5 active:scale-[0.98] transition-all cursor-pointer"
           >
             <span className="flex items-center gap-2 text-xs sm:text-sm font-black">
               <ShoppingBag className="w-4 h-4" />
@@ -535,11 +625,11 @@ export function ProductModifierDrawer({
                 <CheckCircle2 className="w-4 h-4 stroke-[3]" />
               </div>
               <div>
-                <p className="font-black text-xs">¡Agregado a tu pedido!</p>
+                <p className="font-black text-xs">¡Agregado al pedido!</p>
                 <p className="text-[10px] text-stone-300">{product.name} listo</p>
               </div>
             </div>
-            <span className="text-xs font-black text-orange-400">
+            <span className="text-xs font-black text-[#84cc16] dark:text-[#94de2d]">
               {formatPrice(grandTotal)}
             </span>
           </div>
