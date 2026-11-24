@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma'
 import { reservationService } from '@/services/ReservationService'
 import { ConversationContext, AIResponse } from '@/types/schemas'
 import { PRODUCT_PRICES } from '@/lib/currencyCatalog'
+import { formatChileanRut } from '@/utils/rut'
 
 export interface GeminiContentPart {
   text?: string
@@ -98,7 +99,7 @@ export class GeminiService {
         if (activeCurrency === 'PEN') {
           bankSummary = `Transferencia / Yape: Banco ${bd.pe_bankName || 'BCP'} ${bd.pe_accountNumber ? '(Cta: ' + bd.pe_accountNumber + ')' : ''} ${bd.pe_cci ? '(CCI: ' + bd.pe_cci + ')' : ''}. Yape/Plin: ${bd.pe_yapeNumber || business.phone}. Titular: ${bd.pe_holderName || businessName}.`;
         } else if (activeCurrency === 'CLP') {
-          bankSummary = `Transferencia (Chile): Banco ${bd.cl_bankName || 'Banco Estado'} ${bd.cl_accountType || 'CuentaRUT'} ${bd.cl_accountNumber ? '(Cta: ' + bd.cl_accountNumber + ')' : ''}. RUT: ${bd.cl_rut || ''}. Titular: ${bd.cl_holderName || businessName}. Email: ${bd.cl_email || ''}.`;
+          bankSummary = `Transferencia (Chile): Banco ${bd.cl_bankName || 'Banco Estado'} ${bd.cl_accountType || 'CuentaRUT'} ${bd.cl_accountNumber ? '(Cta: ' + bd.cl_accountNumber + ')' : ''}. RUT: ${formatChileanRut(bd.cl_rut) || ''}. Titular: ${bd.cl_holderName || businessName}. Email: ${bd.cl_email || ''}.`;
         } else if (activeCurrency === 'ARS') {
           bankSummary = `Transferencia (Argentina): ${bd.ar_bankName || 'Mercado Pago'} ${bd.ar_alias ? '(Alias: ' + bd.ar_alias + ')' : ''} ${bd.ar_cbu ? '(CBU: ' + bd.ar_cbu + ')' : ''}. Titular: ${bd.ar_holderName || businessName}.`;
         }

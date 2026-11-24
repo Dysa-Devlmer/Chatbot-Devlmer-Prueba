@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { formatChileanRut, extractCuentaRutNumber } from '@/utils/rut';
 import { 
   Store, 
   Save, 
@@ -234,6 +235,9 @@ export default function BusinessProfilePage() {
           if (p.bankDetails) {
             try {
               const parsed = typeof p.bankDetails === 'string' ? JSON.parse(p.bankDetails) : p.bankDetails;
+              if (parsed.cl_rut) {
+                parsed.cl_rut = formatChileanRut(parsed.cl_rut);
+              }
               setBankConfig(prev => ({ ...prev, ...parsed }));
             } catch (err) {
               console.error('Error parsing bankDetails:', err);
@@ -926,7 +930,16 @@ export default function BusinessProfilePage() {
                       </label>
                       <select
                         value={bankConfig.cl_accountType}
-                        onChange={(e) => setBankConfig(prev => ({ ...prev, cl_accountType: e.target.value }))}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setBankConfig(prev => {
+                            const next = { ...prev, cl_accountType: val };
+                            if (val === 'CuentaRUT' && prev.cl_rut && !prev.cl_accountNumber) {
+                              next.cl_accountNumber = extractCuentaRutNumber(prev.cl_rut);
+                            }
+                            return next;
+                          });
+                        }}
                         className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
                       >
                         <option value="CuentaRUT">CuentaRUT (Banco Estado)</option>
@@ -943,22 +956,43 @@ export default function BusinessProfilePage() {
                         type="text"
                         value={bankConfig.cl_accountNumber}
                         onChange={(e) => setBankConfig(prev => ({ ...prev, cl_accountNumber: e.target.value }))}
-                        placeholder="ej: 12345678 (o RUT sin dígito verificador)"
+                        placeholder={bankConfig.cl_accountType === 'CuentaRUT' ? "ej: 25484075 (RUT sin dígito verificador)" : "ej: 12345678"}
                         className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
-                        RUT del Titular
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-stone-300">
+                          RUT del Titular (Formato Oficial)
+                        </label>
+                        <span className="text-[10px] font-mono text-purple-400 font-bold">11.111.111-K</span>
+                      </div>
                       <input
                         type="text"
+                        maxLength={12}
                         value={bankConfig.cl_rut}
-                        onChange={(e) => setBankConfig(prev => ({ ...prev, cl_rut: e.target.value }))}
-                        placeholder="ej: 12.345.678-9"
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                        onChange={(e) => {
+                          const formatted = formatChileanRut(e.target.value);
+                          setBankConfig(prev => {
+                            const next = { ...prev, cl_rut: formatted };
+                            // Si la cuenta es CuentaRUT y no tiene número o coincidía con el anterior, sincronizar número de cuenta
+                            if (prev.cl_accountType === 'CuentaRUT') {
+                              const autoAcc = extractCuentaRutNumber(formatted);
+                              const prevAcc = extractCuentaRutNumber(prev.cl_rut);
+                              if (!prev.cl_accountNumber || prev.cl_accountNumber === prevAcc) {
+                                next.cl_accountNumber = autoAcc;
+                              }
+                            }
+                            return next;
+                          });
+                        }}
+                        placeholder="ej: 11.111.111-K"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono font-bold"
                       />
+                      <span className="text-[10px] text-stone-500 mt-1 block">
+                        Se auto-formatea en tiempo real con puntos, guión y K mayúscula (ej: 11.111.111-K).
+                      </span>
                     </div>
 
                     <div>

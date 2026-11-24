@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { formatChileanRut } from '@/utils/rut';
 import { 
   ArrowLeft, 
   Bike, 
@@ -343,7 +344,7 @@ export default function CheckoutPage() {
         `Banco: ${parsedBank.cl_bankName || 'Banco Estado'}`,
         `Tipo: ${parsedBank.cl_accountType || 'CuentaRUT'}`,
         parsedBank.cl_accountNumber ? `N° Cuenta: ${parsedBank.cl_accountNumber}` : null,
-        parsedBank.cl_rut ? `RUT: ${parsedBank.cl_rut}` : null,
+        parsedBank.cl_rut ? `RUT: ${formatChileanRut(parsedBank.cl_rut)}` : null,
         `Titular: ${parsedBank.cl_holderName || business.name}`,
         parsedBank.cl_email ? `Email: ${parsedBank.cl_email}` : null,
       ].filter(Boolean).join('\n');
@@ -392,9 +393,32 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (invoiceType === 'factura' && (!invoiceRuc.trim() || invoiceRuc.trim().length !== 11)) {
-      setErrorMessage('Para solicitar Factura Electrónica debes ingresar un RUC válido de 11 dígitos.');
-      return;
+    if (invoiceType === 'factura') {
+      const activeCurr = (business.currency || 'PEN').toUpperCase();
+      if (activeCurr === 'CLP') {
+        const cleanRut = invoiceRuc.replace(/[^0-9kK]/g, '');
+        if (cleanRut.length < 8 || cleanRut.length > 9) {
+          setErrorMessage('Para solicitar Factura en Chile debes ingresar un RUT de empresa válido (ej: 76.123.456-K).');
+          return;
+        }
+      } else if (activeCurr === 'ARS') {
+        const cleanCuit = invoiceRuc.replace(/\D/g, '');
+        if (cleanCuit.length !== 11) {
+          setErrorMessage('Para solicitar Factura en Argentina debes ingresar un CUIT válido de 11 dígitos.');
+          return;
+        }
+      } else {
+        const cleanRuc = invoiceRuc.replace(/\D/g, '');
+        if (cleanRuc.length !== 11) {
+          setErrorMessage('Para solicitar Factura Electrónica debes ingresar un RUC válido de 11 dígitos.');
+          return;
+        }
+      }
+
+      if (!invoiceRazonSocial.trim()) {
+        setErrorMessage('Por favor ingresa la Razón Social de la empresa para la factura.');
+        return;
+      }
     }
 
     setOrderState('processing');
@@ -628,22 +652,34 @@ export default function CheckoutPage() {
                   }`}
                 >
                   <Building2 className="w-3.5 h-3.5" />
-                  <span>Factura con RUC</span>
+                  <span>Factura con {(business.currency || 'PEN').toUpperCase() === 'CLP' ? 'RUT' : ((business.currency || 'PEN').toUpperCase() === 'ARS' ? 'CUIT' : 'RUC')}</span>
                 </button>
               </div>
 
               {invoiceType === 'factura' && (
                 <div className="p-3 rounded-xl bg-stone-950 border border-orange-500/30 space-y-2.5 mt-2 animate-in fade-in duration-200">
                   <div>
-                    <label className="block text-[10px] font-bold text-stone-400 mb-1">
-                      RUC de la Empresa (11 dígitos) *:
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[10px] font-bold text-stone-400">
+                        {(business.currency || 'PEN').toUpperCase() === 'CLP' ? 'RUT de la Empresa *' : ((business.currency || 'PEN').toUpperCase() === 'ARS' ? 'CUIT de la Empresa (11 dígitos) *' : 'RUC de la Empresa (11 dígitos) *')}:
+                      </label>
+                      {(business.currency || 'PEN').toUpperCase() === 'CLP' && (
+                        <span className="text-[10px] font-mono text-purple-400 font-bold">11.111.111-K</span>
+                      )}
+                    </div>
                     <input
                       type="text"
-                      maxLength={11}
+                      maxLength={(business.currency || 'PEN').toUpperCase() === 'CLP' ? 12 : 11}
                       value={invoiceRuc}
-                      onChange={(e) => setInvoiceRuc(e.target.value.replace(/\D/g, ''))}
-                      placeholder="Ej: 20601234567"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if ((business.currency || 'PEN').toUpperCase() === 'CLP') {
+                          setInvoiceRuc(formatChileanRut(val));
+                        } else {
+                          setInvoiceRuc(val.replace(/\D/g, ''));
+                        }
+                      }}
+                      placeholder={(business.currency || 'PEN').toUpperCase() === 'CLP' ? 'Ej: 76.123.456-K' : ((business.currency || 'PEN').toUpperCase() === 'ARS' ? 'Ej: 30712345678' : 'Ej: 20601234567')}
                       className="w-full px-3 py-1.5 rounded-lg bg-stone-900 border border-stone-800 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 font-mono font-bold"
                     />
                   </div>
@@ -655,7 +691,7 @@ export default function CheckoutPage() {
                       type="text"
                       value={invoiceRazonSocial}
                       onChange={(e) => setInvoiceRazonSocial(e.target.value)}
-                      placeholder="Ej: Inversiones Gastronómicas S.A.C."
+                      placeholder={(business.currency || 'PEN').toUpperCase() === 'CLP' ? "Ej: Gastronomía del Sur SpA" : "Ej: Inversiones Gastronómicas S.A.C."}
                       className="w-full px-3 py-1.5 rounded-lg bg-stone-900 border border-stone-800 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 font-medium"
                     />
                   </div>
@@ -1135,7 +1171,7 @@ export default function CheckoutPage() {
                         {parsedBank?.cl_rut && (
                           <div className="flex items-center justify-between">
                             <span className="text-stone-400">RUT del Titular:</span>
-                            <span className="font-mono font-bold text-purple-200">{parsedBank.cl_rut}</span>
+                            <span className="font-mono font-bold text-purple-200">{formatChileanRut(parsedBank.cl_rut)}</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between">
