@@ -439,29 +439,37 @@ export default function PublicMenuPage() {
 
       </main>
 
-      {/* 3. Sticky Floating Cart Bar */}
+      {/* 3. Sticky Floating Cart Bar (UX Móvil Optimizada) */}
       {totalItemCount > 0 && (
-        <div className="fixed bottom-4 inset-x-4 max-w-lg mx-auto z-40 animate-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-4 inset-x-3 sm:inset-x-4 max-w-lg mx-auto z-40 animate-in slide-in-from-bottom duration-300">
           <button
             type="button"
             onClick={() => setIsCartModalOpen(true)}
-            className="w-full h-14 rounded-2xl bg-gradient-to-r from-orange-600 via-amber-600 to-[#84cc16] text-white font-black text-xs sm:text-sm flex items-center justify-between px-5 shadow-xl shadow-orange-600/35 hover:shadow-orange-600/50 hover:scale-[1.01] active:scale-[0.97] transition-all duration-200 cursor-pointer"
+            className="w-full h-14 sm:h-16 rounded-2xl bg-gradient-to-r from-orange-600 via-amber-600 to-[#84cc16] text-white font-black text-xs sm:text-sm flex items-center justify-between px-4 sm:px-5 shadow-2xl shadow-orange-600/40 hover:shadow-orange-600/60 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 cursor-pointer border border-white/20"
           >
+            {/* Total Amount Display */}
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-black/20 flex items-center justify-center">
-                <ShoppingBag className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-xl bg-black/25 flex items-center justify-center shrink-0">
+                <ShoppingBag className="w-4 h-4 text-white" />
               </div>
               <div className="text-left">
-                <span className="block font-black">Ver mi Pedido ({totalItemCount} {totalItemCount === 1 ? 'plato' : 'platos'})</span>
-                <span className="text-[10px] text-amber-200 font-semibold">Toca para revisar y confirmar</span>
+                <span className="text-[10px] text-amber-200 font-bold uppercase tracking-wider block">Total</span>
+                <span className="text-sm sm:text-base font-black tracking-tight text-white">
+                  {formatPrice(cartSubtotal)}
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="bg-black/25 px-2.5 py-1 rounded-xl font-black text-xs sm:text-sm">
-                {formatPrice(cartSubtotal)}
+            <div className="h-7 w-px bg-white/20 mx-1" />
+
+            {/* Ver Pedido CTA */}
+            <div className="flex items-center gap-2">
+              <span className="font-black text-xs sm:text-sm">
+                Ver Pedido ({totalItemCount} {totalItemCount === 1 ? 'item' : 'items'})
               </span>
-              <ChevronRight className="w-4 h-4" />
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                <ChevronRight className="w-4 h-4" />
+              </div>
             </div>
           </button>
         </div>

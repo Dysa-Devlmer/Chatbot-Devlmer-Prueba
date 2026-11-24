@@ -29,7 +29,10 @@ import {
   Lock,
   Phone,
   User,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  FileText,
+  Building2
 } from 'lucide-react';
 
 export interface CartItem {
@@ -73,7 +76,13 @@ export default function CheckoutPage() {
   // Customer Contact Fields
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
+
+  // Electronic Invoicing Fields (Boleta / Factura)
+  const [invoiceType, setInvoiceType] = useState<'boleta' | 'factura'>('boleta');
+  const [invoiceRuc, setInvoiceRuc] = useState('');
+  const [invoiceRazonSocial, setInvoiceRazonSocial] = useState('');
 
   // Delivery Mode & Address
   const [deliveryMode, setDeliveryMode] = useState<'delivery' | 'pickup'>('delivery');
@@ -123,6 +132,14 @@ export default function CheckoutPage() {
         if (savedName) setCustomerName(savedName);
         const savedPhone = localStorage.getItem('pithy_customer_phone');
         if (savedPhone) setCustomerPhone(savedPhone);
+        const savedEmail = localStorage.getItem('pithy_customer_email');
+        if (savedEmail) setCustomerEmail(savedEmail);
+        const savedInvoiceType = localStorage.getItem('pithy_invoice_type') as 'boleta' | 'factura';
+        if (savedInvoiceType) setInvoiceType(savedInvoiceType);
+        const savedRuc = localStorage.getItem('pithy_invoice_ruc');
+        if (savedRuc) setInvoiceRuc(savedRuc);
+        const savedRazonSocial = localStorage.getItem('pithy_invoice_razon_social');
+        if (savedRazonSocial) setInvoiceRazonSocial(savedRazonSocial);
         const savedAddr = localStorage.getItem('pithy_delivery_address');
         if (savedAddr) setDeliveryAddress(savedAddr);
         const savedRef = localStorage.getItem('pithy_delivery_reference');
@@ -314,6 +331,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (invoiceType === 'factura' && (!invoiceRuc.trim() || invoiceRuc.trim().length !== 11)) {
+      setErrorMessage('Para solicitar Factura Electrónica debes ingresar un RUC válido de 11 dígitos.');
+      return;
+    }
+
     setOrderState('processing');
 
     try {
@@ -321,16 +343,22 @@ export default function CheckoutPage() {
         ? `${deliveryAddress}${deliveryReference ? ' (Ref: ' + deliveryReference + ')' : ''}`
         : 'Recojo en Local Comercial';
 
+      const paymentLabel = paymentMethod === 'yape' 
+        ? (business.currency === 'CLP' ? 'Transferencia (CuentaRUT / Banco)' : (business.currency === 'ARS' ? 'Transferencia (Mercado Pago / CBU)' : 'Yape / Plin / Transferencia'))
+        : paymentMethod === 'card' 
+          ? 'Tarjeta Débito / Crédito (POS Móvil)' 
+          : `Efectivo${cashChangeAmount ? ' (Paga con: ' + business.currencySymbol + ' ' + cashChangeAmount + ')' : ''}`;
+
       const payload = {
         customerName: customerName.trim() || 'Cliente Web',
         customerPhone: customerPhone.trim(),
+        customerEmail: customerEmail.trim(),
         deliveryMode,
         deliveryAddress: fullAddress,
-        paymentMethod: paymentMethod === 'yape' 
-          ? (business.currency === 'CLP' ? 'Transferencia CuentaRUT' : 'Yape / Plin')
-          : paymentMethod === 'card' 
-            ? 'Tarjeta POS' 
-            : `Efectivo${cashChangeAmount ? ' (Paga con: ' + business.currencySymbol + ' ' + cashChangeAmount + ')' : ''}`,
+        paymentMethod: paymentLabel,
+        invoiceType,
+        invoiceRuc: invoiceType === 'factura' ? invoiceRuc.trim() : '',
+        invoiceRazonSocial: invoiceType === 'factura' ? invoiceRazonSocial.trim() : '',
         notes: [
           orderNotes ? `Nota: ${orderNotes}` : null,
           operationCode ? `Cód. Operación: ${operationCode}` : null,
@@ -363,9 +391,13 @@ export default function CheckoutPage() {
         throw new Error(data.error || 'No se pudo crear la orden. Intenta nuevamente.');
       }
 
-      // Guardar datos de contacto y entrega para futuras compras
+      // Guardar datos de contacto y comprobante para futuras compras
       if (customerName) localStorage.setItem('pithy_customer_name', customerName);
       if (customerPhone) localStorage.setItem('pithy_customer_phone', customerPhone);
+      if (customerEmail) localStorage.setItem('pithy_customer_email', customerEmail);
+      if (invoiceType) localStorage.setItem('pithy_invoice_type', invoiceType);
+      if (invoiceRuc) localStorage.setItem('pithy_invoice_ruc', invoiceRuc);
+      if (invoiceRazonSocial) localStorage.setItem('pithy_invoice_razon_social', invoiceRazonSocial);
       if (deliveryAddress) localStorage.setItem('pithy_delivery_address', deliveryAddress);
       if (deliveryReference) localStorage.setItem('pithy_delivery_reference', deliveryReference);
 
@@ -449,13 +481,13 @@ export default function CheckoutPage() {
         )}
 
         {/* 1. Customer Contact Details Module */}
-        <div className="p-4 rounded-2xl bg-stone-900/90 border border-stone-800/80 space-y-3 shadow-md">
+        <div className="p-4 rounded-2xl bg-stone-900/90 border border-stone-800/80 space-y-3.5 shadow-md">
           <h3 className="text-sm font-black text-white flex items-center gap-2">
             <User className="w-4 h-4 text-orange-400" />
             Datos de Contacto para el Pedido
           </h3>
 
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             <div>
               <label className="block text-[11px] font-bold text-stone-400 mb-1">
                 Tu Nombre completo:
@@ -484,6 +516,88 @@ export default function CheckoutPage() {
                 />
                 <Phone className="w-4 h-4 text-orange-400 absolute left-3 top-2.5" />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-stone-400 mb-1">
+                Correo Electrónico (para recibir tu Boleta / Factura digital):
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="ejemplo@correo.com"
+                  className="w-full px-3 py-2 pl-9 rounded-xl bg-stone-950 border border-stone-800 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 transition-all font-medium"
+                />
+                <Mail className="w-4 h-4 text-orange-400 absolute left-3 top-2.5" />
+              </div>
+              <span className="text-[10px] text-stone-500 mt-1 block">
+                Te enviaremos automáticamente la copia de tu orden y comprobante fiscal electrónico.
+              </span>
+            </div>
+
+            {/* Selector Comprobante Electrónico (Boleta / Factura) */}
+            <div className="pt-2 border-t border-stone-800/80 space-y-2">
+              <label className="block text-[11px] font-bold text-stone-400">
+                Tipo de Comprobante de Pago:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInvoiceType('boleta')}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
+                    invoiceType === 'boleta'
+                      ? 'bg-orange-500/20 border-orange-500/80 text-orange-400 shadow-sm'
+                      : 'bg-stone-950 border-stone-800 text-stone-400 hover:text-white'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Boleta Electrónica</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInvoiceType('factura')}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
+                    invoiceType === 'factura'
+                      ? 'bg-orange-500/20 border-orange-500/80 text-orange-400 shadow-sm'
+                      : 'bg-stone-950 border-stone-800 text-stone-400 hover:text-white'
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Factura con RUC</span>
+                </button>
+              </div>
+
+              {invoiceType === 'factura' && (
+                <div className="p-3 rounded-xl bg-stone-950 border border-orange-500/30 space-y-2.5 mt-2 animate-in fade-in duration-200">
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-400 mb-1">
+                      RUC de la Empresa (11 dígitos) *:
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={11}
+                      value={invoiceRuc}
+                      onChange={(e) => setInvoiceRuc(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Ej: 20601234567"
+                      className="w-full px-3 py-1.5 rounded-lg bg-stone-900 border border-stone-800 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-400 mb-1">
+                      Razón Social *:
+                    </label>
+                    <input
+                      type="text"
+                      value={invoiceRazonSocial}
+                      onChange={(e) => setInvoiceRazonSocial(e.target.value)}
+                      placeholder="Ej: Inversiones Gastronómicas S.A.C."
+                      className="w-full px-3 py-1.5 rounded-lg bg-stone-900 border border-stone-800 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 font-medium"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -841,14 +955,14 @@ export default function CheckoutPage() {
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm text-white">
-                      {business.currency === 'CLP' ? 'Transferencia (CuentaRUT / Banco)' : (business.currency === 'ARS' ? 'Mercado Pago / CBU' : 'Yape / Plin')}
+                      {business.currency === 'CLP' ? 'Transferencia (CuentaRUT / Banco)' : (business.currency === 'ARS' ? 'Mercado Pago / CBU' : 'Yape / Plin / Transferencia')}
                     </span>
                     <span className="px-1.5 py-0.5 rounded-md bg-[#94de2d]/15 text-[#94de2d] text-[10px] font-black">
                       Sin comisión
                     </span>
                   </div>
                   <span className="text-xs text-stone-400">
-                    Transfiere al instante: <strong className="text-purple-300">{business.phone || '+56 9 1234 5678'}</strong>
+                    Transfiere al instante: <strong className="text-purple-300">{business.phone || '+51 922 931 433'}</strong>
                   </span>
                 </div>
               </div>
@@ -862,29 +976,38 @@ export default function CheckoutPage() {
 
             {paymentMethod === 'yape' && (
               <div className="pt-2 border-t border-purple-900/40 space-y-2.5 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-stone-400">Titular: {business.name}</span>
-                  <button
-                    type="button"
-                    onClick={handleCopyPhone}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all active:scale-90 ${
-                      copiedPhone 
-                        ? 'bg-[#84cc16] text-stone-950 shadow-xs' 
-                        : 'bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800/60'
-                    }`}
-                  >
-                    {copiedPhone ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>¡Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copiar contacto</span>
-                      </>
-                    )}
-                  </button>
+                <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-800/50 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-stone-400">Titular de la cuenta:</span>
+                    <span className="font-bold text-white">{business.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-stone-400">Número oficial para transferir:</span>
+                    <span className="font-mono font-bold text-purple-300">{business.phone || '+51 922 931 433'}</span>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={handleCopyPhone}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all active:scale-90 ${
+                        copiedPhone 
+                          ? 'bg-[#84cc16] text-stone-950 shadow-xs' 
+                          : 'bg-purple-900/80 hover:bg-purple-800 text-purple-100 border border-purple-700/60'
+                      }`}
+                    >
+                      {copiedPhone ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>¡Número Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copiar Datos de Transferencia</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="pt-1">
@@ -898,6 +1021,9 @@ export default function CheckoutPage() {
                     placeholder="Ej: Op. 849201..."
                     className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-purple-900/60 text-xs font-mono text-purple-200 placeholder-stone-600 focus:outline-none focus:border-purple-400 transition-all"
                   />
+                  <span className="text-[10px] text-stone-500 mt-1 block">
+                    También puedes enviar la captura de tu transferencia al confirmar tu orden por WhatsApp.
+                  </span>
                 </div>
               </div>
             )}
@@ -925,7 +1051,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   <span className="text-xs text-stone-400">
-                    {business.currency === 'CLP' ? 'Redcompra, Visa, Mastercard • POS Inalámbrico' : 'Visa, Mastercard • Sin contacto'}
+                    {business.currency === 'CLP' ? 'Redcompra, Visa, Mastercard • POS Inalámbrico' : 'Visa, Mastercard, AMEX • Sin contacto'}
                   </span>
                 </div>
               </div>
@@ -936,6 +1062,23 @@ export default function CheckoutPage() {
                 {paymentMethod === 'card' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
               </div>
             </div>
+
+            {paymentMethod === 'card' && (
+              <div className="pt-2 border-t border-orange-950/60 space-y-1.5 animate-in fade-in duration-200">
+                <div className="p-3 rounded-xl bg-orange-950/30 border border-orange-900/50 text-[11px] text-stone-300 leading-relaxed flex items-start gap-2.5">
+                  <CreditCard className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="text-orange-400 font-bold block mb-0.5">
+                      Pago directo con terminal POS al recibir tu pedido:
+                    </strong>
+                    El motorizado llevará el terminal inalámbrico de pago (POS) directamente a tu puerta. Puedes pagar con tarjeta de débito, crédito o pago sin contacto con tu celular (Visa, Mastercard, AMEX, Diners, Apple Pay, Google Pay).
+                    <span className="block text-emerald-400 font-bold mt-1">
+                      ✓ No necesitas hacer transferencias previas ni ingresar códigos.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Option 3: Cash */}

@@ -8,7 +8,7 @@ export default function AIPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/admin/business');
+    router.replace('/admin/business?tab=messages');
   }, [router]);
 
   return (

@@ -11,9 +11,13 @@ export async function POST(request: NextRequest) {
     const {
       customerName,
       customerPhone,
+      customerEmail = '',
       deliveryMode = 'delivery',
       deliveryAddress = '',
-      paymentMethod = 'efectivo',
+      paymentMethod = 'Efectivo',
+      invoiceType = 'boleta',
+      invoiceRuc = '',
+      invoiceRazonSocial = '',
       items = [],
       notes = '',
     } = body;
@@ -101,7 +105,9 @@ export async function POST(request: NextRequest) {
     // Formatear notas claras para el Tablero de Cocina KDS y Motorizado
     const formattedNotes = [
       isDelivery ? `🛵 Delivery a: ${deliveryAddress || 'Sin dirección'}` : `🏬 Retiro en Local`,
-      `💳 Pago: ${paymentMethod.toUpperCase()}`,
+      `💳 Pago: ${paymentMethod}`,
+      customerEmail ? `📧 Email: ${customerEmail.trim()}` : null,
+      invoiceType === 'factura' && invoiceRuc ? `📄 Factura RUC: ${invoiceRuc} (${invoiceRazonSocial || 'Empresa'})` : '📄 Boleta Electrónica',
       deliveryFee > 0 ? `Envío: ${currencySymbol} ${deliveryFee.toFixed(2)}` : null,
       notes ? `Nota comensal: ${notes}` : null,
       `Detalle: ${summaryLines.join(' | ')}`

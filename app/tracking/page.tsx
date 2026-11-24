@@ -23,7 +23,8 @@ import {
   RefreshCw,
   Store,
   Printer,
-  QrCode
+  QrCode,
+  Mail
 } from 'lucide-react';
 
 interface OrderItem {
@@ -42,6 +43,9 @@ interface TrackingData {
   totalAmount: number;
   isDelivery: boolean;
   deliveryType: 'delivery' | 'pickup';
+  paymentMethod?: string;
+  customerEmail?: string;
+  invoiceType?: string;
   address: string;
   notes: string | null;
   createdAt: string;
@@ -552,11 +556,25 @@ function OrderTrackingContent() {
                     <span className="text-slate-500 dark:text-stone-400 block text-[10px] font-bold uppercase">
                       Modalidad de Pago:
                     </span>
-                    <span className="text-slate-900 dark:text-white font-medium">
-                      Contraentrega / Transferencia Asistida
+                    <span className="text-slate-900 dark:text-white font-bold text-xs sm:text-sm">
+                      {orderData?.paymentMethod || 'Tarjeta / Efectivo'}
                     </span>
                   </div>
                 </div>
+
+                {orderData?.customerEmail && (
+                  <div className="flex items-start gap-2 pt-1">
+                    <Mail className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-slate-500 dark:text-stone-400 block text-[10px] font-bold uppercase">
+                        Envío de Comprobante:
+                      </span>
+                      <span className="text-slate-900 dark:text-white text-xs font-semibold">
+                        {orderData.invoiceType || 'Boleta'} a {orderData.customerEmail}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -582,7 +600,27 @@ function OrderTrackingContent() {
         </div>
 
         {/* 7. Action Buttons */}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-2.5 pt-2">
+          {/* Requerimiento UX Móvil: Botón CTA Grande para Reenviar pedido directamente al WhatsApp del local */}
+          <a 
+            href={`https://wa.me/51922931433?text=${encodeURIComponent(
+              `¡Hola Churu's! 👋 Acabo de registrar mi pedido #${orderNumber || orderData?.orderNumber} en la carta digital:\n\n` +
+              (orderData?.items?.length ? orderData.items.map(it => `• ${it.quantity}x ${it.name} (${curr} ${it.subtotal.toFixed(2)})`).join('\n') + '\n\n' : '') +
+              `💰 Total: ${curr} ${total.toFixed(2)}\n` +
+              `💳 Pago: ${orderData?.paymentMethod || 'No especificado'}\n` +
+              (orderData?.customerEmail ? `📧 Boleta enviada a: ${orderData.customerEmail}\n` : '') +
+              `📍 ${isDelivery ? 'Entrega: ' + (orderData?.address || '') : 'Recojo en Local'}\n` +
+              `👤 Cliente: ${orderData?.customerName || 'Cliente Web'}\n\n` +
+              `¿Podrían confirmarme la recepción en cocina, por favor? ¡Muchas gracias!`
+            )}`}
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-full h-14 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-stone-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-500/25 active:scale-98 transition-all cursor-pointer border border-emerald-400/40"
+          >
+            <MessageSquare className="w-5 h-5 fill-stone-950 text-stone-950" />
+            <span>Enviar pedido directamente al WhatsApp del local</span>
+          </a>
+
           {/* Boleta Button */}
           <button 
             type="button"
@@ -641,13 +679,13 @@ function OrderTrackingContent() {
                 {orderData?.business?.address || "Jr. Los Libertadores 142 • Delivery Express & Salón"}
               </p>
 
-              {/* Badge Boleta Electrónica */}
+              {/* Badge Boleta / Factura Electrónica */}
               <div className="mt-3 inline-block px-3 py-1 rounded-xl bg-stone-100 dark:bg-stone-800/80 border border-stone-300 dark:border-stone-700">
                 <span className="text-[11px] font-black uppercase text-orange-600 dark:text-orange-400 tracking-wider block">
-                  BOLETA DE VENTA ELECTRÓNICA
+                  {orderData?.invoiceType?.toUpperCase().includes('FACTURA') ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA ELECTRÓNICA'}
                 </span>
                 <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                  B001-{orderNumber.replace(/[^0-9]/g, '').padStart(6, '0') || '001004'}
+                  {orderData?.invoiceType?.toUpperCase().includes('FACTURA') ? 'F001-' : 'B001-'}{orderNumber.replace(/[^0-9]/g, '').padStart(6, '0') || '001004'}
                 </span>
               </div>
             </div>
@@ -666,6 +704,28 @@ function OrderTrackingContent() {
                   {orderData?.customerName || 'Cliente WhatsApp'}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-stone-400">Forma de Pago:</span>
+                <span className="font-bold text-orange-600 dark:text-orange-400">
+                  {orderData?.paymentMethod || 'No especificado'}
+                </span>
+              </div>
+              {orderData?.customerEmail && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-stone-400">Correo Electrónico:</span>
+                  <span className="font-medium text-slate-800 dark:text-stone-200 text-[11px] truncate max-w-[200px]">
+                    {orderData.customerEmail}
+                  </span>
+                </div>
+              )}
+              {orderData?.invoiceType && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 dark:text-stone-400">Comprobante:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                    {orderData.invoiceType}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-slate-500 dark:text-stone-400">Modalidad:</span>
                 <span className="font-bold text-emerald-600 dark:text-emerald-400">

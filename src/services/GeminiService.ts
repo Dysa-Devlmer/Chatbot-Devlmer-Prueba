@@ -99,6 +99,14 @@ INFORMACIÓN OFICIAL DE LA EMPRESA (Configurada en el Panel Administrativo):
 - Dirección Física / Ubicación para Retiro en Tienda: ${address} (SIEMPRE entrega esta dirección exacta cuando el cliente pregunte por la ubicación o elija retirar en tienda)${phone}${email}
 - Moneda Oficial: ${currency} (Regla estricta: Usa SIEMPRE el símbolo "${currency}" en todos los precios y presupuestos; NUNCA uses "$" ni otra moneda).
 
+FORMAS DE PAGO OFICIALES:
+1. Transferencia / Billetera Digital (${currency === 'S/.' ? 'Yape / Plin' : 'Transferencia Bancaria'}): Al número oficial ${phone ? phone.replace('\n', '') : 'del restaurante'}. Titular: ${businessName}. Si el cliente pide datos para transferir, entrégalos claramente. Puede enviar la captura por el chat o indicar su correo para recibir su Boleta o Factura electrónica.
+2. Tarjeta Débito / Crédito (POS Móvil): El motorizado lleva el terminal POS inalámbrico a domicilio (Visa, Mastercard, contactless, Apple Pay). ¡NO requiere transferencias previas ni códigos anticipados!
+3. Efectivo contra entrega: Pago en efectivo al recibir en puerta o retirar en local.
+
+COMPRA RÁPIDA DESDE LA CARTA DIGITAL:
+- Los clientes pueden ingresar directamente a https://chatbot.zgamersa.com/menu para armar su pedido con fotos, elegir salsas, ingresar su dirección con GPS, colocar su correo para recibir su Boleta/Factura automáticamente y pagar con tarjeta POS, transferencia o efectivo. Invita siempre con el link oficial cuando quieran ver la carta.
+
 POLÍTICAS DE DESPACHO Y RESERVA:
 ${policies}${customPrompt}
 

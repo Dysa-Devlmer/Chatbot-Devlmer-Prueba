@@ -42,6 +42,14 @@ export async function GET(request: NextRequest) {
     const isPickup = notesLower.includes('retiro') || notesLower.includes('recojo') || notesLower.includes('local');
     const isDelivery = !isPickup;
 
+    const notesStr = order.notes || '';
+    const paymentMatch = notesStr.match(/💳 Pago:\s*([^|]+)/i);
+    const paymentMethod = paymentMatch ? paymentMatch[1].trim() : 'Efectivo';
+    const emailMatch = notesStr.match(/📧 Email:\s*([^|]+)/i);
+    const customerEmail = emailMatch ? emailMatch[1].trim() : '';
+    const invoiceMatch = notesStr.match(/📄 (?:Factura|Boleta)[^|]*/i);
+    const invoiceType = invoiceMatch ? invoiceMatch[0].replace('📄', '').trim() : 'Boleta Electrónica';
+
     // Obtener perfil del negocio para el RUC y razón social
     const business = await prisma.businessProfile.findFirst();
 
@@ -54,6 +62,9 @@ export async function GET(request: NextRequest) {
       totalAmount: order.totalAmount,
       isDelivery,
       deliveryType: isDelivery ? 'delivery' : 'pickup',
+      paymentMethod,
+      customerEmail,
+      invoiceType,
       address: isDelivery 
         ? (order.notes?.replace(/.*(?:delivery a|dirección:?)\s*/i, '').split('|')[0].trim() || 'Dirección registrada')
         : (business?.address || 'Av. Los Próceres 458, Chorrillos'),

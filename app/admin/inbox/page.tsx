@@ -825,30 +825,35 @@ function InboxInner() {
                 </div>
               </div>
 
-              {/* Botones de acción derecha: Bot Toggle, Buscador en Chat, Cámara, Llamada, Menú */}
-              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                {/* Toggle Bot Mode */}
+              {/* Botones de acción derecha: Bot Switch Interactivo, Buscador en Chat, Cámara, Llamada, Menú */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {/* Switch Interactivo de Modo de Atención (IA Activa / Asesor Humano) */}
                 <button
+                  type="button"
                   onClick={toggleBotMode}
                   disabled={isChangingMode}
-                  className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all active:scale-95 border shadow-sm ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 border shadow-sm cursor-pointer ${
                     selectedConversation.botMode === 'auto'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
-                      : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                      ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/40 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-600/50 hover:bg-emerald-500/25'
+                      : 'bg-amber-500/15 text-amber-700 border-amber-500/40 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-600/50 hover:bg-amber-500/25'
                   }`}
-                  title={selectedConversation.botMode === 'auto' ? 'Cambiar a atención humana' : 'Reactivar IA automática'}
+                  title={selectedConversation.botMode === 'auto' ? 'Clic para pasar a Asesor Humano' : 'Clic para reactivar IA Automática'}
                 >
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${selectedConversation.botMode === 'auto' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                   {selectedConversation.botMode === 'auto' ? (
                     <>
-                      <Bot className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-[11px] hidden sm:inline">Bot</span>
+                      <Bot className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="text-[11px] font-black uppercase tracking-wider">IA Activa</span>
                     </>
                   ) : (
                     <>
-                      <UserCheck className="w-3.5 h-3.5 text-amber-600" />
-                      <span className="text-[11px] hidden sm:inline">Manual</span>
+                      <UserCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="text-[11px] font-black uppercase tracking-wider">Asesor Humano</span>
                     </>
                   )}
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-black/10 dark:bg-black/30 opacity-70 hidden sm:inline">
+                    Cambiar
+                  </span>
                 </button>
 
                 {/* Requerimiento 2: Botón de Lupa para búsqueda dentro de la conversación */}
@@ -1125,10 +1130,47 @@ function InboxInner() {
                           </div>
                         )}
 
-                        {/* Contenido con formato y resaltado de búsqueda */}
-                        <div className="whitespace-pre-wrap break-words leading-relaxed text-[13px] sm:text-sm">
-                          {renderMessageContent(msg.content, chatSearchQuery)}
-                        </div>
+                        {/* Contenido con formato, detección de notas de voz transcritas y resaltado de búsqueda */}
+                        {(() => {
+                          const isVoice = !isOutbound && (
+                            msg.content.includes('[Audio]:') || 
+                            msg.content.startsWith('🎤') || 
+                            msg.content.toLowerCase().startsWith('[audio]')
+                          );
+
+                          if (isVoice) {
+                            // Extract clean transcription text
+                            let transcribed = msg.content
+                              .replace(/^🎤\s*/, '')
+                              .replace(/^\[audio\]:\s*/i, '')
+                              .trim();
+                            if ((transcribed.startsWith('"') && transcribed.endsWith('"')) || 
+                                (transcribed.startsWith('“') && transcribed.endsWith('”'))) {
+                              transcribed = transcribed.slice(1, -1).trim();
+                            }
+
+                            return (
+                              <div className="space-y-1.5 my-0.5">
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider">
+                                  <Mic className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                  <span>Nota de voz del cliente</span>
+                                  <span className="text-[9px] text-emerald-600/70 dark:text-emerald-400/70 font-mono normal-case">
+                                    • Transcrito por IA
+                                  </span>
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-black/20 border border-emerald-500/20 text-[13px] sm:text-sm leading-relaxed text-slate-800 dark:text-slate-100 font-medium">
+                                  &ldquo;{renderMessageContent(transcribed, chatSearchQuery)}&rdquo;
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="whitespace-pre-wrap break-words leading-relaxed text-[13px] sm:text-sm">
+                              {renderMessageContent(msg.content, chatSearchQuery)}
+                            </div>
+                          );
+                        })()}
 
                         {/* Marca de hora y doble check en la esquina inferior derecha */}
                         <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-slate-500 dark:text-slate-300">

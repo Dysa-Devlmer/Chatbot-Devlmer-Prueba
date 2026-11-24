@@ -18,7 +18,7 @@ export default function MasterLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[#0d0f12] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-stone-950 w-full max-w-full overflow-x-hidden">
       {/* Top SuperAdmin Header with anti-overflow & compact flex layout */}
-      <header className="sticky top-0 z-50 bg-[#12161c]/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-6 lg:px-8 min-h-[4rem] py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full min-w-0 transition-all">
+      <header className="sticky top-0 z-50 bg-[#12161c]/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-6 lg:px-8 min-h-[4rem] py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full transition-all">
         {/* Left Section: Brand & Master Title */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-stone-950 font-black shadow-lg shadow-amber-500/20 shrink-0">
@@ -78,8 +78,8 @@ export default function MasterLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {/* Main Master Content with min-w-0 and w-full */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
+      {/* Main Master Content with strict viewport containment */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8 min-w-0 overflow-hidden">
         {children}
       </main>
 
