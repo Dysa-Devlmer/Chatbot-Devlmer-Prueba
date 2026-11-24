@@ -4,6 +4,29 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
 
 ---
 
+## [2026-11-24 00:50] 🛡️ Directrices de Seguridad, Configuración Bancaria Multi-País y Desbloqueo GPS
+- **Agente:** Arquitecto Principal de Backend, Seguridad & Centinela Activo
+- **Actividades y Directrices Cumplidas:**
+  1. **Desbloqueo de Geolocalización Segura (Permissions-Policy):**
+     - *Causa del fallo "Permiso GPS denegado":* La directiva HTTP `Permissions-Policy: geolocation=()` bloqueaba a nivel de protocolo toda solicitud de geolocalización antes de que el usuario viera el diálogo del navegador.
+     - *Remediación de Seguridad:* Se actualizó la cabecera a `Permissions-Policy: camera=(), microphone=(), geolocation=(self)` en Nginx (`/etc/nginx/sites-available/chatbot.zgamersa.com`), `next.config.ts` y `src/middleware/security.ts`. Permite el acceso por GPS exclusivamente al origen seguro del restaurante sin exponer permisos a terceros.
+  2. **Configuración Automática de Cuentas Bancarias por País:**
+     - Se añadió la columna `bankDetails` a `BusinessProfile` en Prisma SQLite y se sincronizó con `npx prisma generate` y `npx prisma db push`.
+     - En el panel `/admin/business` se implementó el módulo dinámico que adapta los campos en vivo según el país seleccionado:
+       - **Perú (PEN):** Banco (BCP, BBVA, Interbank), Tipo de Cuenta, N° Cuenta, CCI (20 dígitos), Yape/Plin, Titular / Razón Social.
+       - **Chile (CLP):** Banco (Banco Estado, Santander), Tipo de Cuenta (CuentaRUT), N° Cuenta, RUT, Titular, Email de confirmación.
+       - **Argentina (ARS):** Banco/Billetera (Mercado Pago, Galicia), Alias CBU/CVU, CBU/CVU (22 dígitos), CUIT/CUIL, Titular.
+  3. **Seguridad Financiera y Separación Estricta de Métodos de Pago:**
+     - En `/checkout` y `/tracking`, se separó completamente la opción **Tarjeta Débito / Crédito (POS Móvil)** de las **Transferencias**. La tarjeta indica explícitamente cobro presencial en puerta con terminal inalámbrico sin pedir códigos previos.
+     - La opción de transferencia presenta los datos bancarios oficiales del negocio con copiado en 1-clic y validación de comprobante.
+     - Se incorporó la captura de **Correo Electrónico** para emisión y envío automático de comprobantes (Boleta `B001` o Factura con RUC de 11 dígitos `F001`).
+  4. **Control de Calidad Pre-Despliegue y VPS:**
+     - Validación TypeScript: `npx tsc --noEmit` completado con 0 errores.
+     - Compilación: 57/57 rutas estáticas y dinámicas compiladas en Next.js Turbopack.
+     - Despliegue en producción en VPS `64.176.21.229` verificado con PM2 `chatbot` reiniciado y en estado `online`.
+
+---
+
 ## [2026-11-23 23:25] 📱 Implementación de PWA (App Móvil Instalable en Android & iOS)
 - **Activación de Instalabilidad Nativa:**
   - Se crearon los manifiestos oficiales `public/manifest.json` y `app/manifest.ts` configurados con `display: standalone`, `theme_color: #f97316`, y start_url en `/menu`.
