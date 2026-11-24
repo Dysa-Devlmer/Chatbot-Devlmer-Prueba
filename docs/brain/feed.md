@@ -4,6 +4,13 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
 
 ---
 
+## [2026-11-23 23:25] 📱 Implementación de PWA (App Móvil Instalable en Android & iOS)
+- **Activación de Instalabilidad Nativa:**
+  - Se crearon los manifiestos oficiales `public/manifest.json` y `app/manifest.ts` configurados con `display: standalone`, `theme_color: #f97316`, y start_url en `/menu`.
+  - Se generó el paquete completo de íconos adaptativos PNG en `public/icons/` (72x72 hasta 512x512 y maskable) más `apple-touch-icon.png` y `favicon.ico`.
+  - Se implementó y registró el Service Worker oficial `public/sw.js` con cache offline para satisfacer el 100% de los criterios de instalación de Google Chrome y Safari.
+  - Resultado: El botón de Chrome en Android **"Instalar aplicación"** queda 100% habilitado y la web se instala como app móvil nativa en la pantalla de inicio del celular.
+
 ### [2026-11-23] 🛡️ Auditoría, Protección y Fortalecimiento Integral de Ciberseguridad (OWASP / ASVS)
 - **Agente:** Arquitecto Principal de Backend, Sistemas & Seguridad
 - **Actividades:**
@@ -15,6 +22,19 @@ Todas las acciones, pruebas y avances realizados se registran cronológicamente 
   - Hardening de Nginx en VPS: `server_tokens off;` y cabeceras de seguridad HSTS preload, X-Frame-Options, nosniff, Referrer-Policy y Permissions-Policy.
   - Verificación automatizada con suite de pruebas `test-security-remediations.py` al 100% de éxito.
   - Artefacto e informe maestro registrado en [INFORME_MAESTRO_SEGURIDAD_CIBERNETICA.md](file:///E:/prueba/docs/brain/reports/INFORME_MAESTRO_SEGURIDAD_CIBERNETICA.md).
+
+---
+
+### [2026-11-23] 🏢 Desprovisionamiento SaaS Seguro, Aislamiento Multi-Tenant y Reparación de Voz/Audio IA
+- **Agente:** Arquitecto Principal de Backend & Centinela Activo
+- **Actividades:**
+  - Implementación del endpoint `DELETE /api/admin/tenants/[id]` con borrado de registros DNS en Cloudflare, purga de procesos PM2, retiro de configuración Nginx y archivado de seguridad de bases de datos SQLite (`.db.archived_{timestamp}`).
+  - Integración del modal de confirmación con doble factor (escribir subdominio exacto) en `/master` y bloqueo estricto contra la eliminación de la empresa demo maestra `churus`.
+  - Configuración y verificación de Docker Hardening en VPS: aislamiento estricto de Postgres (5432) y Web POS (3000) a `127.0.0.1` sin exposición pública.
+  - Corrección de motor de voz TTS en VPS: instalación de `edge-tts` y `python-is-python3` a nivel de sistema operativo Ubuntu, garantizando respuestas con notas de voz sintética.
+  - Corrección de transcripción de audios en base de datos: actualización del mensaje entrante en `prisma.message` para preservar el texto transcripto en `/admin/inbox` y mantener el contexto conversacional en Gemini.
+  - Corrección de extracción de respuesta multi-part en `GeminiService.ts` para evitar truncamiento de respuestas al recibir firmas de pensamiento o múltiples partes.
+  - Despliegue en producción verificado en PM2 proceso `chatbot` con 0 errores TypeScript.
 
 ---
 

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { PWAInstallPrompt } from "@/components/pwa/PWAInstallPrompt";
 
 export const metadata: Metadata = {
   title: "Churu's Comida Rápida & Delivery",
@@ -62,7 +63,10 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <PWAInstallPrompt />
+        </Providers>
       </body>
     </html>
   );
