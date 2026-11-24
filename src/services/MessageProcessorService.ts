@@ -62,7 +62,9 @@ export class MessageProcessorService {
     }
 
     const config: Required<ProcessingOptions> = {
-      includeAudio: options?.includeAudio ?? input.messageType === 'audio',
+      // Estrategia Híbrida: el bot transcribe y procesa audios entrantes,
+      // pero responde siempre en TEXTO por defecto para velocidad (2s) y claridad.
+      includeAudio: options?.includeAudio ?? false,
       maxTextLength: options?.maxTextLength ?? DEFAULT_MAX_TEXT_LENGTH,
       timeout: options?.timeout ?? DEFAULT_TIMEOUT_MS,
       fallbackToText: options?.fallbackToText ?? true,
