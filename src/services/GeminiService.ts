@@ -363,8 +363,11 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
       contents,
       generationConfig: {
         temperature: 0.5,
-        maxOutputTokens: 800,
+        maxOutputTokens: 2048,
         topP: 0.95,
+        thinkingConfig: {
+          thinkingBudget: 0,
+        },
       },
     }
 
