@@ -32,7 +32,9 @@ import {
   AlertCircle,
   Mail,
   FileText,
-  Building2
+  Building2,
+  Home,
+  ExternalLink
 } from 'lucide-react';
 
 export interface CartItem {
@@ -88,7 +90,9 @@ export default function CheckoutPage() {
   // Delivery Mode & Address
   const [deliveryMode, setDeliveryMode] = useState<'delivery' | 'pickup'>('delivery');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryHouseNumber, setDeliveryHouseNumber] = useState('');
   const [deliveryReference, setDeliveryReference] = useState('');
+  const [gpsMapUrl, setGpsMapUrl] = useState<string | null>(null);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [gpsToast, setGpsToast] = useState<string | null>(null);
@@ -142,7 +146,15 @@ export default function CheckoutPage() {
         const savedRazonSocial = localStorage.getItem('pithy_invoice_razon_social');
         if (savedRazonSocial) setInvoiceRazonSocial(savedRazonSocial);
         const savedAddr = localStorage.getItem('pithy_delivery_address');
-        if (savedAddr) setDeliveryAddress(savedAddr);
+        if (savedAddr) {
+          // Limpiar enlaces residuales de Google Maps si existían en caché previo
+          const cleanAddr = savedAddr.replace(/\s*\(GPS:[^)]+\)/i, '').trim();
+          setDeliveryAddress(cleanAddr);
+        }
+        const savedHouse = localStorage.getItem('pithy_delivery_house_number');
+        if (savedHouse) setDeliveryHouseNumber(savedHouse);
+        const savedGps = localStorage.getItem('pithy_gps_map_url');
+        if (savedGps) setGpsMapUrl(savedGps);
         const savedRef = localStorage.getItem('pithy_delivery_reference');
         if (savedRef) setDeliveryReference(savedRef);
       } catch (e) {
@@ -235,16 +247,21 @@ export default function CheckoutPage() {
             const district = a.suburb || a.neighbourhood || a.city_district || a.quarter || a.town || '';
             const city = a.city || a.county || '';
 
-            const parts = [road ? `${road}${house}` : '', district, city].filter(Boolean);
+            const parts = [road, district, city].filter(Boolean);
             if (parts.length > 0) {
               const formattedStreet = parts.join(', ');
-              const fullResult = `${formattedStreet} (GPS: ${mapsLink})`;
-              setDeliveryAddress(fullResult);
-              localStorage.setItem('pithy_delivery_address', fullResult);
+              setDeliveryAddress(formattedStreet);
+              localStorage.setItem('pithy_delivery_address', formattedStreet);
+              if (a.house_number) {
+                setDeliveryHouseNumber(a.house_number);
+                localStorage.setItem('pithy_delivery_house_number', a.house_number);
+              }
+              setGpsMapUrl(mapsLink);
+              localStorage.setItem('pithy_gps_map_url', mapsLink);
               setIsLocating(false);
               setIsEditingAddress(false);
-              setGpsToast('📍 Dirección detectada por GPS');
-              setTimeout(() => setGpsToast(null), 3000);
+              setGpsToast('📍 Calle detectada por GPS. ¡Ingresa tu número de casa!');
+              setTimeout(() => setGpsToast(null), 3500);
               return;
             }
           }
@@ -258,13 +275,14 @@ export default function CheckoutPage() {
               const d2 = await res2.json();
               const loc = [d2.locality, d2.city, d2.principalSubdivision].filter(Boolean).join(', ');
               if (loc) {
-                const fullResult = `${loc} (GPS: ${mapsLink})`;
-                setDeliveryAddress(fullResult);
-                localStorage.setItem('pithy_delivery_address', fullResult);
+                setDeliveryAddress(loc);
+                localStorage.setItem('pithy_delivery_address', loc);
+                setGpsMapUrl(mapsLink);
+                localStorage.setItem('pithy_gps_map_url', mapsLink);
                 setIsLocating(false);
                 setIsEditingAddress(false);
-                setGpsToast('📍 Ubicación detectada por GPS');
-                setTimeout(() => setGpsToast(null), 3000);
+                setGpsToast('📍 Calle detectada por GPS. ¡Ingresa tu número de casa!');
+                setTimeout(() => setGpsToast(null), 3500);
                 return;
               }
             }
@@ -272,9 +290,11 @@ export default function CheckoutPage() {
         }
 
         // 3. Respaldo definitivo con enlace directo de Google Maps
-        const fallbackAddress = `Ubicación GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (${mapsLink})`;
+        const fallbackAddress = `Coordenadas GPS (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
         setDeliveryAddress(fallbackAddress);
         localStorage.setItem('pithy_delivery_address', fallbackAddress);
+        setGpsMapUrl(mapsLink);
+        localStorage.setItem('pithy_gps_map_url', mapsLink);
         setIsLocating(false);
         setIsEditingAddress(false);
         setGpsToast('📍 Coordenadas GPS guardadas con éxito');
@@ -381,7 +401,7 @@ export default function CheckoutPage() {
 
     try {
       const fullAddress = deliveryMode === 'delivery'
-        ? `${deliveryAddress}${deliveryReference ? ' (Ref: ' + deliveryReference + ')' : ''}`
+        ? `${deliveryAddress.trim()}${deliveryHouseNumber ? ' #' + deliveryHouseNumber.trim() : ''}${deliveryReference ? ' (Ref: ' + deliveryReference.trim() + ')' : ''}${gpsMapUrl ? ' [Maps: ' + gpsMapUrl + ']' : ''}`
         : 'Recojo en Local Comercial';
 
       const paymentLabel = paymentMethod === 'yape' 
@@ -440,7 +460,9 @@ export default function CheckoutPage() {
       if (invoiceRuc) localStorage.setItem('pithy_invoice_ruc', invoiceRuc);
       if (invoiceRazonSocial) localStorage.setItem('pithy_invoice_razon_social', invoiceRazonSocial);
       if (deliveryAddress) localStorage.setItem('pithy_delivery_address', deliveryAddress);
+      if (deliveryHouseNumber) localStorage.setItem('pithy_delivery_house_number', deliveryHouseNumber);
       if (deliveryReference) localStorage.setItem('pithy_delivery_reference', deliveryReference);
+      if (gpsMapUrl) localStorage.setItem('pithy_gps_map_url', gpsMapUrl);
 
       // Order created successfully!
       setOrderState('confirmed');
@@ -685,6 +707,11 @@ export default function CheckoutPage() {
                       <span className="text-[10px] font-black uppercase tracking-wider text-[#94de2d]">
                         Dirección de Entrega
                       </span>
+                      {gpsMapUrl && (
+                        <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-[#94de2d] text-[9px] font-black border border-emerald-500/30">
+                          GPS Activo ✓
+                        </span>
+                      )}
                       {gpsToast && (
                         <span className="text-[10px] font-bold text-amber-400 animate-pulse truncate">
                           {gpsToast}
@@ -701,18 +728,31 @@ export default function CheckoutPage() {
                             setDeliveryAddress(e.target.value);
                             localStorage.setItem('pithy_delivery_address', e.target.value);
                           }}
-                          placeholder="Ej: Av. Brasil 1234, Dpto 402, Jesús María"
+                          placeholder="Ej: Camino Los Nogales, Padre Hurtado"
                           autoFocus
                           className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-orange-500/60 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
                         />
                         <span className="text-[10px] text-stone-400">
-                          Escribe calle, número, dpto y distrito.
+                          Escribe calle, avenida o pasaje.
                         </span>
                       </div>
                     ) : deliveryAddress ? (
-                      <p className="text-xs sm:text-sm font-bold text-white leading-snug mt-0.5 break-words">
-                        {deliveryAddress}
-                      </p>
+                      <div className="mt-0.5 space-y-0.5">
+                        <p className="text-xs sm:text-sm font-bold text-white leading-snug break-words">
+                          {deliveryAddress} {deliveryHouseNumber ? `#${deliveryHouseNumber}` : ''}
+                        </p>
+                        {gpsMapUrl && (
+                          <a
+                            href={gpsMapUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-orange-400 hover:text-orange-300 font-semibold underline pt-0.5"
+                          >
+                            <span>Ver punto en Google Maps</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
                     ) : (
                       <div className="mt-1">
                         <p className="text-xs font-bold text-amber-400">
@@ -729,19 +769,19 @@ export default function CheckoutPage() {
                 <button 
                   type="button"
                   onClick={() => setIsEditingAddress(!isEditingAddress)}
-                  className="px-3 py-1.5 rounded-full bg-stone-800 hover:bg-stone-700 text-orange-400 text-xs font-bold active:scale-95 transition-all shrink-0"
+                  className="px-3 py-1.5 rounded-full bg-stone-800 hover:bg-stone-700 text-orange-400 text-xs font-bold active:scale-95 transition-all shrink-0 cursor-pointer"
                 >
                   {isEditingAddress ? 'Listo ✓' : (deliveryAddress ? 'Editar' : 'Ingresar')}
                 </button>
               </div>
 
               {/* GPS Fast Location */}
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 pt-0.5">
                 <button
                   type="button"
                   onClick={handleGetGPS}
                   disabled={isLocating}
-                  className="flex-1 py-2 px-3 rounded-xl bg-orange-600/15 hover:bg-orange-600/25 border border-orange-500/40 text-orange-400 hover:text-orange-300 font-bold text-xs flex items-center justify-center gap-2 active:scale-98 transition-all"
+                  className="flex-1 py-2 px-3 rounded-xl bg-orange-600/15 hover:bg-orange-600/25 border border-orange-500/40 text-orange-400 hover:text-orange-300 font-bold text-xs flex items-center justify-center gap-2 active:scale-98 transition-all cursor-pointer"
                 >
                   {isLocating ? (
                     <>
@@ -757,16 +797,40 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
+              {/* Campo Obligatorio para Número de Casa / Dpto / Block */}
+              <div className="pt-2 border-t border-stone-800/80 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-stone-300 flex items-center gap-1.5">
+                    <Home className="w-3.5 h-3.5 text-orange-400" />
+                    <span>N° de Casa / Dpto / Block:</span>
+                  </label>
+                  <span className="text-[10px] text-orange-400 font-medium">Indica tu número exacto</span>
+                </div>
+                <input
+                  type="text"
+                  value={deliveryHouseNumber}
+                  onChange={(e) => {
+                    setDeliveryHouseNumber(e.target.value);
+                    localStorage.setItem('pithy_delivery_house_number', e.target.value);
+                  }}
+                  placeholder="Ej: 142, Dpto 302, Pasaje 4 Casa B..."
+                  className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-800 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 font-bold"
+                />
+              </div>
+
               {/* Delivery Reference */}
-              <div className="pt-2 border-t border-stone-800/80">
-                <label className="block text-[11px] font-bold text-stone-400 mb-1">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-stone-400 block">
                   Referencia de entrega (Opcional):
                 </label>
                 <input
                   type="text"
                   value={deliveryReference}
-                  onChange={(e) => setDeliveryReference(e.target.value)}
-                  placeholder="Ej: Portón negro, timbre 2B, frente al parque..."
+                  onChange={(e) => {
+                    setDeliveryReference(e.target.value);
+                    localStorage.setItem('pithy_delivery_reference', e.target.value);
+                  }}
+                  placeholder="Ej: Portón negro, timbre 2B, frente a la plaza..."
                   className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-stone-800 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 transition-all"
                 />
               </div>
@@ -1139,20 +1203,18 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <div className="pt-1">
-                    <label className="block text-[11px] font-bold text-purple-200/90 mb-1">
-                      Código de operación o últimos 4 dígitos (Opcional):
-                    </label>
-                    <input
-                      type="text"
-                      value={operationCode}
-                      onChange={(e) => setOperationCode(e.target.value)}
-                      placeholder="Ej: Op. 849201..."
-                      className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-purple-900/60 text-xs font-mono text-purple-200 placeholder-stone-600 focus:outline-none focus:border-purple-400 transition-all"
-                    />
-                    <span className="text-[10px] text-stone-500 mt-1 block">
-                      También puedes enviar la captura de tu transferencia al confirmar tu orden por WhatsApp.
-                    </span>
+                  <div className="pt-2 border-t border-purple-900/30">
+                    <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-800/40 flex items-start gap-2.5 text-xs text-stone-300">
+                      <div className="w-7 h-7 rounded-lg bg-purple-900/60 text-purple-300 flex items-center justify-center shrink-0 mt-0.5 text-sm">
+                        📸
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-white block">¿Cómo confirmar tu transferencia?</span>
+                        <p className="text-[11px] text-stone-400 leading-relaxed">
+                          Realiza el pago con los datos de arriba. Al pulsar <strong>&quot;Confirmar y Enviar Pedido&quot;</strong>, se abrirá WhatsApp para que <strong>adjuntes la captura o foto del comprobante</strong>. ¡Cocina preparará tu pedido de inmediato sin necesidad de anotar códigos raros!
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
