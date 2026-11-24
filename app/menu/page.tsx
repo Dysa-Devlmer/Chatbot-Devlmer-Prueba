@@ -185,7 +185,7 @@ export default function PublicMenuPage() {
       premiumSauces: [],
       isSalchibroaster: false,
       extras: [],
-      kitchenNotes: isDrink ? '[Bien Helada 🧊]' : ''
+      kitchenNotes: ''
     };
 
     setCartItems(prev => {
@@ -286,14 +286,6 @@ export default function PublicMenuPage() {
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <Link
-                href="/login"
-                className="p-2 sm:p-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-slate-500 hover:text-slate-900 dark:text-stone-400 dark:hover:text-white transition-colors"
-                title="Acceso Administración / Negocio"
-              >
-                <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
-              </Link>
-
               <Link
                 href="/checkout"
                 className="relative p-2 sm:p-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-slate-700 dark:text-stone-300 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"

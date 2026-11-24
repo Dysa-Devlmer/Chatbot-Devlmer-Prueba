@@ -81,7 +81,6 @@ export function ProductModifierDrawer({
   const [isSalchibroaster, setIsSalchibroaster] = useState(false);
   const [extrasQuantities, setExtrasQuantities] = useState<Record<string, number>>({});
   const [kitchenNotes, setKitchenNotes] = useState('');
-  const [drinkTemp, setDrinkTemp] = useState<'helada' | 'clima'>('helada');
   const [showToast, setShowToast] = useState(false);
   const [animateLimit, setAnimateLimit] = useState(false);
 
@@ -108,7 +107,6 @@ export function ProductModifierDrawer({
     if (product) {
       setQuantity(1);
       setKitchenNotes('');
-      setDrinkTemp('helada');
       setExtrasQuantities({});
       setIsSalchibroaster(false);
       setSelectedPremiumSauces([]);
@@ -185,11 +183,7 @@ export function ProductModifierDrawer({
   const grandTotal = unitTotal * quantity;
 
   const handleConfirm = () => {
-    let finalNotes = kitchenNotes.trim();
-    if (isDrink) {
-      const tempTag = drinkTemp === 'helada' ? 'Bien Helada 🧊' : 'Al Clima 🌡️';
-      finalNotes = finalNotes ? `[${tempTag}] ${finalNotes}` : `[${tempTag}]`;
-    }
+    const finalNotes = kitchenNotes.trim();
 
     const customized: CustomizedItem = {
       productId: product.id,
@@ -300,48 +294,6 @@ export function ProductModifierDrawer({
               </p>
             </div>
           </div>
-
-          {/* OPCIONES PARA BEBIDAS: Temperatura y servido */}
-          {isDrink && (
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-stone-900 dark:text-white text-sm sm:text-base">Temperatura</h3>
-                <span className="text-xs text-stone-400 font-medium">¿Cómo prefieres tu bebida?</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDrinkTemp('helada')}
-                  className={`p-3.5 rounded-2xl border flex items-center gap-3 transition-all text-left ${
-                    drinkTemp === 'helada'
-                      ? 'border-cyan-500 bg-cyan-500/15 text-cyan-400 shadow-md ring-1 ring-cyan-500'
-                      : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 text-stone-400 hover:border-stone-700'
-                  }`}
-                >
-                  <span className="text-2xl">🧊</span>
-                  <div>
-                    <span className="block font-bold text-xs text-white">Bien Helada</span>
-                    <span className="text-[10px] text-stone-400">Recién salida del frío</span>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDrinkTemp('clima')}
-                  className={`p-3.5 rounded-2xl border flex items-center gap-3 transition-all text-left ${
-                    drinkTemp === 'clima'
-                      ? 'border-amber-500 bg-amber-500/15 text-amber-400 shadow-md ring-1 ring-amber-500'
-                      : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 text-stone-400 hover:border-stone-700'
-                  }`}
-                >
-                  <span className="text-2xl">🌡️</span>
-                  <div>
-                    <span className="block font-bold text-xs text-white">Al Clima</span>
-                    <span className="text-[10px] text-stone-400">Sin refrigerar</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* 2. Feature Card: CONVIÉRTELO EN SALCHIBROASTER (Exclusivo categoría Broaster) */}
           {isBroasterProduct && (
