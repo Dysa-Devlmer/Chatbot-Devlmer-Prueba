@@ -77,7 +77,7 @@ export default function CheckoutPage() {
 
   // Delivery Mode & Address
   const [deliveryMode, setDeliveryMode] = useState<'delivery' | 'pickup'>('delivery');
-  const [deliveryAddress, setDeliveryAddress] = useState('Av. Las Palmeras 452, Los Olivos');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryReference, setDeliveryReference] = useState('');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -118,8 +118,17 @@ export default function CheckoutPage() {
             setCart(parsed);
           }
         }
+        // Recuperar datos de cliente y direccion guardados previamente
+        const savedName = localStorage.getItem('pithy_customer_name');
+        if (savedName) setCustomerName(savedName);
+        const savedPhone = localStorage.getItem('pithy_customer_phone');
+        if (savedPhone) setCustomerPhone(savedPhone);
+        const savedAddr = localStorage.getItem('pithy_delivery_address');
+        if (savedAddr) setDeliveryAddress(savedAddr);
+        const savedRef = localStorage.getItem('pithy_delivery_reference');
+        if (savedRef) setDeliveryReference(savedRef);
       } catch (e) {
-        console.error('Error parsing cart from localStorage:', e);
+        console.error('Error parsing data from localStorage:', e);
       } finally {
         setIsCartLoaded(true);
       }
@@ -167,31 +176,106 @@ export default function CheckoutPage() {
     return `${sym} ${val.toFixed(2)}`;
   };
 
-  // GPS Geolocation Handler
+  // GPS Geolocation Handler con Reverse Geocoding real
   const handleGetGPS = () => {
     setIsLocating(true);
-    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude.toFixed(4);
-          const lng = position.coords.longitude.toFixed(4);
-          setDeliveryAddress(`Ubicación GPS: Lat ${lat}, Lng ${lng}`);
-          setIsLocating(false);
-          setGpsToast('📍 Ubicación GPS detectada con éxito');
-          setTimeout(() => setGpsToast(null), 3000);
-        },
-        () => {
-          setIsLocating(false);
-          setGpsToast('📍 Por favor ingresa tu dirección manualmente');
-          setIsEditingAddress(true);
-          setTimeout(() => setGpsToast(null), 3000);
-        },
-        { timeout: 7000, enableHighAccuracy: true }
-      );
-    } else {
+    setGpsToast('Buscando señal GPS de tu dispositivo...');
+
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
       setIsLocating(false);
       setIsEditingAddress(true);
+      setGpsToast('Tu navegador no soporta GPS. Escribe tu dirección.');
+      setTimeout(() => setGpsToast(null), 3500);
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
+
+        try {
+          // 1. Intentar resolver calle y distrito real con OpenStreetMap Nominatim
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            {
+              headers: { 'Accept-Language': 'es' },
+              signal: controller.signal,
+            }
+          );
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            const a = data.address || {};
+            const road = a.road || a.pedestrian || a.street || '';
+            const house = a.house_number ? ` #${a.house_number}` : '';
+            const district = a.suburb || a.neighbourhood || a.city_district || a.quarter || a.town || '';
+            const city = a.city || a.county || '';
+
+            const parts = [road ? `${road}${house}` : '', district, city].filter(Boolean);
+            if (parts.length > 0) {
+              const formattedStreet = parts.join(', ');
+              const fullResult = `${formattedStreet} (GPS: ${mapsLink})`;
+              setDeliveryAddress(fullResult);
+              localStorage.setItem('pithy_delivery_address', fullResult);
+              setIsLocating(false);
+              setIsEditingAddress(false);
+              setGpsToast('📍 Dirección detectada por GPS');
+              setTimeout(() => setGpsToast(null), 3000);
+              return;
+            }
+          }
+        } catch {
+          // 2. Respaldo rápido con BigDataCloud si Nominatim no responde
+          try {
+            const res2 = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=es`
+            );
+            if (res2.ok) {
+              const d2 = await res2.json();
+              const loc = [d2.locality, d2.city, d2.principalSubdivision].filter(Boolean).join(', ');
+              if (loc) {
+                const fullResult = `${loc} (GPS: ${mapsLink})`;
+                setDeliveryAddress(fullResult);
+                localStorage.setItem('pithy_delivery_address', fullResult);
+                setIsLocating(false);
+                setIsEditingAddress(false);
+                setGpsToast('📍 Ubicación detectada por GPS');
+                setTimeout(() => setGpsToast(null), 3000);
+                return;
+              }
+            }
+          } catch {}
+        }
+
+        // 3. Respaldo definitivo con enlace directo de Google Maps
+        const fallbackAddress = `Ubicación GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)} (${mapsLink})`;
+        setDeliveryAddress(fallbackAddress);
+        localStorage.setItem('pithy_delivery_address', fallbackAddress);
+        setIsLocating(false);
+        setIsEditingAddress(false);
+        setGpsToast('📍 Coordenadas GPS guardadas con éxito');
+        setTimeout(() => setGpsToast(null), 3000);
+      },
+      (error) => {
+        setIsLocating(false);
+        setIsEditingAddress(true);
+        let msg = 'Por favor ingresa tu dirección manualmente';
+        if (error.code === 1) {
+          msg = '⚠️ Permiso GPS denegado. Escribe tu dirección.';
+        } else if (error.code === 3) {
+          msg = '⚠️ Tiempo de espera GPS agotado. Escribe tu dirección.';
+        }
+        setGpsToast(msg);
+        setTimeout(() => setGpsToast(null), 4000);
+      },
+      { timeout: 9000, enableHighAccuracy: true, maximumAge: 0 }
+    );
   };
 
   // Copy phone handler
@@ -278,6 +362,12 @@ export default function CheckoutPage() {
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'No se pudo crear la orden. Intenta nuevamente.');
       }
+
+      // Guardar datos de contacto y entrega para futuras compras
+      if (customerName) localStorage.setItem('pithy_customer_name', customerName);
+      if (customerPhone) localStorage.setItem('pithy_customer_phone', customerPhone);
+      if (deliveryAddress) localStorage.setItem('pithy_delivery_address', deliveryAddress);
+      if (deliveryReference) localStorage.setItem('pithy_delivery_reference', deliveryReference);
 
       // Order created successfully!
       setOrderState('confirmed');
@@ -448,17 +538,35 @@ export default function CheckoutPage() {
                     </div>
 
                     {isEditingAddress ? (
-                      <input
-                        type="text"
-                        value={deliveryAddress}
-                        onChange={(e) => setDeliveryAddress(e.target.value)}
-                        placeholder="Ingresa tu dirección exacta..."
-                        className="w-full mt-1 px-3 py-1.5 rounded-lg bg-stone-950 border border-stone-700 text-xs font-bold text-white focus:outline-none focus:border-orange-500"
-                      />
-                    ) : (
-                      <p className="text-xs sm:text-sm font-bold text-white leading-snug mt-0.5">
+                      <div className="mt-1 flex flex-col gap-1.5">
+                        <input
+                          type="text"
+                          value={deliveryAddress}
+                          onChange={(e) => {
+                            setDeliveryAddress(e.target.value);
+                            localStorage.setItem('pithy_delivery_address', e.target.value);
+                          }}
+                          placeholder="Ej: Av. Brasil 1234, Dpto 402, Jesús María"
+                          autoFocus
+                          className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-orange-500/60 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        />
+                        <span className="text-[10px] text-stone-400">
+                          Escribe calle, número, dpto y distrito.
+                        </span>
+                      </div>
+                    ) : deliveryAddress ? (
+                      <p className="text-xs sm:text-sm font-bold text-white leading-snug mt-0.5 break-words">
                         {deliveryAddress}
                       </p>
+                    ) : (
+                      <div className="mt-1">
+                        <p className="text-xs font-bold text-amber-400">
+                          ⚠️ Aún no has ingresado tu dirección
+                        </p>
+                        <p className="text-[10px] text-stone-400">
+                          Toca abajo &quot;Detectar mi GPS actual&quot; o pulsa &quot;Ingresar&quot;.
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -468,7 +576,7 @@ export default function CheckoutPage() {
                   onClick={() => setIsEditingAddress(!isEditingAddress)}
                   className="px-3 py-1.5 rounded-full bg-stone-800 hover:bg-stone-700 text-orange-400 text-xs font-bold active:scale-95 transition-all shrink-0"
                 >
-                  {isEditingAddress ? 'Listo' : 'Editar'}
+                  {isEditingAddress ? 'Listo ✓' : (deliveryAddress ? 'Editar' : 'Ingresar')}
                 </button>
               </div>
 
