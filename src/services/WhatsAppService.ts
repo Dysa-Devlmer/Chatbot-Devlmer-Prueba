@@ -599,16 +599,27 @@ export class WhatsAppService {
     phoneNumber: string,
     response: { text: string; audioPath?: string; audioAlreadySent?: boolean }
   ): Promise<{ success: boolean; error?: string }> {
+    let audioDelivered = !!response.audioAlreadySent
+
     // Si hay audio y no fue despachado previamente, enviarlo
     if (response.audioPath && !response.audioAlreadySent) {
       try {
-        await this.whatsappClient.sendWhatsAppAudio(phoneNumber, response.audioPath)
+        const audioRes = await this.whatsappClient.sendWhatsAppAudio(phoneNumber, response.audioPath)
+        if (audioRes && audioRes.success) {
+          audioDelivered = true
+        }
       } catch (err) {
         logError(whatsappLogger, err, { stage: 'send-audio-fallback', phoneNumber })
       }
     }
 
-    // Enviar SIEMPRE el texto para que el comensal tenga respaldo escrito claro con precios y detalle
+    // Si el bot respondió con audio, NO enviar el desglose en texto (preferencia explícita del usuario)
+    if (audioDelivered) {
+      whatsappLogger.info('Respuesta entregada en audio; suprimiendo envio de texto redundante', { phoneNumber })
+      return { success: true }
+    }
+
+    // Enviar texto únicamente si no se envió audio
     if (response.text) {
       try {
         await this.whatsappClient.sendWhatsAppMessage(phoneNumber, response.text)

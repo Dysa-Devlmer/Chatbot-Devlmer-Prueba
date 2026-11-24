@@ -356,19 +356,26 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
   ): Promise<AIResponse> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`
 
+    const generationConfig: Record<string, any> = {
+      temperature: 0.5,
+      maxOutputTokens: 2048,
+      topP: 0.95,
+    }
+
+    // Solo modelos estándar/razonamiento soportan thinkingConfig.
+    // Los modelos Lite (ej: gemini-3.5-flash-lite) fallan con 400 INVALID_ARGUMENT si se les envía thinkingConfig.
+    if (!model.includes('lite') && !model.includes('nano')) {
+      generationConfig.thinkingConfig = {
+        thinkingBudget: 0,
+      }
+    }
+
     const payload = {
       systemInstruction: {
         parts: [{ text: systemInstruction }],
       },
       contents,
-      generationConfig: {
-        temperature: 0.5,
-        maxOutputTokens: 2048,
-        topP: 0.95,
-        thinkingConfig: {
-          thinkingBudget: 0,
-        },
-      },
+      generationConfig,
     }
 
     let lastError: Error | null = null
