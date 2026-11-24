@@ -24,7 +24,9 @@ import {
   RefreshCw,
   TrendingUp,
   MessageSquare,
-  Trash2
+  Trash2,
+  HelpCircle,
+  Info
 } from 'lucide-react';
 
 interface Tenant {
@@ -80,6 +82,9 @@ export default function MasterDashboardPage() {
   const [deleteModalTenant, setDeleteModalTenant] = useState<Tenant | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deletingTenant, setDeletingTenant] = useState(false);
+
+  // Guide Tooltip State
+  const [showPhoneIdGuide, setShowPhoneIdGuide] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -290,13 +295,13 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
       )}
 
       {/* Hero SaaS Control Header with controlled responsive layout */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 bg-gradient-to-r from-slate-900 via-[#151a22] to-slate-900 p-5 sm:p-7 lg:p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden min-h-[140px] w-full min-w-0">
-        <div className="space-y-2 z-10 max-w-2xl min-w-0">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5 bg-gradient-to-r from-slate-900 via-[#151a22] to-slate-900 p-4 sm:p-6 lg:p-7 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden w-full max-w-full">
+        <div className="space-y-1.5 sm:space-y-2 z-10 max-w-2xl min-w-0">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase tracking-wider">
-            <ShieldCheck className="w-4 h-4" />
+            <ShieldCheck className="w-4 h-4 shrink-0" />
             Acceso Privado Maestro &bull; Modo CEO
           </div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-black text-white tracking-tight break-words">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight break-words">
             Gestión de Empresas & Arriendos SaaS
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
@@ -304,7 +309,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
           </p>
         </div>
 
-        <div className="flex items-center flex-wrap gap-2.5 sm:gap-3 z-10 shrink-0 w-full sm:w-auto">
+        <div className="flex items-center gap-2 sm:gap-3 z-10 shrink-0 w-full md:w-auto pt-2 md:pt-0">
           <button
             onClick={loadTenants}
             className="p-3 sm:p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all shrink-0 cursor-pointer"
@@ -328,7 +333,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
               });
               setShowModal(true);
             }}
-            className="px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0 cursor-pointer flex-1 sm:flex-initial"
+            className="flex-1 md:flex-initial px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 font-black text-xs sm:text-sm shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
             <span>+ Registrar Nueva Empresa</span>
@@ -340,9 +345,9 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
       </div>
 
       {/* MRR & Business Health Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 w-full max-w-full">
         {/* Total MRR Card */}
-        <div className="bg-[#12161c] border border-amber-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="bg-[#12161c] border border-amber-500/30 rounded-2xl p-4 sm:p-5 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">MRR Recurrente</span>
             <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 font-bold">
@@ -360,7 +365,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
         </div>
 
         {/* Total Tenants */}
-        <div className="bg-[#12161c] border border-slate-800 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#12161c] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Empresas</span>
             <div className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
@@ -376,7 +381,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
         </div>
 
         {/* Active Tenants */}
-        <div className="bg-[#12161c] border border-slate-800 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#12161c] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Activas / Al Día</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
@@ -392,7 +397,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
         </div>
 
         {/* Pro Plan (AI Voice Agents) */}
-        <div className="bg-[#12161c] border border-purple-500/30 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#12161c] border border-purple-500/30 rounded-2xl p-4 sm:p-5 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">Plan Pro (Voz IA)</span>
             <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
@@ -409,7 +414,7 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
       </div>
 
       {/* Tenants Table with contained horizontal scrolling */}
-      <div className="bg-[#12161c] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl w-full min-w-0">
+      <div className="bg-[#12161c] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl w-full max-w-full">
         <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-amber-400" />
@@ -420,8 +425,8 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
           </span>
         </div>
 
-        <div className="overflow-x-auto w-full min-w-0">
-          <table className="w-full min-w-[700px] text-left text-sm text-slate-300">
+        <div className="w-full max-w-full overflow-x-auto">
+          <table className="w-full min-w-[650px] text-left text-sm text-slate-300">
             <thead className="bg-[#0f1318] text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-800">
               <tr>
                 <th className="py-4 px-6">Empresa & Subdominio</th>
@@ -703,14 +708,14 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
                         value={formData.currency}
                         onChange={(e) => {
                           const c = e.target.value;
-                          const sym = c === 'PEN' ? 'S/.' : c === 'CLP' ? '$' : c === 'USD' ? '$' : '$';
+                          const sym = c === 'PEN' ? 'S/.' : '$';
                           setFormData(prev => ({ ...prev, currency: c, currencySymbol: sym }));
                         }}
                         className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:outline-hidden focus:border-amber-500"
                       >
                         <option value="PEN">PEN (Perú - Soles S/.)</option>
                         <option value="CLP">CLP (Chile - Pesos $)</option>
-                        <option value="USD">USD (Dólares $)</option>
+                        <option value="ARS">ARS (Argentina - Pesos $)</option>
                       </select>
                     </div>
                   </div>
@@ -755,37 +760,160 @@ _Guarda este mensaje para iniciar sesión y configurar tus platos._`;
                   </div>
 
                   {/* Meta WhatsApp Configuration */}
-                  <div className="p-4 rounded-2xl bg-[#0f1318] border border-slate-800 space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Sincronización Automática con WhatsApp Cloud API (Meta)</span>
+                  <div className="p-4 sm:p-5 rounded-2xl bg-[#0f1318] border border-emerald-500/30 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
+                      <div className="flex items-center gap-2 text-xs font-black text-emerald-400">
+                        <MessageSquare className="w-4 h-4 shrink-0" />
+                        <span>Sincronización Oficial con WhatsApp Cloud API (Meta)</span>
+                      </div>
+                      <a
+                        href="https://business.facebook.com/latest/whatsapp_manager/phone_numbers/?business_id=1702023544088035&asset_id=779998311756531"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold transition-all shrink-0 cursor-pointer w-fit"
+                        title="Abrir WhatsApp Manager en Meta para agregar el número y verificar el SMS"
+                      >
+                        <span>Abrir Meta WhatsApp Manager</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-[11px] text-emerald-200/90 leading-relaxed">
+                      💡 <strong>Paso Rápido (3 min):</strong> Abre Meta con el botón de arriba &rarr; Pulsa <em>&quot;Agregar número de teléfono&quot;</em> &rarr; Pídele al cliente el código SMS de 6 dígitos &rarr; Meta te entregará el <strong>Phone Number ID</strong> (15 dígitos). Pégalos abajo:
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {/* WhatsApp Official Number with real-time format feedback */}
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                          Número de WhatsApp Oficial
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-bold text-slate-300">
+                            Número de WhatsApp Oficial *
+                          </label>
+                          {formData.whatsappNumber ? (
+                            formData.whatsappNumber.startsWith('+') && formData.whatsappNumber.replace(/\D/g, '').length >= 10 ? (
+                              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5">
+                                <Check className="w-3 h-3 stroke-[3]" /> Formato válido
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-amber-400 font-bold">
+                                Debe incluir + y código país
+                              </span>
+                            )
+                          ) : null}
+                        </div>
                         <input
                           type="text"
-                          placeholder="+56 9 1234 5678"
+                          placeholder="Ej: +51 987 654 321 o +56 9 1234 5678"
                           value={formData.whatsappNumber}
-                          onChange={(e) => setFormData(prev => ({ ...prev, whatsappNumber: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-hidden focus:border-amber-500"
+                          onChange={(e) => {
+                            let val = e.target.value;
+                            if (val && !val.startsWith('+') && /^\d/.test(val)) {
+                              val = '+' + val;
+                            }
+                            setFormData(prev => ({ ...prev, whatsappNumber: val }));
+                          }}
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border text-white text-xs focus:outline-hidden font-mono transition-all ${
+                            formData.whatsappNumber && formData.whatsappNumber.startsWith('+') && formData.whatsappNumber.replace(/\D/g, '').length >= 10
+                              ? 'border-emerald-500/60 focus:border-emerald-500'
+                              : 'border-slate-700 focus:border-amber-500'
+                          }`}
                         />
+                        <span className="text-[10px] text-slate-500 mt-1 block">
+                          Formato internacional E.164 (Ej. Perú +51, Chile +56).
+                        </span>
                       </div>
+
+                      {/* Phone Number ID with Tooltip & Digit Counter Feedback */}
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                          Phone Number ID de Meta
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1">
+                            <label className="text-[11px] font-bold text-slate-300">
+                              Phone Number ID de Meta *
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setShowPhoneIdGuide(!showPhoneIdGuide)}
+                              className="text-amber-400 hover:text-amber-300 transition-colors p-0.5 rounded cursor-pointer"
+                              title="¿Dónde encuentro este ID?"
+                            >
+                              <HelpCircle className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          {formData.phoneNumberId ? (
+                            /^\d{14,17}$/.test(formData.phoneNumberId) ? (
+                              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-0.5">
+                                <Check className="w-3 h-3 stroke-[3]" /> {formData.phoneNumberId.length} dígitos ✓
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-amber-400 font-bold">
+                                {formData.phoneNumberId.length}/15 dígitos
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-[10px] text-slate-500">15 dígitos</span>
+                          )}
+                        </div>
                         <input
                           type="text"
-                          placeholder="Ej: 905984725929536"
+                          maxLength={18}
+                          placeholder="Ej: 905984725929536 (15 dígitos)"
                           value={formData.phoneNumberId}
-                          onChange={(e) => setFormData(prev => ({ ...prev, phoneNumberId: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-hidden focus:border-amber-500 font-mono"
+                          onChange={(e) => {
+                            // Only allow pure digits
+                            const digitsOnly = e.target.value.replace(/\D/g, '');
+                            setFormData(prev => ({ ...prev, phoneNumberId: digitsOnly }));
+                          }}
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border text-xs focus:outline-hidden font-mono font-bold transition-all ${
+                            /^\d{14,17}$/.test(formData.phoneNumberId)
+                              ? 'border-emerald-500/80 text-emerald-300 focus:border-emerald-400'
+                              : formData.phoneNumberId.length > 0
+                                ? 'border-amber-500/70 text-amber-300 focus:border-amber-400'
+                                : 'border-slate-700 text-white focus:border-amber-500'
+                          }`}
                         />
+                        <span className="text-[10px] text-slate-500 mt-1 block">
+                          Identificador numérico de 15 dígitos asignado por Meta.
+                        </span>
                       </div>
+                    </div>
+
+                    {/* Contextual Micro-guide Tooltip Banner */}
+                    {showPhoneIdGuide && (
+                      <div className="p-3.5 rounded-xl bg-slate-900/90 border border-amber-500/30 text-xs text-slate-300 space-y-1.5 animate-in fade-in duration-200">
+                        <div className="flex items-center gap-2 font-bold text-amber-400">
+                          <Info className="w-4 h-4 shrink-0" />
+                          <span>¿Dónde encuentro el Phone Number ID?</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed pl-6">
+                          1. Entra a <strong className="text-white">developers.facebook.com</strong> &rarr; Tu App.<br />
+                          2. En el menú izquierdo ve a <strong className="text-white">WhatsApp &gt; Configuración de la API</strong>.<br />
+                          3. En el paso 1 verás: <em className="text-amber-300 font-mono">Identificador de número de teléfono</em> (ej: 905984725929536). Cópialo y pégalo aquí.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Roadmap v2.5: Embedded Signup 1-Click Button */}
+                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-3 bg-slate-950/40 p-3 rounded-xl border border-slate-800">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-300">Conectar con WhatsApp Directo</span>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                            Roadmap v2.5
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 truncate">
+                          Próximamente: Alta en 1-clic con Meta Embedded Signup sin salir del portal.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled
+                        className="px-3.5 py-1.5 rounded-xl bg-slate-800/80 text-slate-500 border border-slate-700/60 text-[11px] font-bold flex items-center gap-1.5 shrink-0 opacity-60 cursor-not-allowed"
+                        title="Función en hoja de ruta (Roadmap v2.5)"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-purple-400/50" />
+                        <span>Embedded Signup</span>
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -25,7 +25,10 @@ import {
   Upload,
   ImageIcon,
   Loader2,
-  X
+  X,
+  Volume2,
+  Zap,
+  PhoneCall
 } from 'lucide-react';
 
 interface DiaKey {
@@ -76,11 +79,6 @@ const COUNTRY_PRESETS = [
   { id: 'PE', country: 'Perú', currency: 'PEN', symbol: 'S/.', phonePrefix: '+51', name: 'Sol Peruano', samplePrice: 'S/. 18.50' },
   { id: 'CL', country: 'Chile', currency: 'CLP', symbol: '$', phonePrefix: '+56', name: 'Peso Chileno', samplePrice: '$ 5.500' },
   { id: 'AR', country: 'Argentina', currency: 'ARS', symbol: '$', phonePrefix: '+54', name: 'Peso Argentino', samplePrice: '$ 8.500' },
-  { id: 'CO', country: 'Colombia', currency: 'COP', symbol: '$', phonePrefix: '+57', name: 'Peso Colombiano', samplePrice: '$ 22.000' },
-  { id: 'MX', country: 'México', currency: 'MXN', symbol: '$', phonePrefix: '+52', name: 'Peso Mexicano', samplePrice: '$ 95.00' },
-  { id: 'EC', country: 'Ecuador / USD', currency: 'USD', symbol: '$', phonePrefix: '+593', name: 'Dólar Estadounidense', samplePrice: '$ 5.50' },
-  { id: 'US', country: 'Estados Unidos', currency: 'USD', symbol: '$', phonePrefix: '+1', name: 'US Dollar', samplePrice: '$ 9.99' },
-  { id: 'ES', country: 'España / Europa', currency: 'EUR', symbol: '€', phonePrefix: '+34', name: 'Euro', samplePrice: '€ 8.50' },
 ];
 
 const INDUSTRIES = [
@@ -108,6 +106,16 @@ export default function BusinessProfilePage() {
   // Navigation Tabs: 'company' | 'hours' | 'messages'
   const [activeTab, setActiveTab] = useState<'company' | 'hours' | 'messages'>('company');
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'messages' || tab === 'hours' || tab === 'company') {
+        setActiveTab(tab);
+      }
+    }
+  }, []);
+
   // Business Profile Form State
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('fast_food');
@@ -120,6 +128,7 @@ export default function BusinessProfilePage() {
   const [allowReservations, setAllowReservations] = useState(true);
   const [policies, setPolicies] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
+  const [responseMode, setResponseMode] = useState<'text' | 'voice'>('text');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -193,6 +202,7 @@ export default function BusinessProfilePage() {
           setAllowReservations(p.allowReservations ?? true);
           setPolicies(p.policies || '');
           setCustomPrompt(p.customPrompt || '');
+          setResponseMode(p.responseMode === 'voice' ? 'voice' : 'text');
 
           const matched = COUNTRY_PRESETS.find(
             (c) => c.currency === loadedCurrency && c.symbol === loadedSymbol
@@ -405,6 +415,7 @@ export default function BusinessProfilePage() {
             allowReservations,
             policies: policies.trim(),
             customPrompt: customPrompt.trim(),
+            responseMode,
           }),
         }),
         fetch('/api/admin/business/hours', {
@@ -716,7 +727,7 @@ export default function BusinessProfilePage() {
               </div>
 
               {/* Grid de Países */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {COUNTRY_PRESETS.map((preset) => {
                   const isSelected = selectedCountry === preset.id;
                   return (
@@ -1090,6 +1101,80 @@ export default function BusinessProfilePage() {
                     </span>
                   </div>
                 </label>
+              </div>
+            </div>
+
+            {/* Modalidad de Respuesta del Chatbot: Texto Instantáneo vs Notas de Voz Sintetizadas */}
+            <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-stone-800">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                    Modo de Respuesta del Asistente en WhatsApp
+                  </h3>
+                </div>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 w-fit">
+                  Modelo Híbrido Asimétrico
+                </span>
+              </div>
+
+              {/* Callout de Valor Comercial */}
+              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs text-amber-900 dark:text-amber-200 leading-relaxed flex items-start gap-2.5">
+                <span className="text-base shrink-0">💡</span>
+                <div>
+                  <strong className="font-bold">Estrategia recomendada para delivery:</strong> Responder con <strong>Texto instantáneo</strong> reduce la tasa de abandono en más de un <strong>40%</strong>. La respuesta en texto toma apenas <strong>2 segundos</strong> y permite a los comensales leer precios, promociones y cuentas bancarias sin esperar la descarga de un audio largo.
+                </div>
+              </div>
+
+              {/* Selector de Modo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Opción 1: Texto Instantáneo (Recomendado) */}
+                <button
+                  type="button"
+                  onClick={() => setResponseMode('text')}
+                  className={`p-4 rounded-xl border text-left transition-all relative cursor-pointer ${
+                    responseMode === 'text'
+                      ? 'bg-emerald-500/10 border-emerald-500 text-slate-900 dark:text-white ring-2 ring-emerald-500/20'
+                      : 'bg-slate-50 dark:bg-stone-950 border-slate-200 dark:border-stone-800 text-slate-500 hover:border-slate-300 dark:hover:border-stone-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <Zap className="w-4 h-4" />
+                      Texto Instantáneo
+                    </span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-black uppercase">
+                      Recomendado (2s)
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-stone-300 font-medium">
+                    El bot responde en texto con negritas, emojis y enlaces directos a la carta. Máxima claridad y velocidad en compras.
+                  </p>
+                </button>
+
+                {/* Opción 2: Notas de Voz Sintetizadas */}
+                <button
+                  type="button"
+                  onClick={() => setResponseMode('voice')}
+                  className={`p-4 rounded-xl border text-left transition-all relative cursor-pointer ${
+                    responseMode === 'voice'
+                      ? 'bg-purple-500/10 border-purple-500 text-slate-900 dark:text-white ring-2 ring-purple-500/20'
+                      : 'bg-slate-50 dark:bg-stone-950 border-slate-200 dark:border-stone-800 text-slate-500 hover:border-slate-300 dark:hover:border-stone-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+                      <Volume2 className="w-4 h-4" />
+                      Notas de Voz Sintetizadas
+                    </span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black uppercase">
+                      Plan Pro (TTS)
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-stone-300 font-medium">
+                    El bot sintetiza su respuesta en notas de voz con audio humano mediante Gemini TTS. Experiencia auditiva para clientes Pro.
+                  </p>
+                </button>
               </div>
             </div>
 
