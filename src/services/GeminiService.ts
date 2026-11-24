@@ -28,12 +28,12 @@ export class GeminiService {
 
   constructor(
     apiKey?: string,
-    primaryModel: string = 'gemini-3.5-flash',
-    fallbackModel: string = 'gemini-3.5-flash-lite'
+    primaryModel: string = 'gemini-3.5-flash-lite',
+    fallbackModel: string = 'gemini-3.1-flash-lite'
   ) {
     this.apiKey = (apiKey || process.env.GEMINI_API_KEY || '').trim()
-    this.primaryModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
-    this.fallbackModel = fallbackModel || 'gemini-3.5-flash-lite'
+    this.primaryModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite'
+    this.fallbackModel = fallbackModel || 'gemini-3.1-flash-lite'
 
     if (!this.apiKey) {
       geminiLogger.warn('GEMINI_API_KEY no esta configurada en el entorno')
@@ -352,7 +352,7 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
     model: string,
     contents: GeminiContent[],
     systemInstruction: string,
-    retries: number = 1
+    retries: number = 0
   ): Promise<AIResponse> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`
 
@@ -375,13 +375,13 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       if (attempt > 0) {
-        const delay = attempt * 1200
+        const delay = attempt * 800
         geminiLogger.info(`Reintentando llamada a Gemini [${model}] (intento ${attempt + 1}) tras ${delay}ms...`)
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
 
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 12000)
+      const timeout = setTimeout(() => controller.abort(), 6500)
 
       try {
         const response = await fetch(url, {
