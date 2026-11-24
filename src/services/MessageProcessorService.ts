@@ -18,7 +18,7 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 25000
 const DEFAULT_MAX_TEXT_LENGTH = 2000
-const MAX_TTS_LENGTH = 300
+const MAX_TTS_LENGTH = 1200
 
 type WhatsAppClient = {
   downloadWhatsAppMedia: typeof downloadWhatsAppMedia
@@ -358,14 +358,33 @@ export class MessageProcessorService {
     error?: string
     cleanup: () => void
   }> {
-    const cleanedText = text
+    let cleanedText = text
       .replace(/[\u2013\u2014-]\s*PITHY.*$/i, '')
       .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
       .replace(/[\u{2600}-\u{26FF}]/gu, '')
+      .replace(/\*/g, '') // Eliminar asteriscos de formato para pronunciación natural
+      .replace(/_{1,2}/g, '')
+      .replace(/#{1,6}\s+/g, '')
+      .replace(/•\s*/g, '')
+      .replace(/\[\[(?:CONFIRMAR_PEDIDO|CREAR_RESERVA):.*?\]\]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
 
-    const limitedText = cleanedText.slice(0, MAX_TTS_LENGTH)
+    let limitedText = cleanedText
+    if (limitedText.length > MAX_TTS_LENGTH) {
+      const slice = limitedText.slice(0, MAX_TTS_LENGTH)
+      const lastPunc = Math.max(
+        slice.lastIndexOf('.'),
+        slice.lastIndexOf('!'),
+        slice.lastIndexOf('?'),
+        slice.lastIndexOf(';')
+      )
+      if (lastPunc > MAX_TTS_LENGTH * 0.6) {
+        limitedText = slice.slice(0, lastPunc + 1).trim()
+      } else {
+        limitedText = slice.trim()
+      }
+    }
 
     if (!limitedText) {
       return { success: false, error: 'Texto vacio para TTS', cleanup: () => {} }

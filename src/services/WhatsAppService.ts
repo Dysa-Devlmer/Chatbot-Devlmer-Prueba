@@ -348,6 +348,7 @@ export class WhatsAppService {
     await this.sendResponse(phoneNumber, {
       text: responseText,
       audioPath: processResult.audioPath,
+      audioAlreadySent: processResult.audioSent,
     })
 
     await this.saveMessage(
@@ -596,26 +597,29 @@ export class WhatsAppService {
 
   private async sendResponse(
     phoneNumber: string,
-    response: { text: string; audioPath?: string }
+    response: { text: string; audioPath?: string; audioAlreadySent?: boolean }
   ): Promise<{ success: boolean; error?: string }> {
-    if (response.audioPath) {
-      const audioResult = await this.whatsappClient.sendWhatsAppAudio(
-        phoneNumber,
-        response.audioPath
-      )
-
-      return audioResult.success
-        ? { success: true }
-        : { success: false, error: audioResult.error }
+    // Si hay audio y no fue despachado previamente, enviarlo
+    if (response.audioPath && !response.audioAlreadySent) {
+      try {
+        await this.whatsappClient.sendWhatsAppAudio(phoneNumber, response.audioPath)
+      } catch (err) {
+        logError(whatsappLogger, err, { stage: 'send-audio-fallback', phoneNumber })
+      }
     }
 
-    try {
-      await this.whatsappClient.sendWhatsAppMessage(phoneNumber, response.text)
-      return { success: true }
-    } catch (error) {
-      logError(whatsappLogger, error, { stage: 'send-text', phoneNumber })
-      return { success: false, error: 'No se pudo enviar mensaje' }
+    // Enviar SIEMPRE el texto para que el comensal tenga respaldo escrito claro con precios y detalle
+    if (response.text) {
+      try {
+        await this.whatsappClient.sendWhatsAppMessage(phoneNumber, response.text)
+        return { success: true }
+      } catch (error) {
+        logError(whatsappLogger, error, { stage: 'send-text', phoneNumber })
+        return { success: false, error: 'No se pudo enviar mensaje de texto' }
+      }
     }
+
+    return { success: true }
   }
 
   /**
