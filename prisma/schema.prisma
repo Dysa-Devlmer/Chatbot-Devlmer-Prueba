@@ -413,6 +413,7 @@ model BusinessProfile {
   allowReservations Boolean @default(true)
   policies        String?  // Políticas de despacho, reservas o términos
   customPrompt    String?  // Instrucciones adicionales para la IA sobre el negocio
+  bankDetails     String?  // Configuración de cuentas bancarias y transferencias en formato JSON
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

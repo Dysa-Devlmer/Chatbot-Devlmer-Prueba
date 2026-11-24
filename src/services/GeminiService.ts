@@ -91,6 +91,20 @@ export class GeminiService {
           .join('\n')
       : '(No hay productos cargados en el catálogo en este momento)'
 
+    let bankSummary = `Transferencia / Billetera: ${phone ? phone.replace('\n', '') : 'al número oficial'}. Titular: ${businessName}`;
+    if (business?.bankDetails) {
+      try {
+        const bd = typeof business.bankDetails === 'string' ? JSON.parse(business.bankDetails) : business.bankDetails;
+        if (activeCurrency === 'PEN') {
+          bankSummary = `Transferencia / Yape: Banco ${bd.pe_bankName || 'BCP'} ${bd.pe_accountNumber ? '(Cta: ' + bd.pe_accountNumber + ')' : ''} ${bd.pe_cci ? '(CCI: ' + bd.pe_cci + ')' : ''}. Yape/Plin: ${bd.pe_yapeNumber || business.phone}. Titular: ${bd.pe_holderName || businessName}.`;
+        } else if (activeCurrency === 'CLP') {
+          bankSummary = `Transferencia (Chile): Banco ${bd.cl_bankName || 'Banco Estado'} ${bd.cl_accountType || 'CuentaRUT'} ${bd.cl_accountNumber ? '(Cta: ' + bd.cl_accountNumber + ')' : ''}. RUT: ${bd.cl_rut || ''}. Titular: ${bd.cl_holderName || businessName}. Email: ${bd.cl_email || ''}.`;
+        } else if (activeCurrency === 'ARS') {
+          bankSummary = `Transferencia (Argentina): ${bd.ar_bankName || 'Mercado Pago'} ${bd.ar_alias ? '(Alias: ' + bd.ar_alias + ')' : ''} ${bd.ar_cbu ? '(CBU: ' + bd.ar_cbu + ')' : ''}. Titular: ${bd.ar_holderName || businessName}.`;
+        }
+      } catch {}
+    }
+
     return `Eres PITHY, el asistente virtual oficial de atención al cliente de "${businessName}".
 
 INFORMACIÓN OFICIAL DE LA EMPRESA (Configurada en el Panel Administrativo):
@@ -100,7 +114,7 @@ INFORMACIÓN OFICIAL DE LA EMPRESA (Configurada en el Panel Administrativo):
 - Moneda Oficial: ${currency} (Regla estricta: Usa SIEMPRE el símbolo "${currency}" en todos los precios y presupuestos; NUNCA uses "$" ni otra moneda).
 
 FORMAS DE PAGO OFICIALES:
-1. Transferencia / Billetera Digital (${currency === 'S/.' ? 'Yape / Plin' : 'Transferencia Bancaria'}): Al número oficial ${phone ? phone.replace('\n', '') : 'del restaurante'}. Titular: ${businessName}. Si el cliente pide datos para transferir, entrégalos claramente. Puede enviar la captura por el chat o indicar su correo para recibir su Boleta o Factura electrónica.
+1. Transferencia / Billetera Digital: ${bankSummary}. Si el cliente pide datos para transferir, entrégalos claramente. Puede enviar la captura por el chat o indicar su correo para recibir su Boleta o Factura electrónica.
 2. Tarjeta Débito / Crédito (POS Móvil): El motorizado lleva el terminal POS inalámbrico a domicilio (Visa, Mastercard, contactless, Apple Pay). ¡NO requiere transferencias previas ni códigos anticipados!
 3. Efectivo contra entrega: Pago en efectivo al recibir en puerta o retirar en local.
 

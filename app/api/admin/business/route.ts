@@ -133,6 +133,7 @@ export async function PUT(request: NextRequest) {
       allowReservations,
       policies,
       customPrompt,
+      bankDetails,
     } = body
 
     let finalCurrency = currency ? currency.trim().toUpperCase() : undefined;
@@ -159,6 +160,7 @@ export async function PUT(request: NextRequest) {
           ...(allowReservations !== undefined && { allowReservations: Boolean(allowReservations) }),
           ...(policies !== undefined && { policies: policies?.trim() || null }),
           ...(customPrompt !== undefined && { customPrompt: customPrompt?.trim() || null }),
+          ...(bankDetails !== undefined && { bankDetails: typeof bankDetails === 'string' ? bankDetails : JSON.stringify(bankDetails) }),
         },
       })
     } else {
@@ -175,6 +177,7 @@ export async function PUT(request: NextRequest) {
           allowReservations: allowReservations ?? true,
           policies,
           customPrompt,
+          bankDetails: typeof bankDetails === 'string' ? bankDetails : (bankDetails ? JSON.stringify(bankDetails) : null),
         },
       })
     }

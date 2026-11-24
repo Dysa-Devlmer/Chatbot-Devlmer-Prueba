@@ -28,7 +28,8 @@ import {
   X,
   Volume2,
   Zap,
-  PhoneCall
+  PhoneCall,
+  Wallet
 } from 'lucide-react';
 
 interface DiaKey {
@@ -133,6 +134,32 @@ export default function BusinessProfilePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Bank Configuration State (Adaptable per country)
+  const [bankConfig, setBankConfig] = useState({
+    // Perú (PEN)
+    pe_bankName: 'BCP',
+    pe_accountType: 'Cuenta Corriente',
+    pe_accountNumber: '',
+    pe_cci: '',
+    pe_yapeNumber: '',
+    pe_holderName: '',
+    pe_holderId: '',
+    // Chile (CLP)
+    cl_bankName: 'Banco Estado',
+    cl_accountType: 'CuentaRUT',
+    cl_accountNumber: '',
+    cl_rut: '',
+    cl_holderName: '',
+    cl_email: '',
+    // Argentina (ARS)
+    ar_bankName: 'Mercado Pago',
+    ar_accountType: 'CBU / CVU',
+    ar_cbu: '',
+    ar_alias: '',
+    ar_cuit: '',
+    ar_holderName: '',
+  });
+
   // Horarios State
   const [hoursConfig, setHoursConfig] = useState<HoursConfig>({
     horarios: {
@@ -203,6 +230,15 @@ export default function BusinessProfilePage() {
           setPolicies(p.policies || '');
           setCustomPrompt(p.customPrompt || '');
           setResponseMode(p.responseMode === 'voice' ? 'voice' : 'text');
+
+          if (p.bankDetails) {
+            try {
+              const parsed = typeof p.bankDetails === 'string' ? JSON.parse(p.bankDetails) : p.bankDetails;
+              setBankConfig(prev => ({ ...prev, ...parsed }));
+            } catch (err) {
+              console.error('Error parsing bankDetails:', err);
+            }
+          }
 
           const matched = COUNTRY_PRESETS.find(
             (c) => c.currency === loadedCurrency && c.symbol === loadedSymbol
@@ -416,6 +452,7 @@ export default function BusinessProfilePage() {
             policies: policies.trim(),
             customPrompt: customPrompt.trim(),
             responseMode,
+            bankDetails: bankConfig,
           }),
         }),
         fetch('/api/admin/business/hours', {
@@ -757,6 +794,287 @@ export default function BusinessProfilePage() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Configuración de Cuentas Bancarias y Transferencias (Automático por País) */}
+            <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-stone-900 border border-slate-200 dark:border-stone-800 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-stone-800 gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                      Cuentas Bancarias & Datos para Transferencias
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-stone-400">
+                      Datos oficiales que verán tus clientes al transferir en la Carta Digital y que el bot de WhatsApp responderá automáticamente.
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 text-[11px] font-black uppercase rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 self-start sm:self-auto">
+                  {selectedCountry === 'PE' ? '🇵🇪 Perú (PEN - S/.)' : (selectedCountry === 'CL' ? '🇨🇱 Chile (CLP - $)' : '🇦🇷 Argentina (ARS - $)')}
+                </span>
+              </div>
+
+              {/* Formulario Dinámico según País */}
+              {selectedCountry === 'PE' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Banco Principal (Perú)
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.pe_bankName}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, pe_bankName: e.target.value }))}
+                        placeholder="ej: BCP, BBVA, Interbank, Scotiabank"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Tipo de Cuenta
+                      </label>
+                      <select
+                        value={bankConfig.pe_accountType}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, pe_accountType: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-semibold"
+                      >
+                        <option value="Cuenta Corriente">Cuenta Corriente</option>
+                        <option value="Cuenta de Ahorros">Cuenta de Ahorros</option>
+                        <option value="Cuenta Corriente Soles">Cuenta Corriente Soles</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Número de Cuenta Bancaria
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.pe_accountNumber}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, pe_accountNumber: e.target.value }))}
+                        placeholder="ej: 193-98765432-0-12"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Código Interbancario (CCI) (20 dígitos)
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.pe_cci}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, pe_cci: e.target.value }))}
+                        placeholder="ej: 00219300987654320123"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Número Oficial para Yape / Plin
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.pe_yapeNumber}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, pe_yapeNumber: e.target.value }))}
+                        placeholder="ej: +51 922 931 433"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Titular de la Cuenta / Razón Social
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.pe_holderName}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, pe_holderName: e.target.value }))}
+                        placeholder="ej: Churu's Comida Rápida S.A.C."
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedCountry === 'CL' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Banco Principal (Chile)
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.cl_bankName}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, cl_bankName: e.target.value }))}
+                        placeholder="ej: Banco Estado, Banco de Chile, Santander"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Tipo de Cuenta
+                      </label>
+                      <select
+                        value={bankConfig.cl_accountType}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, cl_accountType: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      >
+                        <option value="CuentaRUT">CuentaRUT (Banco Estado)</option>
+                        <option value="Cuenta Corriente">Cuenta Corriente</option>
+                        <option value="Cuenta Vista">Cuenta Vista</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Número de Cuenta
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.cl_accountNumber}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, cl_accountNumber: e.target.value }))}
+                        placeholder="ej: 12345678 (o RUT sin dígito verificador)"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        RUT del Titular
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.cl_rut}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, cl_rut: e.target.value }))}
+                        placeholder="ej: 12.345.678-9"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Nombre o Razón Social del Titular
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.cl_holderName}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, cl_holderName: e.target.value }))}
+                        placeholder="ej: Churu's Chile SpA"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Email para Notificación de Transferencia
+                      </label>
+                      <input
+                        type="email"
+                        value={bankConfig.cl_email}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, cl_email: e.target.value }))}
+                        placeholder="ej: pagos@churus.cl"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedCountry === 'AR' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Banco o Billetera (Argentina)
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.ar_bankName}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, ar_bankName: e.target.value }))}
+                        placeholder="ej: Mercado Pago, Banco Galicia, Santander"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Tipo de Cuenta
+                      </label>
+                      <select
+                        value={bankConfig.ar_accountType}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, ar_accountType: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      >
+                        <option value="CBU / CVU">CBU / CVU Digital</option>
+                        <option value="Caja de Ahorro">Caja de Ahorro en Pesos</option>
+                        <option value="Cuenta Corriente">Cuenta Corriente</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Alias CBU / CVU (Para transferir)
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.ar_alias}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, ar_alias: e.target.value.toUpperCase() }))}
+                        placeholder="ej: CHURUS.BURGER.MP"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        CBU / CVU Completo (22 dígitos)
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.ar_cbu}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, ar_cbu: e.target.value }))}
+                        placeholder="ej: 0000003100012345678901"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        CUIT / CUIL del Titular
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.ar_cuit}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, ar_cuit: e.target.value }))}
+                        placeholder="ej: 30-71234567-8"
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-stone-300 mb-1">
+                        Titular de la Cuenta
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.ar_holderName}
+                        onChange={(e) => setBankConfig(prev => ({ ...prev, ar_holderName: e.target.value }))}
+                        placeholder="ej: Churu's Argentina S.R.L."
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-stone-800 bg-slate-50 dark:bg-stone-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Datos Básicos de la Empresa */}

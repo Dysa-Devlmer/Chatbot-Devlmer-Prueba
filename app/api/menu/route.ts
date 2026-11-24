@@ -35,6 +35,7 @@ export async function GET() {
         address: business?.address || 'Av. Los Próceres 458',
         description: business?.description || '',
         policies: business?.policies || '',
+        bankDetails: business?.bankDetails || null,
         isOpen: status.abierto,
         todayHours: status.horarioHoy,
         statusMode: status.modo,

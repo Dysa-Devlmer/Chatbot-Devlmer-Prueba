@@ -61,6 +61,7 @@ export default function CheckoutPage() {
     address: string;
     isOpen?: boolean;
     todayHours?: string;
+    bankDetails?: any;
   }>({
     name: "Churu's Comida Rápida",
     currency: 'PEN',
@@ -284,23 +285,63 @@ export default function CheckoutPage() {
         setIsEditingAddress(true);
         let msg = 'Por favor ingresa tu dirección manualmente';
         if (error.code === 1) {
-          msg = '⚠️ Permiso GPS denegado. Escribe tu dirección.';
+          msg = '🔒 Permiso GPS no concedido. Activa la Ubicación en tu navegador.';
+        } else if (error.code === 2) {
+          msg = '⚠️ Señal GPS no disponible en este momento.';
         } else if (error.code === 3) {
           msg = '⚠️ Tiempo de espera GPS agotado. Escribe tu dirección.';
         }
         setGpsToast(msg);
-        setTimeout(() => setGpsToast(null), 4000);
+        setTimeout(() => setGpsToast(null), 5000);
       },
-      { timeout: 9000, enableHighAccuracy: true, maximumAge: 0 }
+      { timeout: 15000, enableHighAccuracy: true, maximumAge: 30000 }
     );
   };
 
-  // Copy phone handler
+  // Copy bank / phone handler
   const handleCopyPhone = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const phoneToCopy = business.phone || '+56912345678';
+    let textToCopy = `Titular: ${business.name}\nTeléfono: ${business.phone}`;
+    const parsedBank = typeof business.bankDetails === 'string'
+      ? (() => { try { return JSON.parse(business.bankDetails); } catch { return null; } })()
+      : business.bankDetails;
+
+    const curr = (business.currency || 'PEN').toUpperCase();
+    if (curr === 'PEN' && parsedBank) {
+      textToCopy = [
+        `*Datos para Transferencia / Yape (${business.name}):*`,
+        `Banco: ${parsedBank.pe_bankName || 'BCP'}`,
+        parsedBank.pe_accountType ? `Tipo: ${parsedBank.pe_accountType}` : null,
+        parsedBank.pe_accountNumber ? `N° Cuenta: ${parsedBank.pe_accountNumber}` : null,
+        parsedBank.pe_cci ? `CCI: ${parsedBank.pe_cci}` : null,
+        `Yape / Plin: ${parsedBank.pe_yapeNumber || business.phone}`,
+        `Titular: ${parsedBank.pe_holderName || business.name}`,
+      ].filter(Boolean).join('\n');
+    } else if (curr === 'CLP' && parsedBank) {
+      textToCopy = [
+        `*Datos para Transferencia (${business.name}):*`,
+        `Banco: ${parsedBank.cl_bankName || 'Banco Estado'}`,
+        `Tipo: ${parsedBank.cl_accountType || 'CuentaRUT'}`,
+        parsedBank.cl_accountNumber ? `N° Cuenta: ${parsedBank.cl_accountNumber}` : null,
+        parsedBank.cl_rut ? `RUT: ${parsedBank.cl_rut}` : null,
+        `Titular: ${parsedBank.cl_holderName || business.name}`,
+        parsedBank.cl_email ? `Email: ${parsedBank.cl_email}` : null,
+      ].filter(Boolean).join('\n');
+    } else if (curr === 'ARS' && parsedBank) {
+      textToCopy = [
+        `*Datos para Transferencia (${business.name}):*`,
+        `Banco/Billetera: ${parsedBank.ar_bankName || 'Mercado Pago'}`,
+        parsedBank.ar_alias ? `Alias: ${parsedBank.ar_alias}` : null,
+        parsedBank.ar_cbu ? `CBU/CVU: ${parsedBank.ar_cbu}` : null,
+        `Titular: ${parsedBank.ar_holderName || business.name}`,
+        parsedBank.ar_cuit ? `CUIT: ${parsedBank.ar_cuit}` : null,
+      ].filter(Boolean).join('\n');
+    } else {
+      textToCopy = `${business.name}\nNúmero para transferir: ${business.phone}`;
+    }
+
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(phoneToCopy);
+      navigator.clipboard.writeText(textToCopy);
     }
     setCopiedPhone(true);
     setTimeout(() => setCopiedPhone(false), 2500);
@@ -974,59 +1015,148 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {paymentMethod === 'yape' && (
-              <div className="pt-2 border-t border-purple-900/40 space-y-2.5 animate-in fade-in duration-200">
-                <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-800/50 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-stone-400">Titular de la cuenta:</span>
-                    <span className="font-bold text-white">{business.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-stone-400">Número oficial para transferir:</span>
-                    <span className="font-mono font-bold text-purple-300">{business.phone || '+51 922 931 433'}</span>
-                  </div>
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={handleCopyPhone}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all active:scale-90 ${
-                        copiedPhone 
-                          ? 'bg-[#84cc16] text-stone-950 shadow-xs' 
-                          : 'bg-purple-900/80 hover:bg-purple-800 text-purple-100 border border-purple-700/60'
-                      }`}
-                    >
-                      {copiedPhone ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                          <span>¡Número Copiado!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Copiar Datos de Transferencia</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
+            {paymentMethod === 'yape' && (() => {
+              const parsedBank = typeof business.bankDetails === 'string'
+                ? (() => { try { return JSON.parse(business.bankDetails); } catch { return null; } })()
+                : business.bankDetails;
+              const curr = (business.currency || 'PEN').toUpperCase();
 
-                <div className="pt-1">
-                  <label className="block text-[11px] font-bold text-purple-200/90 mb-1">
-                    Código de operación o últimos 4 dígitos (Opcional):
-                  </label>
-                  <input
-                    type="text"
-                    value={operationCode}
-                    onChange={(e) => setOperationCode(e.target.value)}
-                    placeholder="Ej: Op. 849201..."
-                    className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-purple-900/60 text-xs font-mono text-purple-200 placeholder-stone-600 focus:outline-none focus:border-purple-400 transition-all"
-                  />
-                  <span className="text-[10px] text-stone-500 mt-1 block">
-                    También puedes enviar la captura de tu transferencia al confirmar tu orden por WhatsApp.
-                  </span>
+              return (
+                <div className="pt-2 border-t border-purple-900/40 space-y-2.5 animate-in fade-in duration-200">
+                  <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-800/50 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-stone-400">Banco / Entidad:</span>
+                      <span className="font-bold text-white">
+                        {curr === 'PEN' ? (parsedBank?.pe_bankName || 'BCP') : (curr === 'CLP' ? (parsedBank?.cl_bankName || 'Banco Estado') : (parsedBank?.ar_bankName || 'Mercado Pago'))}
+                      </span>
+                    </div>
+
+                    {curr === 'PEN' && (
+                      <>
+                        {parsedBank?.pe_accountNumber && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-stone-400">N° de Cuenta:</span>
+                            <span className="font-mono font-bold text-purple-200">{parsedBank.pe_accountNumber}</span>
+                          </div>
+                        )}
+                        {parsedBank?.pe_cci && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-stone-400">CCI Interbancario:</span>
+                            <span className="font-mono text-stone-300 text-[11px]">{parsedBank.pe_cci}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-400">Yape / Plin Oficial:</span>
+                          <span className="font-mono font-bold text-purple-300">{parsedBank?.pe_yapeNumber || business.phone}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-400">Titular de Cuenta:</span>
+                          <span className="font-medium text-white">{parsedBank?.pe_holderName || business.name}</span>
+                        </div>
+                      </>
+                    )}
+
+                    {curr === 'CLP' && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-400">Tipo de Cuenta:</span>
+                          <span className="font-bold text-white">{parsedBank?.cl_accountType || 'CuentaRUT'}</span>
+                        </div>
+                        {parsedBank?.cl_accountNumber && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-stone-400">N° de Cuenta:</span>
+                            <span className="font-mono font-bold text-purple-200">{parsedBank.cl_accountNumber}</span>
+                          </div>
+                        )}
+                        {parsedBank?.cl_rut && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-stone-400">RUT del Titular:</span>
+                            <span className="font-mono font-bold text-purple-200">{parsedBank.cl_rut}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-400">Titular:</span>
+                          <span className="font-medium text-white">{parsedBank?.cl_holderName || business.name}</span>
+                        </div>
+                        {parsedBank?.cl_email && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-stone-400">Email comprobante:</span>
+                            <span className="font-mono text-[11px] text-purple-300">{parsedBank.cl_email}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {curr === 'ARS' && (
+                      <>
+                        {parsedBank?.ar_alias && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-stone-400">Alias CBU/CVU:</span>
+                            <span className="font-mono font-bold text-purple-300">{parsedBank.ar_alias}</span>
+                          </div>
+                        )}
+                        {parsedBank?.ar_cbu && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-stone-400">CBU / CVU:</span>
+                            <span className="font-mono text-stone-300 text-[11px]">{parsedBank.ar_cbu}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-stone-400">Titular:</span>
+                          <span className="font-medium text-white">{parsedBank?.ar_holderName || business.name}</span>
+                        </div>
+                        {parsedBank?.ar_cuit && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-stone-400">CUIT / CUIL:</span>
+                            <span className="font-mono text-stone-300 text-[11px]">{parsedBank.ar_cuit}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    <div className="flex justify-end pt-2 border-t border-purple-900/40">
+                      <button
+                        type="button"
+                        onClick={handleCopyPhone}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all active:scale-90 ${
+                          copiedPhone 
+                            ? 'bg-[#84cc16] text-stone-950 shadow-xs' 
+                            : 'bg-purple-900/80 hover:bg-purple-800 text-purple-100 border border-purple-700/60'
+                        }`}
+                      >
+                        {copiedPhone ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>¡Datos Copiados!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copiar Datos de Transferencia</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-1">
+                    <label className="block text-[11px] font-bold text-purple-200/90 mb-1">
+                      Código de operación o últimos 4 dígitos (Opcional):
+                    </label>
+                    <input
+                      type="text"
+                      value={operationCode}
+                      onChange={(e) => setOperationCode(e.target.value)}
+                      placeholder="Ej: Op. 849201..."
+                      className="w-full px-3 py-2 rounded-xl bg-stone-950 border border-purple-900/60 text-xs font-mono text-purple-200 placeholder-stone-600 focus:outline-none focus:border-purple-400 transition-all"
+                    />
+                    <span className="text-[10px] text-stone-500 mt-1 block">
+                      También puedes enviar la captura de tu transferencia al confirmar tu orden por WhatsApp.
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Option 2: Card POS */}

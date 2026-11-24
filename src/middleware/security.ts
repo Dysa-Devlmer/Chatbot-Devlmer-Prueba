@@ -214,7 +214,7 @@ export function applySecurityHeaders(response: NextResponse): NextResponse {
     [
       'camera=()',
       'microphone=()',
-      'geolocation=()',
+      'geolocation=(self)',
       'interest-cohort=()', // Disable FLoC
     ].join(', ')
   )
