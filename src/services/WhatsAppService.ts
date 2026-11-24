@@ -330,6 +330,20 @@ export class WhatsAppService {
       }
     }
 
+    // Actualizar mensaje entrante con la transcripción real para que el panel e historial tengan el texto completo
+    if (extracted.type === 'audio' && processResult.details?.transcriptionText && inboundSave.messageId) {
+      try {
+        await prisma.message.update({
+          where: { id: inboundSave.messageId },
+          data: {
+            content: `🎤 [Audio]: "${processResult.details.transcriptionText}"`,
+          },
+        });
+      } catch (err) {
+        whatsappLogger.warn('No se pudo actualizar transcripcion en mensaje', { error: err });
+      }
+    }
+
     const responseText = processResult.response
     await this.sendResponse(phoneNumber, {
       text: responseText,

@@ -412,9 +412,17 @@ REGLAS DE ATENCIÓN Y TOMA DE PEDIDOS:
         }
 
         const data = await response.json()
-        const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text
+        const rawParts = data.candidates?.[0]?.content?.parts || []
+        const textParts = rawParts
+          .filter((p: any) => p && typeof p.text === 'string' && !p.thought)
+          .map((p: any) => p.text.trim())
+          .filter(Boolean)
 
-        if (!candidateText || typeof candidateText !== 'string') {
+        const candidateText = textParts.length > 0 
+          ? textParts.join('\n') 
+          : (rawParts[0]?.text || '')
+
+        if (!candidateText || typeof candidateText !== 'string' || !candidateText.trim()) {
           throw new Error(`Gemini [${model}] devolvio una respuesta sin texto`)
         }
 
